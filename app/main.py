@@ -4,7 +4,7 @@ from app.routes import user
 app = FastAPI()
 
 app.include_router(user.router, prefix="/users", tags=["Users"])
-app.include_router(user.auth_router, prefix="/auth", tags=["Auth"])
+app.include_router(user.auth_router, tags=["Auth"])
 
 # from fastapi import FastAPI, WebSocket
 # from app.routes import auth, user
