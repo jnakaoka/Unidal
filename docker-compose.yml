@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: unidal_api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=mysql+mysqlconnector://unidal:admin_135@localhost/unidal
+    volumes:
+      - .:/app
+
+  db:
+    image: mysql:8
+    container_name: unidal_db
+    restart: always
+    environment:
+      MYSQL_DATABASE: unidal
+      MYSQL_ROOT_PASSWORD: admin_135
+      MYSQL_USER: unidal
+      MYSQL_PASSWORD: admin_135
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:
