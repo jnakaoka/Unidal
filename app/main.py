@@ -1,9 +1,13 @@
 from fastapi import FastAPI
 from app.routes.user import router as user_router
+from app.routes.auth import router as auth_router  # novo
+from app.routes.perfil import router as perfil
 
 app = FastAPI()
 
 app.include_router(user_router, prefix="/users", tags=["Users"])
+app.include_router(auth_router, tags=["Auth"])  # novo
+app.include_router(perfil, prefix="/perfis", tags=["Perfis"])
 
 # from fastapi import FastAPI, WebSocket
 # from app.routes import auth, user

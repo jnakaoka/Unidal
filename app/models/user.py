@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 class User(Base):
@@ -9,4 +10,6 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
-    is_admin = Column(Boolean, default=False)  # ou pode usar role para múltiplos níveis
+    
+    perfil_id = Column(Integer, ForeignKey("perfis.id"))
+    perfil = relationship("Perfil")

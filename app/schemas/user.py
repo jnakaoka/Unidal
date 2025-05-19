@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 class UserCreate(BaseModel):
     name: str
@@ -16,3 +17,7 @@ class UserOut(BaseModel):
     #     orm_mode = True
     class Config:
         from_attributes = True
+
+class UserTokenData(BaseModel):
+    email: Optional[str] = None
+    perfil: Optional[str] = None
