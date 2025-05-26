@@ -1,17 +1,23 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
+
+class UserBase(BaseModel):
+    email: EmailStr
+    perfil: int
+
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
+    perfil_id: int  # <-- adicionado
 
 class UserOut(BaseModel):
     id: int
     name: str
     email: EmailStr
     is_active: bool
-    is_admin: bool
+    perfil_id: Optional[int]
 
     # class Config:
     #     orm_mode = True

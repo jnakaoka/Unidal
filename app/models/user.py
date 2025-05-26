@@ -11,5 +11,5 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
     
-    perfil_id = Column(Integer, ForeignKey("perfis.id"))
-    perfil = relationship("Perfil")
+    perfil_id = Column(Integer, ForeignKey("perfis.id"), nullable=False)
+    perfil = relationship("Perfil", back_populates="usuarios")

@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from app.utils.jwt import decode_access_token
@@ -12,6 +12,16 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UserTokenData:
         return UserTokenData(email=payload["sub"], perfil=payload["perfil"])
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido")
+
+def verificar_permissao(perfis_permitidos: list[str]):
+    def wrapper(user: UserTokenData = Depends(get_current_user)):
+        if user.perfil not in perfis_permitidos:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Permissão negada"
+            )
+        return user  # Pode retornar user se quiser usar nas rotas
+    return wrapper
 
 def require_role(*allowed_roles: list[str]):
     def role_dependency(current_user: UserTokenData = Depends(get_current_user)):

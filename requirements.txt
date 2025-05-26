@@ -3,9 +3,12 @@ uvicorn[standard]
 sqlalchemy
 mysql-connector-python
 pydantic
+alembic
 python-jose[cryptography]
 passlib[bcrypt]
 email-validator
 passlib[bcrypt]
 python-jose
 python-multipart
+bcrypt<4.0.0
+

@@ -11,20 +11,34 @@ from app.utils.deps import get_current_user
 from app.models.user import User
 from jose import JWTError
 from app.dependencies.auth import require_role
+from sqlalchemy.orm import selectinload
 
 router = APIRouter()
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = get_user_by_email(db, form_data.username)
-    print("usuario:",user)
-    print("senha:",form_data.password)
-    print("email:",form_data.username)
-    print("senha:",user.hashed_password)
+    # user = get_user_by_email(db, form_data.username)
+    # print("usuario:",user)
+    # print("senha:",form_data.password)
+    # print("email:",form_data.username)
+    # print("senha:",user.hashed_password)
+    print("form_data:", form_data)
+    user = db.query(User)\
+        .options(selectinload(User.perfil))\
+        .filter(User.email == form_data.username)\
+        .first()
+    
+    #print("perfil do usuário:", user.perfil)
+    # print("perfil.nome:", user.perfil.nome)
+    # print("tipo:", type(user.perfil.nome))
+
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Credenciais inválidas")
 
-    token_data = {"sub": user.email, "perfil": user.perfil}
+    token_data = {
+        "sub": user.email,
+        "perfil": user.perfil.nome  # Aqui agora funciona corretamente
+    }
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
 

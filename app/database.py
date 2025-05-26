@@ -5,9 +5,11 @@ from sqlalchemy.orm import Session
 from app.config import settings  # ou diretamente a string do banco
 from typing import Generator
 
-DATABASE_URL = "mysql+mysqlconnector://unidal:admin_135@localhost/unidal"
+# DATABASE_URL = "mysql+mysqlconnector://unidal:admin_135@unidal_db/unidal"
 
-engine = create_engine(DATABASE_URL)
+print("URL de conexão com banco de dados:", settings.DATABASE_URL)
+
+engine = create_engine(settings.DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

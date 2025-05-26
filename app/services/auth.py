@@ -18,3 +18,10 @@ def login(db: Session, email: str, password: str):
     user = authenticate_user(db, email, password)
     token = create_access_token({"sub": str(user.id)})
     return {"access_token": token, "token_type": "bearer"}
+
+def criar_token_acesso(user: User):
+    token_data = {
+        "sub": user.email,
+        "perfil": user.perfil.nome  # Adiciona o nome do perfil no token
+    }
+    return create_access_token(data=token_data)
