@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from app.utils.jwt import decode_access_token
 from app.schemas.user import UserTokenData
+from app.database import SessionLocal
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
@@ -29,3 +30,10 @@ def require_role(*allowed_roles: list[str]):
             raise HTTPException(status_code=403, detail="Permissão negada")
         return current_user
     return role_dependency
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

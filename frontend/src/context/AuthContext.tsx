@@ -27,12 +27,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string): Promise<boolean> => {
     const data: TokenResponse | null = await loginService(email, password);
     if (data) {
-      localStorage.setItem('userEmail', email);
-      setUser(email);
-      return true;
+        localStorage.setItem("userEmail", email);
+        setUser(email);
+        return true;
     }
     return false;
-  };
+ };
 
   const logout = () => {
     logoutService();
