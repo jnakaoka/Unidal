@@ -38,7 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logoutService();
     localStorage.removeItem('userEmail');
     setUser(null);
-    navigate('/login');
+    
   };
 
   return (
