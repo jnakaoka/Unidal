@@ -13,13 +13,14 @@ router = APIRouter()
 def login(
     username: str = Form(...),
     password: str = Form(...),
-    db: Session = Depends(get_db)
+    # db: Session = Depends(get_db)
 ):
-    usuario = autenticar_usuario(db, username, password)
+    # usuario = autenticar_usuario(db, username, password)
+    usuario = autenticar_usuario(username, password)
     if not usuario:
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
-    tokens = criar_tokens(usuario)
+    tokens = criar_tokens(usuario, usuario.perfil)
     return tokens
 
 @router.post("/logout")

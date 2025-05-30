@@ -15,12 +15,12 @@ from app.utils.tokens import (
 
 def authenticate_user(db: Session, email: str, password: str):
     user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(password, user.password):
+    if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciais inválidas"
         )
-    access_token = create_access_token(data={"sub": str(user.id), "role": user.role})
+    access_token = create_access_token(data={"sub": str(user.id), "role": user.perfil_id})
     return {"access_token": access_token, "token_type": "bearer"}
 
 def autenticar_usuario(email: str, senha: str):
@@ -28,7 +28,7 @@ def autenticar_usuario(email: str, senha: str):
     usuario = db.query(User).filter(User.email == email).first()
     db.close()
 
-    if not usuario or not verify_password(senha, usuario.senha):
+    if not usuario or not verify_password(senha, usuario.hashed_password):
         return None
     return usuario
 

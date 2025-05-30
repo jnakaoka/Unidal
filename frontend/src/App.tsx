@@ -1,9 +1,23 @@
 import React from "react";
-import { RouterProvider } from "react-router-dom";
-import router from "./routes";
+import { Routes, Route, Navigate } from "react-router-dom";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import { useAuth } from "./context/AuthContext";
+import NotFound from "./pages/NotFound"; // (crie essa página ou mude conforme sua estrutura)
+import PrivateRoute from "./routes/PrivateRoute";
 
 const App: React.FC = () => {
-  return <RouterProvider router={router} />;
+  const { user } = useAuth();
+
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      {/* <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} /> */}
+      <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
+      {/* Outras rotas protegidas podem seguir o mesmo padrão */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
 };
 
 export default App;
