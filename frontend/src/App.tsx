@@ -7,14 +7,20 @@ import NotFound from "./pages/NotFound"; // (crie essa página ou mude conforme 
 import PrivateRoute from "./routes/PrivateRoute";
 
 const App: React.FC = () => {
-  const { user } = useAuth();
-
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      {/* <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} /> */}
-      <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
-      {/* Outras rotas protegidas podem seguir o mesmo padrão */}
+      <Route path="/admin-dashboard" element={
+        <PrivateRoute allowedProfiles={['admin']}>
+          <Dashboard />
+        </PrivateRoute>
+      } />
+      <Route path="/operador-dashboard" element={
+        <PrivateRoute allowedProfiles={['operador']}>
+          <Dashboard />
+        </PrivateRoute>
+      } />
+      {/* <Route path="/home" element={<Home />} /> */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );

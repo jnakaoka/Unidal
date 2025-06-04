@@ -1,7 +1,8 @@
-import api from "../api/axios";
+import axios from "axios";
 
-// const Api = api.create({
-//   baseURL: "http://localhost:8000", // ajuste se necessário
-// });
+const api = axios.create({
+  baseURL: "http://localhost:8000", // ou o endereço do seu backend
+  withCredentials: false, // ou true, dependendo do CORS/autenticação
+});
 
 export default api;

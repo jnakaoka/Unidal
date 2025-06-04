@@ -6,21 +6,20 @@ from app.dependencies.auth import get_db, get_current_user, require_role
 from app.models import User
 from app.schemas.token import Token
 from app.utils.jwt import decode_access_token, create_access_token
+from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter()
 
 @router.post("/login", response_model=Token)
-def login(
-    username: str = Form(...),
-    password: str = Form(...),
-    # db: Session = Depends(get_db)
-):
+# def login(username: str = Form(...), password: str = Form(...), # db: Session = Depends(get_db)
+# ):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     # usuario = autenticar_usuario(db, username, password)
-    usuario = autenticar_usuario(username, password)
+    usuario = autenticar_usuario(form_data.username, form_data.password)
     if not usuario:
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
-    tokens = criar_tokens(usuario, usuario.perfil)
+    tokens = criar_tokens(usuario, usuario.perfil.nome)
     return tokens
 
 @router.post("/logout")
