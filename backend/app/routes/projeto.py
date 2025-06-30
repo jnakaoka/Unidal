@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
-from app.schemas.projeto import ProjetoOut, ProjetoCreate
+from app.schemas.projeto import ProjetoOut, ProjetoCreate, ProjetoUpdate
 from app.services import projeto
 
 router = APIRouter(prefix="/projetos", tags=["Projetos"])
@@ -22,6 +22,32 @@ def obter_projeto(projeto_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=ProjetoOut)
 def criar_projeto(projeto_data: ProjetoCreate, db: Session = Depends(get_db)):
     return projeto.create(db, projeto_data)
+
+@router.put("/{projeto_id}")
+def update_projeto(projeto_id: int, projeto_update: ProjetoUpdate, db: Session = Depends(get_db)):
+#def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db), current_user = Depends(require_role("admin"))):
+    print(projeto_update)
+    #precisa se projeto.Projeto pq o service esta definido com projeto
+    projeto_db = db.query(projeto.Projeto).filter(projeto.Projeto.id == projeto_id).first()
+    if not projeto_db:
+        raise HTTPException(status_code=404, detail="Usuário não encontrado")
+
+    if projeto_update.nome is not None:
+        projeto_db.nome = projeto_update.nome
+    if projeto_update.descricao is not None:
+        projeto_db.descricao = projeto_update.descricao
+    if projeto_update.is_active is not None:
+        projeto_db.is_active = projeto_update.is_active
+
+    db.commit()
+    db.refresh(projeto_db)
+
+    return {
+        "id": projeto_db.id,
+        "nome": projeto_db.nome,
+        "descricao": projeto_db.descricao,
+        "is_active": projeto_db.is_active
+    }
 
 @router.delete("/{projeto_id}", response_model=ProjetoOut)
 def deletar_projeto(projeto_id: int, db: Session = Depends(get_db)):

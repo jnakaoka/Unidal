@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy.orm import relationship
 from app.database import Base
 
 class Projeto(Base):
@@ -8,3 +9,5 @@ class Projeto(Base):
     nome = Column(String(255), nullable=False)
     descricao = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)
+
+    registros = relationship("RegistroHora", back_populates="projeto")

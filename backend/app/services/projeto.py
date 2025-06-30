@@ -22,3 +22,12 @@ def delete(db: Session, projeto_id: int):
         db.delete(projeto)
         db.commit()
     return projeto
+
+def update(db: Session, projeto_id: int, projeto: ProjetoCreate):
+    db_projeto = get_by_id(db, projeto_id)
+    if db_projeto:
+        for key, value in projeto.dict().items():
+            setattr(db_projeto, key, value)
+        db.commit()
+        db.refresh(db_projeto)
+    return db_projeto

@@ -14,8 +14,8 @@ def listar_perfis(db: Session = Depends(get_db)):
     return perfil.get_all(db)
 
 @router.get("/{id}", response_model=PerfilOut)
-def obter_perfil(perfil_id: int, db: Session = Depends(get_db)):
-    returned_perfil = perfil.get_by_id(db, perfil_id)
+def obter_perfil(id: int, db: Session = Depends(get_db)):
+    returned_perfil = perfil.get_by_id(db, id)
     if not returned_perfil:
         raise HTTPException(status_code=404, detail="Perfil não encontrado")
     return returned_perfil

@@ -9,6 +9,12 @@ class ProjetoBase(BaseModel):
 class ProjetoCreate(ProjetoBase):
     pass
 
+class ProjetoUpdate(BaseModel):
+    nome: Optional[str] = None
+    descricao: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
 class ProjetoOut(ProjetoBase):
     id: int
 

@@ -6,6 +6,7 @@ from app.schemas.user import UserCreate, UserOut, UserUpdate
 from app.services import user as user_service
 from app.dependencies.auth import verificar_permissao
 from app.dependencies.auth import require_role
+from sqlalchemy.orm import joinedload
 
 router = APIRouter()
 
@@ -15,18 +16,19 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 @router.get("/", response_model=list[UserOut])
 def get_users(db: Session = Depends(get_db)):
-    return user_service.get_users(db)
+    return db.query(User).options(joinedload(User.perfil)).all()
+    # return user_service.get_users(db)
 
-@router.put("/users/{user_id}")
+@router.put("/{user_id}")
 def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db)):
 #def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db), current_user = Depends(require_role("admin"))):
-
+    print(user_update)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
 
-    if user_update.nome is not None:
-        user.nome = user_update.nome
+    if user_update.name is not None:
+        user.name = user_update.name
     if user_update.email is not None:
         user.email = user_update.email
     if user_update.perfil_id is not None:
@@ -37,13 +39,13 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
 
     return {
         "id": user.id,
-        "nome": user.nome,
+        "name": user.name,
         "email": user.email,
         "perfil": user.perfil.nome
     }
 
-@router.delete("/{user_id}", dependencies=[Depends(verificar_permissao(["admin"]))])
-#@router.delete("/{user_id}")
+#@router.delete("/{user_id}", dependencies=[Depends(verificar_permissao(["admin"]))])
+@router.delete("/{user_id}")
 def deletar_usuario(user_id: int, db: Session = Depends(get_db)):
     user = user_service.delete(db, user_id)
     if not user:

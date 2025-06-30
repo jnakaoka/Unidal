@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 class PerfilBase(BaseModel):
+    id: int
     nome: str
     is_active: bool = True
 

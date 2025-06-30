@@ -12,5 +12,5 @@ class RegistroHora(Base):
     data = Column(Date, nullable=False)
     horas = Column(Float, nullable=False)
 
-    projeto = relationship("Projeto", backref="registros")
-    usuario = relationship("User", backref="registros")  # ajuste se o nome for `User` no seu modelo
+    projeto = relationship("Projeto", back_populates="registros")
+    usuario = relationship("User", back_populates="registros")  # ajuste se o nome for `User` no seu modelo

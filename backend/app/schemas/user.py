@@ -10,20 +10,29 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
-    perfil_id: int  # <-- adicionado
+    perfil_id: int 
+     
 
 class UserUpdate(BaseModel):
-    nome: Optional[str] = None
+    name: Optional[str] = None
     email: Optional[EmailStr] = None
     perfil_id: Optional[int] = None
 
 
+class PerfilOut(BaseModel):
+    id: int
+    nome: str
+
+    class Config:
+        orm_mode = True
+        
 class UserOut(BaseModel):
     id: int
     name: str
     email: EmailStr
     is_active: bool
     perfil_id: Optional[int]
+    perfil: Optional[PerfilOut] = None
 
     # class Config:
     #     orm_mode = True

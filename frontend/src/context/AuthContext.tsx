@@ -16,8 +16,11 @@ interface AuthContextType {
 }
 
 interface AuthUser {
+  id: number;
   email: string;
   perfil: string;
+  nome?: string;
+  perfil_id?: number;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,11 +33,12 @@ const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
         const token = localStorage.getItem('access_token');
+        const id = Number(localStorage.getItem('userId'));
         const email = localStorage.getItem('userEmail');
         const perfil = localStorage.getItem('userPerfil');
         if (token && email && perfil) {
             setAccessToken(token);
-            setUser({ email, perfil });
+            setUser({id: id, email, perfil });
         }
         setIsLoading(false);
     }, []);
@@ -63,6 +67,7 @@ const login = async (email: string, password: string): Promise<boolean> => {
 
       // Decode do token JWT
       const payload = JSON.parse(atob(access_token.split('.')[1]));
+      console.log("payload", payload);
       const perfil = payload.perfil;
 
       // Armazenar tudo no localStorage
@@ -70,8 +75,9 @@ const login = async (email: string, password: string): Promise<boolean> => {
       localStorage.setItem("refresh_token", refresh_token);
       localStorage.setItem("userEmail", email);
       localStorage.setItem("userPerfil", perfil);
+      localStorage.setItem("userId", String(payload.id));
 
-      setUser({ email, perfil });
+      setUser({id: payload.id, email, perfil });
       setAccessToken(access_token);
 
       // Redirecionar com base no perfil

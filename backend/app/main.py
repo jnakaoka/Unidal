@@ -5,14 +5,22 @@ from app.routes.perfil import router as perfil
 from app.routes.projeto import router as projeto
 from app.routes.registro_hora import router as registro_hora
 from fastapi.middleware.cors import CORSMiddleware
+from app.routes import relatorio
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:3010",
+    "http://127.0.0.1:3010"
+]
 
 app.include_router(user_router, prefix="/users", tags=["Users"])
 app.include_router(auth_router, tags=["Auth"])  # novo
 app.include_router(perfil, prefix="/perfis", tags=["Perfis"])
 app.include_router(projeto, prefix="/projetos", tags=["Projetos"])
 app.include_router(registro_hora, prefix="/registros-hora", tags=["Registros de Horas"])
+app.include_router(relatorio.router, prefix="/relatorio", tags=["Relatório"])
+
 
 app.add_middleware(
     CORSMiddleware,

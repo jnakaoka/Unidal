@@ -2,10 +2,19 @@
 FROM node:20 AS builder
 
 WORKDIR /app
+
+# Copia só os arquivos necessários para cache mais eficiente
+COPY package.json package-lock.json ./
+
+# Instala dependências (dev incluídas via NODE_ENV)
+ENV NODE_ENV=development
+RUN npm install
+
 COPY . .
+
+# Força instalação de devDependencies como @types/node
+
 RUN npm install --include=dev && npm run build
-# RUN npm install react react-dom
-# RUN npm install -D typescript @types/react @types/react-dom
 
 FROM nginx:alpine
 COPY --from=builder /app/dist /usr/share/nginx/html

@@ -1,26 +1,38 @@
 import React from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import { useAuth } from "./context/AuthContext";
-import NotFound from "./pages/NotFound"; // (crie essa página ou mude conforme sua estrutura)
+import OperadorDashboard from "./pages/OperadorDashboard";
+import NotFound from "./pages/NotFound";
 import PrivateRoute from "./routes/PrivateRoute";
+import Relatorio from "./pages/Relatorios";
+import GestaoUsuarios from "./pages/GestaoUsuarios";
+import DefaultLayout from "./layouts/DefaultLayout";
+import Projetos from "./pages/Projetos";
+import RegistroHoras from "./pages/RegistroHoras";
 
 const App: React.FC = () => {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
-      <Route path="/admin-dashboard" element={
-        <PrivateRoute allowedProfiles={['admin']}>
-          <Dashboard />
-        </PrivateRoute>
-      } />
-      <Route path="/operador-dashboard" element={
-        <PrivateRoute allowedProfiles={['operador']}>
-          <Dashboard />
-        </PrivateRoute>
-      } />
-      {/* <Route path="/home" element={<Home />} /> */}
+
+      {/* Layout com sidebar, aplicado somente para usuários autenticados */}
+      <Route
+        path="/"
+        element={
+          <PrivateRoute allowedProfiles={["admin", "operador"]}>
+            <DefaultLayout />
+          </PrivateRoute>
+        }
+      >
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="operador-dashboard" element={<OperadorDashboard />} />
+        <Route path="relatorios" element={<Relatorio />} />
+        <Route path="usuarios" element={<GestaoUsuarios />} />
+        <Route path="Projetos" element={<Projetos />} />
+        <Route path="registro-horas" element={<RegistroHoras />} />
+      </Route>
+
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -29,38 +41,56 @@ const App: React.FC = () => {
 export default App;
 
 
-// import { useState } from 'react'
-// import reactLogo from './assets/react.svg'
-// import viteLogo from '/vite.svg'
-// import './App.css'
+// import React from "react";
+// import { Routes, Route, Navigate } from "react-router-dom";
+// import Login from "./pages/Login";
+// import Dashboard from "./pages/Dashboard";
+// import OperadorDashboard from "./pages/OperadorDashboard";
+// import { useAuth } from "./context/AuthContext";
+// import NotFound from "./pages/NotFound"; // (crie essa página ou mude conforme sua estrutura)
+// import PrivateRoute from "./routes/PrivateRoute";
+// import Relatorio from "./pages/Relatorios";
+// import GestaoUsuarios from "./pages/GestaoUsuarios";
+// import DefaultLayout from "./layouts/DefaultLayout";
 
-// function App() {
-//   const [count, setCount] = useState(0)
-
+// const App: React.FC = () => {
 //   return (
-//     <>
-//       <div>
-//         <a href="https://vite.dev" target="_blank">
-//           <img src={viteLogo} className="logo" alt="Vite logo" />
-//         </a>
-//         <a href="https://react.dev" target="_blank">
-//           <img src={reactLogo} className="logo react" alt="React logo" />
-//         </a>
-//       </div>
-//       <h1>Vite + React</h1>
-//       <div className="card">
-//         <button onClick={() => setCount((count) => count + 1)}>
-//           count is {count}
-//         </button>
-//         <p>
-//           Edit <code>src/App.tsx</code> and save to test HMR
-//         </p>
-//       </div>
-//       <p className="read-the-docs">
-//         Click on the Vite and React logos to learn more
-//       </p>
-//     </>
-//   )
-// }
+//     <Routes>
+//       <Route path="/login" element={<Login />} />
+//       <Route
+//         path="/"
+//         element={
+//           <PrivateRoute allowedProfiles={["admin", "operador"]}>
+//             <DefaultLayout />
+//           </PrivateRoute>
+//         }
+//       ></Route>
+//       <Route path="/admin-dashboard" element={
+//         <PrivateRoute allowedProfiles={['admin']}>
+//           <Dashboard />
+//         </PrivateRoute>
+//       } />
+//       <Route path="/operador-dashboard" element={
+//         <PrivateRoute allowedProfiles={['operador']}>
+//           <OperadorDashboard />
+//         </PrivateRoute>
+//       } />
+//       <Route path="/relatorios" element={
+//         <PrivateRoute allowedProfiles={['admin', 'operador']}>
+//           <Relatorio />
+//         </PrivateRoute>
+//       } />
 
-// export default App
+//       <Route path="/usuarios" element={
+//         <PrivateRoute allowedProfiles={['admin']}>
+//           <GestaoUsuarios />
+//         </PrivateRoute>
+//       } />
+
+//       {/* <Route path="/home" element={<Home />} /> */}
+//       <Route path="*" element={<NotFound />} />
+//     </Routes>
+//   );
+// };
+
+// export default App;

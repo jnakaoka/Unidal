@@ -23,3 +23,11 @@ def delete(db: Session, registro_id: int):
         db.commit()
     return registro
 
+def update(db: Session, registro_id: int, registro_data: RegistroHoraCreate):
+    db_registro = get_by_id(db, registro_id)
+    if db_registro:
+        for key, value in registro_data.dict().items():
+            setattr(db_registro, key, value)
+        db.commit()
+        db.refresh(db_registro)
+    return db_registro

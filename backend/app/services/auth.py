@@ -46,10 +46,12 @@ def autenticar_usuario(email: str, senha: str):
 def criar_tokens(usuario: User, perfil: str):
     access_token = create_access_token(data={
         "sub": usuario.email,   # não passe o objeto inteiro!
-        "perfil": perfil
+        "perfil": perfil,
+        "id": usuario.id
     })
     refresh_token = create_refresh_token(data={
-        "sub": usuario.email
+        "sub": usuario.email,
+        "id": usuario.id
     })
     return {
         "access_token": access_token,

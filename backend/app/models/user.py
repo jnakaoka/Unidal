@@ -13,3 +13,4 @@ class User(Base):
     
     perfil_id = Column(Integer, ForeignKey("perfis.id"), nullable=False)
     perfil = relationship("Perfil", back_populates="usuarios")
+    registros = relationship("RegistroHora", back_populates="usuario")

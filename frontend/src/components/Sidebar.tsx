@@ -14,6 +14,7 @@ const Sidebar: React.FC = () => {
     { to: "/dashboard", label: "Dashboard" },
     { to: "/usuarios", label: "Usuários" },
     { to: "/projetos", label: "Projetos" },
+    { to: "/relatorios", label: "Relatórios" },
   ];
 
   const linksOperador = [
