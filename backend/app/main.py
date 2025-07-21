@@ -4,6 +4,7 @@ from app.routes.auth import router as auth_router  # novo
 from app.routes.perfil import router as perfil
 from app.routes.projeto import router as projeto
 from app.routes.registro_hora import router as registro_hora
+from app.routes.registro_hora_equipa import router as registro_hora_equipa
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import relatorio
 
@@ -19,6 +20,7 @@ app.include_router(auth_router, tags=["Auth"])  # novo
 app.include_router(perfil, prefix="/perfis", tags=["Perfis"])
 app.include_router(projeto, prefix="/projetos", tags=["Projetos"])
 app.include_router(registro_hora, prefix="/registros-hora", tags=["Registros de Horas"])
+app.include_router(registro_hora_equipa, prefix="/registros-hora-equipa", tags=["Registros de Horas da Equipa"])
 app.include_router(relatorio.router, prefix="/relatorio", tags=["Relatório"])
 
 

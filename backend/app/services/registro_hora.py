@@ -1,33 +1,253 @@
-# app/services/registro_hora.py
 from sqlalchemy.orm import Session
-from app.models.registro_hora import RegistroHora
-from app.schemas.registro_hora import RegistroHoraCreate
+from models import RegistroHora, RegistroHoraEquipa
+from schemas.registro_hora import RegistroHoraCreate, RegistroHoraUpdate
 
-def get_all(db: Session):
-    return db.query(RegistroHora).all()
 
-def get_by_id(db: Session, registro_id: int):
-    return db.query(RegistroHora).filter(RegistroHora.id == registro_id).first()
+def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
+    novo_registro = RegistroHora(
+        projeto_id=registro.projeto_id,
+        usuario_id=registro.usuario_id,
+        data=registro.data,
+        horas=registro.horas,
+        cliente=registro.cliente,
+        obra=registro.obra,
+        metros_quadrados=registro.metros_quadrados,
+        preparacao=registro.preparacao,
+        bruto=registro.bruto,
+        colagem=registro.colagem,
+        acabamento=registro.acabamento,
+        serragem=registro.serragem,
+        intervencao_maquinas=registro.intervencao_maquinas,
+    )
 
-def create(db: Session, registro_data: RegistroHoraCreate):
-    novo_registro = RegistroHora(**registro_data.dict())
     db.add(novo_registro)
+    db.commit()
+    db.refresh(novo_registro)
+
+    for membro in registro.equipa:
+        db.add(RegistroHoraEquipa(user_id=membro.user_id, registro_id=novo_registro.id))
+
     db.commit()
     db.refresh(novo_registro)
     return novo_registro
 
-def delete(db: Session, registro_id: int):
-    registro = get_by_id(db, registro_id)
-    if registro:
-        db.delete(registro)
-        db.commit()
-    return registro
 
-def update(db: Session, registro_id: int, registro_data: RegistroHoraCreate):
-    db_registro = get_by_id(db, registro_id)
-    if db_registro:
-        for key, value in registro_data.dict().items():
-            setattr(db_registro, key, value)
-        db.commit()
-        db.refresh(db_registro)
+def listar_registros_horas(db: Session):
+    return db.query(RegistroHora).all()
+
+
+def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHoraUpdate):
+    db_registro = db.query(RegistroHora).filter(RegistroHora.id == registro_id).first()
+    if not db_registro:
+        raise Exception("Registro de horas não encontrado")
+
+    for field, value in registro.dict(exclude_unset=True).items():
+        if field != "equipa":
+            setattr(db_registro, field, value)
+
+    db.commit()
+
+    # Atualizar equipa
+    db.query(RegistroHoraEquipa).filter(RegistroHoraEquipa.registro_id == registro_id).delete()
+    db.commit()
+    for membro in registro.equipa:
+        db.add(RegistroHoraEquipa(user_id=membro.user_id, registro_id=registro_id))
+    db.commit()
+
+    db.refresh(db_registro)
     return db_registro
+
+
+
+# # app/services/registro_hora.py
+# from sqlalchemy.orm import Session
+# from app.models.registro_hora import RegistroHora
+# from app.schemas.registro_hora import RegistroHoraCreate
+# from app.schemas.registro_hora import RegistroHoraUpdate
+# from app.models.registro_hora_equipa import registro_hora_equipa
+# from sqlalchemy import insert, delete, update  # Remova o "where"
+# from datetime import date
+# from fastapi import HTTPException
+# from app.models.user import User
+
+
+# def get_all(db: Session):
+#     return db.query(RegistroHora).all()
+
+# def get_by_id(db: Session, registro_id: int):
+#     return db.query(RegistroHora).filter(RegistroHora.id == registro_id).first()
+
+# def create(db: Session, registro_data: RegistroHoraCreate):
+#     # Cria o registro principal
+#     equipa_ids = registro_data.equipa  # extrai os IDs da equipa
+#     data_dict = registro_data.dict()
+#     data_dict.pop("equipa")  # Remove equipa antes de passar pro model
+
+#     print("Dados que serão usados para criar RegistroHora:", data_dict)
+
+#     novo_registro = RegistroHora(**data_dict)
+#     db.add(novo_registro)
+#     db.commit()
+#     db.refresh(novo_registro)
+
+#     print(equipa_ids)
+
+#     # Adiciona os usuários na tabela associativa
+#     for user_id in equipa_ids:
+#         stmt = insert(registro_hora_equipa).values(
+#             registro_id=novo_registro.id,
+#             user_id=user_id
+#         )
+#         print(stmt)
+#         db.execute(stmt)
+
+
+#     db.commit()
+#     db.refresh(novo_registro)
+#     return novo_registro
+
+# # def create(db: Session, registro_data: RegistroHoraCreate):
+# #     novo_registro = RegistroHora(**registro_data.dict())
+# #     db.add(novo_registro)
+# #     db.commit()
+# #     db.refresh(novo_registro)
+# #     return novo_registro
+
+# # def delete(db: Session, registro_id: int):
+# #     registro = get_by_id(db, registro_id)
+# #     if registro:
+# #         db.delete(registro)
+# #         db.commit()
+# #     return registro
+
+# def delete_registro(db: Session, registro_id: int):
+#     registro = get_by_id(db, registro_id)
+#     if not registro:
+#         return None
+
+#     # Remove registros da tabela associativa
+#     stmt_delete_equipa = delete(registro_hora_equipa).where(registro_hora_equipa.c.registro_id == registro_id)
+#     db.execute(stmt_delete_equipa)
+
+#     # Agora sim remove o registro principal
+#     db.delete(registro)
+#     db.commit()
+#     return registro
+
+# def update_registro_hora(db: Session, registro_id: int, registro_data: RegistroHoraUpdate):
+#     db_registro = get_by_id(db, registro_id)
+#     if not db_registro:
+#         raise HTTPException(status_code=404, detail="Registro de hora não encontrado")
+
+#     print("Registro ID", registro_id)
+#     print("Registro Data", registro_data)
+#     # Atualiza campos do RegistroHora (exceto equipa)
+
+#     equipa_objs = registro_data.equipa  # Lista de objetos com user_id
+#     equipa_ids = [item.user_id for item in equipa_objs]
+
+#     data_dict = registro_data.dict()
+#     data_dict.pop("equipa")
+#     print("Nova Equipa IDs", equipa_ids)
+
+#     # Atualiza os outros campos
+#     for key, value in data_dict.items():
+#         setattr(db_registro, key, value)
+
+#     # Atualiza a equipa (se enviado)
+#     if equipa_ids is not None:
+#         nova_equipa_objs = db.query(User).filter(User.id.in_(equipa_ids)).all()
+#         db_registro.equipa = nova_equipa_objs
+
+#     db.commit()
+#     db.refresh(db_registro)
+#     return db_registro
+
+# #update v3
+# # def update_registro_hora(
+# #     db: Session,
+# #     registro_id: int,
+# #     registro_update: RegistroHoraUpdate
+# # ):
+# #     registro = get_registro_hora_by_id(db, registro_id)
+# #     if not registro:
+# #         raise HTTPException(status_code=404, detail="Registro não encontrado")
+
+# #     for field, value in registro_update.dict(exclude_unset=True).items():
+# #         setattr(registro, field, value)
+
+# #     # Atualiza o relacionamento com a equipe
+# #     if registro_update.equipa:
+# #         data_dict = registro_update.dict(exclude_unset=True)
+# #         nova_equipa_ids = data_dict.pop("equipa", None)
+# #         usuarios_equipa = db.query(User).filter(User.id.in_(User.id.in_(nova_equipa_ids))).all()
+# #         registro.equipe = usuarios_equipa
+# #     else:
+# #         registro.equipe = []
+
+# #     try:
+# #         print("🔄 Dados para atualizar registro:", registro_update.dict())
+# #         db.commit()
+# #         print("✅ Registro atualizado com sucesso:", registro.id)
+# #     except Exception as e:
+# #         db.rollback()
+# #         print("❌ Erro ao salvar no banco de dados:", e)
+# #         raise HTTPException(status_code=500, detail="Erro ao salvar no banco de dados")
+
+# #     db.refresh(registro)
+# #     return registro
+
+
+# def get_registro_hora_by_id(db, registro_id):
+#     return db.query(RegistroHora).filter(RegistroHora.id == registro_id).first()
+
+# # update v2
+# # def update(db: Session, registro_id: int, registro_data: RegistroHoraCreate):
+# #     db_registro = get_by_id(db, registro_id)
+# #     if not db_registro:
+# #         return None
+
+# #     print(registro_id)
+# #     # Atualiza campos do RegistroHora (exceto equipa)
+# #     data_dict = registro_data.dict()
+# #     nova_equipa = data_dict.pop("equipa", [])
+
+# #     print(data_dict)
+# #     print(nova_equipa)
+
+# #     if 'data' in data_dict and isinstance(data_dict['data'], str):
+# #         data_dict['data'] = date.fromisoformat(data_dict['data'])
+
+# #     for key, value in data_dict.items():
+# #         setattr(db_registro, key, value)
+
+# #     db.add(db_registro)
+# #     try:
+# #         db.commit()
+# #     except Exception as e:
+# #         print("❌ Erro no commit:", e)
+# #         db.rollback()
+# #         raise e
+
+# #     # Remove membros antigos da equipa
+# #     stmt_delete = delete(registro_hora_equipa).where(registro_hora_equipa.c.registro_id == registro_id)
+# #     db.execute(stmt_delete)
+
+# #     # Insere nova equipa
+# #     for user_id in nova_equipa:
+# #         stmt_insert = insert(registro_hora_equipa).values(registro_id=registro_id, user_id=user_id)
+# #         print(stmt_insert)
+# #         db.execute(stmt_insert)
+
+# #     db.commit()
+# #     db.refresh(db_registro)
+# #     return db_registro
+
+# # def update(db: Session, registro_id: int, registro_data: RegistroHoraCreate):
+# #     db_registro = get_by_id(db, registro_id)
+# #     if db_registro:
+# #         for key, value in registro_data.dict().items():
+# #             setattr(db_registro, key, value)
+# #         db.commit()
+# #         db.refresh(db_registro)
+# #     return db_registro

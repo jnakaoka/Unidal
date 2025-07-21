@@ -1,6 +1,9 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
+from app.models.registro_hora_equipa import registro_hora_equipa
+
+
 
 class User(Base):
     __tablename__ = "users"
@@ -13,4 +16,13 @@ class User(Base):
     
     perfil_id = Column(Integer, ForeignKey("perfis.id"), nullable=False)
     perfil = relationship("Perfil", back_populates="usuarios")
-    registros = relationship("RegistroHora", back_populates="usuario")
+
+    registros_hora_equipa = relationship(
+        "RegistroHora",
+        secondary=registro_hora_equipa,
+        back_populates="equipa"
+    )
+    
+    # equipa_registros = relationship("RegistroHoraEquipa", back_populates="user", cascade="all, delete-orphan")
+    registros = relationship("RegistroHora", back_populates="user")
+    #registros = relationship("RegistroHora", back_populates="usuario")

@@ -2,7 +2,6 @@ import { createBrowserRouter } from "react-router-dom";
 import DefaultLayout from "../layouts/DefaultLayout";
 import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
-import AdminDashboard from "../pages/Dashboard";
 import OperadorDashboard from "../pages/OperadorDashboard";
 import NotFound from "../pages/NotFound";
 import Unauthorized from "../pages/Unauthorized";
@@ -27,10 +26,10 @@ const router = createBrowserRouter([
     ],
   },
   {
-    path: "/admin-dashboard",
+    path: "/dashboard",
     element: (
       <PrivateRoute allowedProfiles={["admin"]}>
-        <AdminDashboard />
+        <Dashboard />
       </PrivateRoute>
     ),
   },

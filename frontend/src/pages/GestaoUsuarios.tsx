@@ -150,7 +150,7 @@ const GestaoUsuarios: React.FC = () => {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <h2 className="text-3xl font-bold mb-6 text-gray-800">Gestão de Usuários</h2>
 
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-end mb-6">
         <Button
           onClick={() => {
             setFormData({ name: '', email: '', password: '', perfil_id: perfis[0]?.id || 0 });
@@ -158,59 +158,60 @@ const GestaoUsuarios: React.FC = () => {
             setEditingUser(null);
             setModalAberto(true);
           }}
-          className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded"
+          className="bg-green-600 hover:bg-green-700 text-white"
         >
           + Novo Usuário
         </Button>
       </div>
 
-      <table className="min-w-full text-sm text-left text-gray-600 bg-white border border-gray-200">
-        <thead className="bg-gray-100 text-xs uppercase text-gray-700">
-          <tr>
-            <th className="p-2 text-left">Id</th>
-            <th className="p-2 text-left">Nome</th>
-            <th className="p-2 text-left">Email</th>
-            <th className="p-2 text-left">Perfil</th>
-            <th className="p-2 text-left">Status</th>
-            <th className="p-2 text-left">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {usuarios.map((user) => (
-            <tr key={user.id} className="border-t hover:bg-gray-50">
-              <td className="p-2">{user.id}</td>
-              <td className="p-2">{user.name}</td>
-              <td className="p-2">{user.email}</td>
-              <td className="p-2">{user.perfil?.nome || 'Sem perfil'}</td>
-              <td className="p-2">
-                <span
-                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                    user.is_active ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
-                  }`}
-                >
-                  {user.is_active ? 'Ativo' : 'Inativo'}
-                </span>
-              </td>
-              <td className="px-6 py-4 flex gap-2">
-                <Button variant="outline" onClick={() => handleEditClick(user)}>
-                  Editar
-                </Button>
-                <Button variant="destructive" onClick={() => handleDelete(user.id)}>
-                  Excluir
-                </Button>
-              </td>
+      <div className="overflow-x-auto rounded-lg shadow border border-gray-200 bg-white">
+        <table className="min-w-full text-sm text-left text-gray-600 bg-white border border-gray-200">
+          <thead className="bg-gray-100 text-xs uppercase text-gray-700">
+            <tr>
+              <th className="p-2 text-left">Id</th>
+              <th className="p-2 text-left">Nome</th>
+              <th className="p-2 text-left">Email</th>
+              <th className="p-2 text-left">Perfil</th>
+              <th className="p-2 text-left">Status</th>
+              <th className="p-2 text-left">Ações</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-
+          </thead>
+          <tbody>
+            {usuarios.map((user) => (
+              <tr key={user.id} className="border-t hover:bg-gray-50">
+                <td className="p-2">{user.id}</td>
+                <td className="p-2">{user.name}</td>
+                <td className="p-2">{user.email}</td>
+                <td className="p-2">{user.perfil?.nome || 'Sem perfil'}</td>
+                <td className="p-2">
+                  <span
+                    className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      user.is_active ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
+                    }`}
+                  >
+                    {user.is_active ? 'Ativo' : 'Inativo'}
+                  </span>
+                </td>
+                <td className="px-6 py-4 flex gap-2">
+                  <Button variant="outline" onClick={() => handleEditClick(user)}>
+                    Editar
+                  </Button>
+                  <Button variant="destructive" onClick={() => handleDelete(user.id)}>
+                    Excluir
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {modalAberto && (
-        <div className="mt-6 bg-white border border-gray-300 rounded-xl p-6 shadow-md">
-          <h3 className="text-xl font-semibold mb-4 text-gray-800">
+        <div className="mt-8 bg-white border border-gray-300 rounded-xl p-6 shadow-lg">
+          <h3 className="text-xl font-semibold mb-6 text-gray-800">
             {isEditing ? "Editar Usuário" : "Novo Usuário"}
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <Label className="mb-1 block">Nome</Label>
               <Input
@@ -237,6 +238,7 @@ const GestaoUsuarios: React.FC = () => {
             <div className="col-span-full">
               <Label className="mb-1 block">Perfil</Label>
               <select
+                className="w-full p-2 border border-gray-300 rounded-md"
                 value={formData.perfil_id ?? ''}
                 onChange={(e) => setFormData({ ...formData, perfil_id: parseInt(e.target.value) })}
               >
@@ -250,7 +252,7 @@ const GestaoUsuarios: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex justify-end mt-6 gap-4">
+          <div className="flex justify-end gap-4 mt-8">
             <Button onClick={handleSalvarUsuario}>
               {isEditing ? "Atualizar" : "Criar"}
             </Button>

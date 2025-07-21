@@ -47,10 +47,13 @@ def criar_tokens(usuario: User, perfil: str):
     access_token = create_access_token(data={
         "sub": usuario.email,   # não passe o objeto inteiro!
         "perfil": perfil,
+        "name": usuario.name,
         "id": usuario.id
     })
     refresh_token = create_refresh_token(data={
         "sub": usuario.email,
+        "name": usuario.name,
+        "perfil": perfil,
         "id": usuario.id
     })
     return {
@@ -70,11 +73,14 @@ def login(db: Session, email: str, password: str):
 
     access_token = create_access_token(data={
         "sub": user.email,
+        "name": user.name,
         "perfil": user.perfil.nome   # Aqui agora vai funcionar!
     })
 
     refresh_token = create_refresh_token(data={
-        "sub": user.email
+        "sub": user.email,
+        "name": user.name,
+        "perfil": user.perfil
     })
 
     return {

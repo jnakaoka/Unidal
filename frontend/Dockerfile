@@ -10,7 +10,7 @@ COPY package.json package-lock.json ./
 ENV NODE_ENV=development
 RUN npm install
 
-COPY . .
+COPY . ./
 
 # Força instalação de devDependencies como @types/node
 

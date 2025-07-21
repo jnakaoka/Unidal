@@ -1,19 +1,33 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
+import Header from "../components/Header";
+import { LayoutProvider, useLayout } from "@/context/LayoutContext";
 
-const DefaultLayout: React.FC = () => {
+const DefaultLayoutContent: React.FC = () => {
+  const { isSidebarOpen } = useLayout();
+
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <Sidebar />
-      <div className="flex-1 ml-0 md:ml-64 p-4">
-        <Outlet />
+    <div className="min-h-screen flex bg-gray-100">
+      <Sidebar isOpen={isSidebarOpen} />
+      <div className="flex flex-col flex-1">
+        <Header />
+        <main className="p-6 flex-1 overflow-y-auto">
+          <Outlet />
+        </main>
       </div>
     </div>
   );
 };
 
+const DefaultLayout: React.FC = () => (
+  <LayoutProvider>
+    <DefaultLayoutContent />
+  </LayoutProvider>
+);
+
 export default DefaultLayout;
+
 
 
 // import React from "react";

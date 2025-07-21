@@ -19,7 +19,7 @@ interface AuthUser {
   id: number;
   email: string;
   perfil: string;
-  nome?: string;
+  name?: string;
   perfil_id?: number;
 }
 
@@ -34,11 +34,13 @@ const [isLoading, setIsLoading] = useState(true);
   useEffect(() => {
         const token = localStorage.getItem('access_token');
         const id = Number(localStorage.getItem('userId'));
+        const name = localStorage.getItem('userName');
         const email = localStorage.getItem('userEmail');
         const perfil = localStorage.getItem('userPerfil');
+
         if (token && email && perfil) {
             setAccessToken(token);
-            setUser({id: id, email, perfil });
+            setUser({ id, email, name: name ?? '', perfil });
         }
         setIsLoading(false);
     }, []);
@@ -73,16 +75,17 @@ const login = async (email: string, password: string): Promise<boolean> => {
       // Armazenar tudo no localStorage
       localStorage.setItem("access_token", access_token);
       localStorage.setItem("refresh_token", refresh_token);
-      localStorage.setItem("userEmail", email);
-      localStorage.setItem("userPerfil", perfil);
+      localStorage.setItem("userEmail", payload.email);
+      localStorage.setItem("userName", payload.name);
+      localStorage.setItem("userPerfil", payload.perfil);
       localStorage.setItem("userId", String(payload.id));
 
-      setUser({id: payload.id, email, perfil });
+      setUser({id: payload.id, email, perfil, name: payload.name});
       setAccessToken(access_token);
 
       // Redirecionar com base no perfil
       if (perfil === 'admin') {
-        navigate('/admin-dashboard');
+        navigate('/dashboard');
       } else if (perfil === 'operador') {
         navigate('/operador-dashboard');
       } else {

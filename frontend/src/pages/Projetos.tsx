@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import axios from 'axios';
+import { useAuth } from "@/context/AuthContext";
 
 interface Projeto {
   id: number;
@@ -18,6 +19,7 @@ const Projetos: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
   const [formData, setFormData] = useState({ nome: '', descricao: '', is_active: true });
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     fetchProjetos();
@@ -101,9 +103,9 @@ const Projetos: React.FC = () => {
   // ];
 
   return (
-    <div className="max-w-4xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6 text-blue-600">Projetos</h2>
-      <div className="flex justify-between items-center mb-4">
+    <div className="max-w-6xl mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Projetos</h2>
         <Button
           onClick={() => {
             setFormData({ nome: '', descricao: '', is_active: true });
@@ -111,39 +113,39 @@ const Projetos: React.FC = () => {
             setEditingProjeto(null);
             setModalAberto(true);
           }}
-          className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
         >
           + Novo Projeto
         </Button>
       </div>
-      <div className="bg-white p-6 shadow-md rounded-lg">
+      <div className="bg-white rounded-2xl shadow p-6 overflow-x-auto">
         <table className="w-full table-auto">
-          <thead>
+          <thead className="bg-gray-100 text-left">
             <tr className="text-left border-b">
-              <th className="p-2">ID</th>
-              <th className="p-2">Nome</th>
-              <th className="p-2">Descrição</th>
-              <th className="p-2">Status</th>
-              <th className="p-2">Ações</th>
+              <th className="p-3">ID</th>
+              <th className="p-3">Nome</th>
+              <th className="p-3">Descrição</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Ações</th>
             </tr>
           </thead>
           <tbody>
             {projetos.map((projeto) => (
               <tr key={projeto.id} className="border-b hover:bg-gray-50">
-                <td className="p-2">{projeto.id}</td>
-                <td className="p-2">{projeto.nome}</td>
-                <td className="p-2">{projeto.descricao}</td>
-                <td className="p-2">{projeto.is_active}</td>
-                <td className="p-2">
+                <td className="p-3">{projeto.id}</td>
+                <td className="p-3">{projeto.nome}</td>
+                <td className="p-3">{projeto.descricao}</td>
+                <td className="p-3">{projeto.is_active}</td>
+                <td className="p-3">
                   <span
-                    className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                    className={`px-3 py-1 text-xs font-semibold rounded-full ${
                       projeto.is_active ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
                     }`}
                   >
                     {projeto.is_active ? 'Ativo' : 'Inativo'}
                   </span>
                 </td>
-                <td className="px-6 py-4 flex gap-2">
+                <td className="p-3 flex gap-2">
                   <Button variant="outline" onClick={() => handleEditClick(projeto)}>
                     Editar
                   </Button>
@@ -191,6 +193,13 @@ const Projetos: React.FC = () => {
                 <option value="0">Inativo</option>
               </select>
             </div>
+            {/* Campo visível apenas para admin */}
+            {user?.perfil === 'admin' && (
+              <div className="mb-4">
+                <label className="block mb-1 font-semibold">Orçamento</label>
+                <input type="number" className="border p-2 rounded w-full" />
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end mt-6 gap-4">

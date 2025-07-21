@@ -39,6 +39,9 @@ services:
       - "3010:80"
     depends_on:
       - api
+    volumes:
+    - ./frontend:/app
+    - /app/node_modules  # evita sobrescrever o node_modules do container
     restart: always
 
 volumes:

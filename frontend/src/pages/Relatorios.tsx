@@ -32,13 +32,13 @@ const Relatorios: React.FC = () => {
   const totalHoras = registrosFiltrados.reduce((acc, r) => acc + r.horas, 0);
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">Relatórios</h1>
+    <div className="max-w-6xl mx-auto p-6">
+      <h1 className="text-2xl font-bold mb-6 text-gray-800">Relatórios</h1>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <select
-          className="p-2 border rounded-lg"
+          className="p-2 border rounded-xl w-full"
           value={filtroProjeto}
           onChange={(e) => setFiltroProjeto(e.target.value)}
         >
@@ -48,7 +48,7 @@ const Relatorios: React.FC = () => {
         </select>
 
         <select
-          className="p-2 border rounded-lg"
+          className="p-2 border rounded-xl w-full"
           value={filtroOperador}
           onChange={(e) => setFiltroOperador(e.target.value)}
         >
@@ -59,37 +59,37 @@ const Relatorios: React.FC = () => {
 
         <input
           type="month"
-          className="p-2 border rounded-lg"
+          className="p-2 border rounded-xl w-full"
           value={filtroMes}
           onChange={(e) => setFiltroMes(e.target.value)}
         />
       </div>
 
       {/* Tabela */}
-      <div className="overflow-x-auto bg-white rounded-2xl shadow-md">
+      <div className="bg-white rounded-2xl shadow p-6 overflow-x-auto">
         <table className="min-w-full table-auto">
-          <thead className="bg-gray-100">
+          <thead className="bg-gray-100 text-left">
             <tr>
-              <th className="px-4 py-2 text-left">Data</th>
-              <th className="px-4 py-2 text-left">Projeto</th>
-              <th className="px-4 py-2 text-left">Operador</th>
-              <th className="px-4 py-2 text-left">Horas</th>
+              <th className="p-3">Data</th>
+              <th className="p-3">Projeto</th>
+              <th className="p-3">Operador</th>
+              <th className="p-3">Horas</th>
             </tr>
           </thead>
           <tbody>
             {registrosFiltrados.map((r, i) => (
               <tr key={i} className="border-t">
-                <td className="px-4 py-2">{r.data}</td>
-                <td className="px-4 py-2">{r.projeto}</td>
-                <td className="px-4 py-2">{r.operador}</td>
-                <td className="px-4 py-2">{r.horas}</td>
+                <td className="p-3">{r.data}</td>
+                <td className="p-3">{r.projeto}</td>
+                <td className="p-3">{r.operador}</td>
+                <td className="p-3">{r.horas}</td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        <div className="p-4 font-semibold bg-gray-50 border-t">
-          Total de Horas: {totalHoras}
+        <div className="mt-4 text-right text-gray-700 font-medium">
+          Total de Horas: <span className="font-bold">{totalHoras}</span>
         </div>
       </div>
     </div>
