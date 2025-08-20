@@ -1,6 +1,8 @@
-from sqlalchemy.orm import Session
-from models import RegistroHora, RegistroHoraEquipa
-from schemas.registro_hora import RegistroHoraCreate, RegistroHoraUpdate
+# services/registro_hora.py
+from sqlalchemy.orm import Session, joinedload
+from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraUpdate, RegistroHoraResponse
+from app.models.registro_hora import RegistroHora, RegistroHoraEquipa
+
 
 
 def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
@@ -29,11 +31,28 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
 
     db.commit()
     db.refresh(novo_registro)
-    return novo_registro
-
+    return RegistroHoraResponse.from_orm(novo_registro)
+    #return novo_registro
 
 def listar_registros_horas(db: Session):
-    return db.query(RegistroHora).all()
+    registros = db.query(RegistroHora)\
+        .options(
+            joinedload(RegistroHora.user),
+            joinedload(RegistroHora.projeto),
+            joinedload(RegistroHora.equipa).joinedload(RegistroHoraEquipa.user)
+        ).all()
+
+    # Converte ORM → Schema Pydantic
+    return [RegistroHoraResponse.from_orm(reg) for reg in registros]
+
+
+# def listar_registros_horas(db: Session):
+#     return db.query(RegistroHora)\
+#         .options(
+#             joinedload(RegistroHora.user),
+#             joinedload(RegistroHora.projeto),
+#             joinedload(RegistroHora.equipa).joinedload(RegistroHoraEquipa.user)
+#         ).all()
 
 
 def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHoraUpdate):
@@ -47,7 +66,6 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
 
     db.commit()
 
-    # Atualizar equipa
     db.query(RegistroHoraEquipa).filter(RegistroHoraEquipa.registro_id == registro_id).delete()
     db.commit()
     for membro in registro.equipa:
@@ -55,8 +73,17 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
     db.commit()
 
     db.refresh(db_registro)
-    return db_registro
+    return RegistroHoraResponse.from_orm(db_registro)
+    #return db_registro
 
+def deletar_registro_hora(db: Session, registro_id: int):
+    db_registro = db.query(RegistroHora).filter(RegistroHora.id == registro_id).first()
+    if not db_registro:
+        raise Exception("Registro de horas nao encontrado")
+
+    db.delete(db_registro)
+    db.commit()
+    return db_registro
 
 
 # # app/services/registro_hora.py

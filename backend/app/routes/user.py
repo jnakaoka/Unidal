@@ -22,7 +22,7 @@ def get_users(db: Session = Depends(get_db)):
 @router.put("/{user_id}")
 def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db)):
 #def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db), current_user = Depends(require_role("admin"))):
-    print(user_update)
+    print('update user',user_update)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado")
@@ -33,6 +33,8 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
         user.email = user_update.email
     if user_update.perfil_id is not None:
         user.perfil_id = user_update.perfil_id
+    if user_update.empresa is not None:
+        user.empresa = user_update.empresa
 
     db.commit()
     db.refresh(user)
@@ -41,6 +43,7 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
         "id": user.id,
         "name": user.name,
         "email": user.email,
+        "empresa": user.empresa,
         "perfil": user.perfil.nome
     }
 

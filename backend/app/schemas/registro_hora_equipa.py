@@ -1,17 +1,17 @@
 # # app/schemas/registro_hora_equipa.py
 
-from pydantic import BaseModel
+# from pydantic import BaseModel
 
-class RegistroHoraEquipaCreate(BaseModel):
-    user_id: int
-    registro_id: int
+# class RegistroHoraEquipaCreate(BaseModel):
+#     user_id: int
+#     registro_id: int
 
-class RegistroHoraEquipaOut(BaseModel):
-    user_id: int
-    registro_id: int
+# class RegistroHoraEquipaOut(BaseModel):
+#     user_id: int
+#     registro_id: int
 
-    class Config:
-        orm_mode = True
+#     class Config:
+#         orm_mode = True
 
 
 # from pydantic import BaseModel

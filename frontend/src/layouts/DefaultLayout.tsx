@@ -1,20 +1,43 @@
+// DefaultLayout.tsx
 import React from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/Header";
+import Footer from "../components/Footer";
 import { LayoutProvider, useLayout } from "@/context/LayoutContext";
 
 const DefaultLayoutContent: React.FC = () => {
-  const { isSidebarOpen } = useLayout();
+  const { isSidebarOpen, closeSidebar } = useLayout();
+
+  const handleWrapperClick = () => {
+    //console.log('deve fechar', isSidebarOpen);
+    //if ((isSidebarOpen && window.innerWidth < 768)) {
+      closeSidebar();
+    //}
+  };
 
   return (
-    <div className="min-h-screen flex bg-gray-100">
-      <Sidebar isOpen={isSidebarOpen} />
-      <div className="flex flex-col flex-1">
+    <div className="relative min-h-screen flex bg-gray-100">
+      {/* Backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-40 z-30 md:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+      <Sidebar />
+      <div className="flex flex-col flex-1 z-10">
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-40 z-30 md:hidden"
+            onClick={handleWrapperClick}
+          />
+        )}
         <Header />
-        <main className="p-6 flex-1 overflow-y-auto">
+        <main className="flex-1 p-4 md:ml-64 bg-gray-50 min-h-screen" onClick={handleWrapperClick}>
           <Outlet />
         </main>
+        <Footer />
       </div>
     </div>
   );

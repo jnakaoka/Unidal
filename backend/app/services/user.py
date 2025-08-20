@@ -21,6 +21,7 @@ def create_user(db: Session, user: UserCreate):
     db_user = models.User(
         name=user.name,
         email=user.email,
+        empresa=user.empresa,
         hashed_password = hash_password(user.password),
         perfil_id=user.perfil_id,
         is_active=True
@@ -42,6 +43,7 @@ def delete(db: Session, user_id: int):
     return db_user
 
 def update(db: Session, user_id: int, user: UserCreate):
+    print("usuario update", user)
     db_user = get_by_id(db, user_id)
     if db_user:
         for key, value in user.dict().items():

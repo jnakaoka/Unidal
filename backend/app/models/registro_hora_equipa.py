@@ -1,12 +1,12 @@
-from sqlalchemy import Table, Column, Integer, ForeignKey
-from app.database import Base
+# from sqlalchemy import Table, Column, Integer, ForeignKey
+# from app.database import Base
 
-registro_hora_equipa = Table(
-    "registros_hora_equipa",
-    Base.metadata,
-    Column("registro_id", Integer, ForeignKey("registros_hora.id"), primary_key=True),
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True)
-)
+# registros_hora_equipa = Table(
+#     "registros_hora_equipa",
+#     Base.metadata,
+#     Column("registro_id", Integer, ForeignKey("registros_hora.id"), primary_key=True),
+#     Column("user_id", Integer, ForeignKey("users.id"), primary_key=True)
+# )
 
 
 # Esse arquivo está perfeito e suficiente caso:

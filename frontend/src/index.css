@@ -7,6 +7,7 @@ html, body, #root {
   height: 100%;
   width: 100%;
   margin: 0.35%;
+  padding-right: 5px;
 }
 
 :root {
@@ -76,6 +77,13 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+.align-float-left {
+  float: left;
+}
+.align-float-right {
+  float: right;
 }
 
 .menu-position {
@@ -207,6 +215,24 @@ a {
   padding: 0 20px;
 }
 
+.menu-element {
+  color: black;
+  text-decoration: none;
+  font-Size: x-large; 
+  
+  /* padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  transition: opacity 0.3s;
+  opacity: 0.5; */
+}
+
+.menu-element:hover {
+  text-decoration: underline;
+}
+
+
 @keyframes swing {
   0%, 30%, 50%, 70%, 100% {
     transform: rotate(0deg);
@@ -239,5 +265,170 @@ a {
   transition: opacity 0.3s;
   opacity: 0.5;
 }
+
+.ff-class-form-registro-hora-elements {
+  float: left;
+  width: 48%;
+  margin-right: 1%;
+}
+
+.ff-class-form-registro-hora-elements-100 {
+  float: left;
+  width: 99%;
+  margin-right: 1%;
+  font-weight: bold;
+}
+
+.ff-class-form-registro-hora-elements-lbl {
+  font-weight: bold;
+  float: left;
+  width: 100%;
+  margin-right: 1%;
+}	
+
+.empresa-bg-red-100 {
+  background-color: #fee2e2;
+  border-radius: 5px;
+  border: 1% solid #fee2e2;
+  padding-left: 10px;
+  padding-top: 1px;
+  padding-bottom: 10px;
+  margin: 0 0 1% 0;
+}
+
+.empresa-bg-blue-100 {
+  background-color: #dbeafe;
+  border-radius: 5px;
+  border: 1% solid #dbeafe;
+  padding-left: 10px;
+  padding-top: 1px;
+  padding-bottom: 10px;
+  margin: 0 0 1% 0;
+}
+
+.empresa-bg-yellow-100 {
+  background-color: #fef9c3;
+  border-radius: 5px;
+  border: 1% solid #fef9c3;
+  padding-left: 10px;
+  padding-top: 1px;
+  padding-bottom: 10px;
+  margin: 0 0 1% 0;
+}
+
+.empresa-bg-orange-100 {
+  background-color: #ffedd5;
+  border-radius: 5px;
+  border: 1% solid #ffedd5;
+  padding-left: 10px;
+  padding-top: 1px;
+  padding-bottom: 10px;
+  margin: 0 0 1% 0;
+}
+
+.empresa-bg-green-100 {
+  background-color: #dcfce7;
+  border-radius: 5px;
+  border: 1% solid #dcfce7;
+  padding-left: 10px;
+  padding-top: 1px;
+  padding-bottom: 10px;
+  margin: 0 0 1% 0;
+}
+
+.footer-bg-red-600 {
+  background-color: #e60000;
+  /* border-radius: 5px; */
+  border: 1% solid #e60000;
+  padding-left: 10px;
+  padding-top: 1px;
+  padding-bottom: 10px;
+  /* margin: 0 0 1% 0; */
+}
+
+.header-bg-red-600 {
+  background-color: #e60000;
+  /* border-radius: 5px; */
+  border: 1% solid #e60000;
+  padding-left: 10px;
+  padding-top: 1px;
+  padding-bottom: 10px;
+  /* margin: 0 0 1% 0; */
+}
+
+.line-bg-white-600 {
+  background-color: #ffffff;
+  /* border-radius: 5px; */
+  border: 1% solid #ffffff;
+  /* padding-left: 10px; */
+  /* padding-top: 1px; */
+  /* padding-bottom: 10px; */
+  /* margin: 0 0 1% 0; */
+}
+
+.line-bg-gray-100 {
+  background-color: #d4d4d4;
+  /* border-radius: 5px; */
+  border: 1% solid #d4d4d4;
+  /* padding-left: 10px; */
+  /* padding-top: 1px; */
+  /* padding-bottom: 10px; */
+  /* margin: 0 0 1% 0; */
+}
+
+.btn-bg-blue-500 {
+  background-color: #3b82f6;
+  border: 1% solid #3b82f6;
+  margin: 0 5px 5px 0;
+  color:white;
+}
+
+.btn-bg-red-500 {
+  background-color: #ef4444;
+  border: 1% solid #ef4444;
+  color:white;
+}
+
+.btn-bg-green-600 {
+  background-color: green;
+  border: 1% solid green;
+  color:white;
+}
+
+.head-lista {
+  background-color: grey;
+  color: black;
+}
+
+.generic-btn {
+  background-color: #f9f9f9;
+  border: 1% solid #f9f9f9;
+  color:black;
+  margin: 0 5px 5px 0;
+}
+
+.div-form-btn {
+  float: right;
+  margin: '0 0 1% 0';
+}
+
+.lbl-filtros {
+  font-weight: 600;
+  float: left;
+  width: 100%;
+  margin-right: 1%;
+}
+
+.dv-bloco-filtros {
+  width:18%;
+  border-radius: 5px;
+  border: 1% solid #f9f9f9;
+  padding-left: 10px;
+  padding-top: 1px;
+  margin: 0 0 1% 0;
+}
+
+
+
 /* e assim por diante... */
 

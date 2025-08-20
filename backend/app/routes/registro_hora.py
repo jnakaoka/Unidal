@@ -1,16 +1,22 @@
+# routes/registro_hora.py
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
+from fastapi import Response, status
 
-from database import get_db
+from app.database import get_db
 from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraResponse, RegistroHoraUpdate
-from services.registro_hora import (
+from app.services.registro_hora import (
     criar_registro_hora,
     listar_registros_horas,
     atualizar_registro_hora,
+    deletar_registro_hora
 )
 
-router = APIRouter(prefix="/registro_horas", tags=["Registro de Horas"])
+router = APIRouter()
+
+#esse route n se aplica mais pq eu centralizei no main.py
+# router = APIRouter(prefix="/registro-horas", tags=["Registro de Horas"])
 
 
 @router.post("/", response_model=RegistroHoraResponse)
@@ -27,7 +33,10 @@ def listar(db: Session = Depends(get_db)):
 def atualizar(registro_id: int, registro: RegistroHoraUpdate, db: Session = Depends(get_db)):
     return atualizar_registro_hora(db, registro_id, registro)
 
-
+@router.delete("/{registro_id}", status_code=status.HTTP_204_NO_CONTENT)
+def deletar(registro_id: int, db: Session = Depends(get_db)):
+    deletar_registro_hora(db, registro_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 # # app/routes/registro_hora.py
 # from fastapi import APIRouter, Depends, HTTPException

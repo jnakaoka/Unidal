@@ -11,12 +11,14 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     perfil_id: int 
+    empresa: str
      
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     perfil_id: Optional[int] = None
+    empresa: Optional[str]
 
 
 class PerfilOut(BaseModel):
@@ -30,6 +32,7 @@ class UserOut(BaseModel):
     id: int
     name: str
     email: EmailStr
+    empresa: str
     is_active: bool
     perfil_id: Optional[int]
     perfil: Optional[PerfilOut] = None

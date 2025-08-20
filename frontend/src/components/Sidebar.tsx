@@ -1,51 +1,48 @@
+// Sidebar.tsx
 import { Link, useLocation } from "react-router-dom";
 import { LayoutDashboard, Clock, FolderKanban, BarChartBig, UserCog, LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLayout } from "@/context/LayoutContext";
 import clsx from "clsx";
 
-interface SidebarProps {
-  isOpen: boolean;
-  onClose?: () => void;
-}
-
-const Sidebar = ({ isOpen }: SidebarProps) => {
-  const { closeSidebar } = useLayout();
+const Sidebar = () => {
+  const { isSidebarOpen, closeSidebar } = useLayout();
   const location = useLocation();
   const { user, logout } = useAuth();
-  
+
   const handleLinkClick = () => {
-    // Fecha o menu se estiver em mobile (largura < md)
-    //if (window.innerWidth < 768) {
-      closeSidebar?.(); // evita erro se for undefined
-    //}
+    // console.log('window.innerWidth', window.innerWidth);
+    // console.log('window.innerWidth < 768', window.innerWidth < 768);
+    // console.log('isSidebarOpen', isSidebarOpen);
+    //if (window.innerWidth < 768) 
+    closeSidebar();
   };
 
   const menuItems = [
-    {
-      label: "Dashboard",
-      to: user?.perfil === "admin" ? "/dashboard" : "/operador-dashboard",
-      icon: <LayoutDashboard size={18} />,
-      showFor: ["admin", "operador"],
-    },
+    // {
+    //   label: "Dashboard",
+    //   to: user?.perfil === "admin" ? "/dashboard" : "/operador-dashboard",
+    //   icon: <LayoutDashboard size={18} />,
+    //   showFor: ["admin", "operador"],
+    // },
     {
       label: "Registro de Horas",
       to: "/registro-horas",
       icon: <Clock size={18} />,
       showFor: ["admin", "operador"],
     },
-    {
-      label: "Projetos",
-      to: "/projetos",
-      icon: <FolderKanban size={18} />,
-      showFor: ["admin"],
-    },
-    {
-      label: "Relatórios",
-      to: "/relatorios",
-      icon: <BarChartBig size={18} />,
-      showFor: ["admin", "operador"],
-    },
+    // {
+    //   label: "Projetos",
+    //   to: "/projetos",
+    //   icon: <FolderKanban size={18} />,
+    //   showFor: ["admin"],
+    // },
+    // {
+    //   label: "Relatórios",
+    //   to: "/relatorios",
+    //   icon: <BarChartBig size={18} />,
+    //   showFor: ["admin", "operador"],
+    // },
     {
       label: "Usuários",
       to: "/usuarios",
@@ -57,51 +54,203 @@ const Sidebar = ({ isOpen }: SidebarProps) => {
   const visibleMenuItems = menuItems.filter(item => item.showFor.includes(user?.perfil || ""));
 
   return (
-    <aside
-          className={clsx(
-                      "p-4 transition-all duration-300 ease-in-out overflow-hidden bg-yellow-100 border",
-                      isOpen
-                        ? "w-64 border-red-500"
-                        : "absolute -left-64 w-0 border-blue-500 pointer-events-none opacity-0",
-                      "md:static md:w-64 md:opacity-100 md:pointer-events-auto"
+    <>
+      {/* {isSidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black bg-opacity-40 md:hidden"
+          onClick={closeSidebar}
+        />
+      )} */}
+      <aside style={{ maxWidth: '30%', backgroundColor: 'white', borderEndEndRadius: '3px', borderColor: 'lightgray', marginRight: '1%', float: 'left',marginTop: '-0.4%' }}
+        className={clsx(
+          "fixed md:static top-0 left-0 z-40 bg-white h-full shadow-md transition-transform duration-300 ease-in-out",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full",
+          "w-48 md:w-64 md:translate-x-0"
+        )}
+      >
+        <div className="flex flex-col h-full p-4">
+          <div className="flex mb-6">
+            <img style={{ width: '30%' }} src="/logo_unidal_editado.png" alt="Unidal Logo" className="h-12" />
+            {/* <img style={{ width: '10%' }} src="/logo_unidal_editado.png" alt="Unidal Logo" className="h-8 w-auto" /> */}
+          </div>
+          <nav className="flex-1">
+            <ul className="space-y-3" style={{ listStyle: 'none', margin: '5% 0 0 4%', padding: '0' }}>
+              {visibleMenuItems.map((item, idx) => (
+                <li key={idx}>
+                  <Link
+                    to={item.to}
+                    onClick={handleLinkClick}
+                    className={clsx(
+                      "flex items-center gap-3 px-4 py-2 rounded-md transition text-gray-700 menu-element menu-element:hover ",
+                      location.pathname === item.to && "bg-indigo-200 font-semibold"
                     )}
-        >
-          
-      {/* <div className="sidebar-header mb-6 text-lg font-bold">Unidal</div> */}
-      <ul className="space-y-3 text-sm" style={{ listStyle: 'none' }}>
-        {visibleMenuItems.map((item, idx) => (
-          <li key={idx} style={{ color: 'black' }}>
-            <Link style={{ color: 'black' }}
-              onClick={handleLinkClick}
-              to={item.to}
-              className={clsx(
-                "flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition rounded-md",
-                location.pathname === item.to ? "bg-blue-800 font-semibold" : ""
-              )}
+                  >
+                    {item.icon}
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <div className="mt-6">
+            <button
+              onClick={() => {
+                logout();
+                handleLinkClick();
+              }}
+              style={{ margin: '0 0 5% 0' }}
+              className="flex items-center gap-2 text-red-400 hover:text-red-600 px-4"
             >
-              {item.icon}
-              {item.label}
-            </Link>
-          </li>
-        ))}
-        <li>
-          <button
-            onClick={() => {
-              logout();
-              handleLinkClick();
-            }}
-            className="flex items-center gap-2 px-2 py-1 text-red-300 hover:text-red-500"
-          >
-            <LogOut size={18} />
-            Sair
-          </button>
-        </li>
-      </ul>
-    </aside>
+              <LogOut size={18} />
+              Sair
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 };
 
 export default Sidebar;
+
+
+
+
+
+
+
+
+
+
+
+
+
+//sidebar.tsx old
+// import { Link, useLocation } from "react-router-dom";
+// import { LayoutDashboard, Clock, FolderKanban, BarChartBig, UserCog, LogOut } from "lucide-react";
+// import { useAuth } from "@/context/AuthContext";
+// import { useLayout } from "@/context/LayoutContext";
+// import clsx from "clsx";
+
+// interface SidebarProps {
+//   isOpen: boolean;
+//   onClose?: () => void;
+// }
+
+// const Sidebar = ({ isOpen }: SidebarProps) => {
+//   const { closeSidebar } = useLayout();
+//   const location = useLocation();
+//   const { user, logout } = useAuth();
+  
+//   const handleLinkClick = () => {
+//     // Fecha o menu se estiver em mobile (largura < md)
+//     //if (window.innerWidth < 768) {
+//       closeSidebar?.(); // evita erro se for undefined
+//     //}
+//   };
+
+//   const menuItems = [
+//     {
+//       label: "Dashboard",
+//       to: user?.perfil === "admin" ? "/dashboard" : "/operador-dashboard",
+//       icon: <LayoutDashboard size={18} />,
+//       showFor: ["admin", "operador"],
+//     },
+//     {
+//       label: "Registro de Horas",
+//       to: "/registro-horas",
+//       icon: <Clock size={18} />,
+//       showFor: ["admin", "operador"],
+//     },
+//     {
+//       label: "Projetos",
+//       to: "/projetos",
+//       icon: <FolderKanban size={18} />,
+//       showFor: ["admin"],
+//     },
+//     {
+//       label: "Relatórios",
+//       to: "/relatorios",
+//       icon: <BarChartBig size={18} />,
+//       showFor: ["admin", "operador"],
+//     },
+//     {
+//       label: "Usuários",
+//       to: "/usuarios",
+//       icon: <UserCog size={18} />,
+//       showFor: ["admin"],
+//     },
+//   ];
+
+//   const visibleMenuItems = menuItems.filter(item => item.showFor.includes(user?.perfil || ""));
+
+//   return (
+//     // <aside style={{ backgroundColor: 'white', borderEndEndRadius: '3px', borderColor: 'lightgray', marginRight: '1%'}}
+//     //       className={clsx(
+//     //                   "p-4 transition-all duration-300 ease-in-out overflow-hidden bg-yellow-100 border border-radius",
+//     //                   isOpen
+//     //                     ? "w-64 border-red-500"
+//     //                     : "absolute -left-64 w-0 border-blue-500 pointer-events-none opacity-0",
+//     //                   "md:static md:w-64 md:opacity-100 md:pointer-events-auto"
+//     //                 )}
+//     //     >
+//     <>
+//     {/* BACKDROP overlay - só em mobile */}
+//       {isOpen && (
+//         <div
+//           className="fixed inset-0 bg-black bg-opacity-30 z-10 md:hidden"
+//           onClick={closeSidebar}
+//         />
+//       )}
+//     <aside
+//       className={clsx(
+//         "fixed z-20 bg-white h-full shadow-md transition-transform duration-300 ease-in-out",
+//           isOpen ? "translate-x-0" : "-translate-x-full",
+//           "w-64 md:translate-x-0 md:static md:block"
+//       )}
+//     >      
+//       <div 
+//         // className="sidebar-header mb-6 text-lg font-bold"
+//         className="text-3xl font-bold text-gray-800"
+//         >
+//           <img style={{ width: '10%' }} src="/logo_unidal_editado.png" alt="Unidal Logo" className="h-8 w-auto" />
+//         {/* <img alt="Unidal Logo" className="h-8 w-auto" src="/logo_unidal_editado.png" style={{ width: "50%", margin: "7% 0 0 0"}} ></img>   */}
+//         </div>
+//       <ul className="space-y-3 text-sm" style={{ listStyle: 'none', margin: '15% 5% 0px 5%', padding: '0' }}>
+//         {visibleMenuItems.map((item, idx) => (
+//           <li key={idx} style={{ color: 'black' }}>
+//             <Link style={{ color: 'black' }}
+//               onClick={handleLinkClick}
+//               to={item.to}
+//               className={clsx(
+//                 "flex items-center gap-3 px-4 py-2 text-gray-700 hover:bg-indigo-100 hover:text-indigo-700 transition rounded-md",
+//                 location.pathname === item.to ? "bg-blue-800 font-semibold" : ""
+//               )}
+//             >
+//               {item.icon}
+//               {item.label}
+//             </Link>
+//           </li>
+//         ))}
+//         <li style={{ color: 'gray', marginTop: '5%' }}>
+//           <button
+//             onClick={() => {
+//               logout();
+//               handleLinkClick();
+//             }}
+//             className="flex items-center gap-2 px-2 py-1 text-red-300 hover:text-red-500"
+//           >
+//             <LogOut size={18} />
+//             Sair
+//           </button>
+//         </li>
+//       </ul>
+//     </aside>
+//     </>
+//   );
+// };
+
+// export default Sidebar;
 
 
 

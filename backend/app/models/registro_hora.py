@@ -1,7 +1,8 @@
+#models/registro_hora.py
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date, Float
 from sqlalchemy.orm import relationship
 from app.database import Base
-from app.models.registro_hora_equipa import registro_hora_equipa
+#from app.models.registro_hora_equipa import registro_hora_equipa
 
 class RegistroHora(Base):
     __tablename__ = "registros_hora"
@@ -12,9 +13,9 @@ class RegistroHora(Base):
     data = Column(Date, nullable=False)
     horas = Column(Float, nullable=False)
 
-    cliente = Column(String, nullable=True)
-    obra = Column(String, nullable=True)
-    metros_quadrados = Column(String, nullable=True)
+    cliente = Column(String(255), nullable=True)
+    obra = Column(String(255), nullable=True)
+    metros_quadrados = Column(String(255), nullable=True)
 
     preparacao = Column(Boolean, default=False)
     bruto = Column(Boolean, default=False)
@@ -36,12 +37,13 @@ class RegistroHora(Base):
     projeto = relationship("Projeto", back_populates="registros")
 
 class RegistroHoraEquipa(Base):
-    __tablename__ = "registro_hora_equipa"
+    __tablename__ = "registros_hora_equipa"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("usuarios.id"))
-    registro_id = Column(Integer, ForeignKey("registros_horas.id"))
+    user_id = Column(Integer, ForeignKey("users.id"))
+    registro_id = Column(Integer, ForeignKey("registros_hora.id"))
 
+    user = relationship("User", back_populates="registros_hora_equipa")
     registro = relationship("RegistroHora", back_populates="equipa")
 
 

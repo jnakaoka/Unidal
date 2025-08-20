@@ -1,4 +1,4 @@
-// Layout.tsx
+// LayoutContext.tsx
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 interface LayoutContextType {
@@ -13,7 +13,11 @@ export const LayoutProvider = ({ children }: { children: ReactNode }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
-  const closeSidebar = () => setIsSidebarOpen(false);
+  //const closeSidebar = () => setIsSidebarOpen(false);
+  const closeSidebar = () => {
+    //console.log('closeSidebar');
+    setIsSidebarOpen(false);
+  }
 
   return (
     <LayoutContext.Provider value={{ isSidebarOpen, toggleSidebar, closeSidebar }}>

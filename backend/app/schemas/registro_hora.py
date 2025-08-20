@@ -1,3 +1,4 @@
+# schemas/registro_hora
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import date
@@ -7,23 +8,23 @@ class MembroEquipa(BaseModel):
     user_id: int
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class RegistroHoraBase(BaseModel):
     projeto_id: int
     usuario_id: int
     data: date
-    horas: int
-    cliente: str
-    obra: str
-    metros_quadrados: str
-    preparacao: bool
-    bruto: bool
-    colagem: bool
-    acabamento: bool
-    serragem: bool
-    intervencao_maquinas: bool
+    horas: Optional[int] = 0
+    cliente: Optional[str] = None
+    obra: Optional[str] = None
+    metros_quadrados: Optional[str] = None
+    preparacao: Optional[bool] = None
+    bruto: Optional[bool] = None
+    colagem: Optional[bool] = None
+    acabamento: Optional[bool] = None
+    serragem: Optional[bool] = None
+    intervencao_maquinas: Optional[bool] = None
     equipa: List[MembroEquipa]
 
 
@@ -35,11 +36,52 @@ class RegistroHoraUpdate(RegistroHoraBase):
     pass
 
 
-class RegistroHoraResponse(RegistroHoraBase):
+class UserResponse(BaseModel):
     id: int
+    name: str
+    email: str
+    empresa: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
+
+class ProjetoResponse(BaseModel):
+    id: int
+    nome: str
+
+    class Config:
+        from_attributes = True
+
+class RegistroHoraEquipaResponse(BaseModel):
+    user: UserResponse
+
+    class Config:
+        from_attributes = True
+
+class RegistroHoraResponse(BaseModel):
+    id: int
+    usuario_id: int
+    projeto_id: int
+    data: date
+    horas: Optional[int] = 0
+
+    cliente: Optional[str] = None
+    obra: Optional[str] = None
+    metros_quadrados: Optional[str] = None
+
+    preparacao: Optional[bool] = None
+    bruto: Optional[bool] = None
+    colagem: Optional[bool] = None
+    acabamento: Optional[bool] = None
+    serragem: Optional[bool] = None
+    intervencao_maquinas: Optional[bool] = None
+
+    user: UserResponse
+    projeto: ProjetoResponse
+    equipa: List[RegistroHoraEquipaResponse]
+
+    class Config:
+        from_attributes = True
 
 
 
