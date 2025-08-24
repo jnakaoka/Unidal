@@ -7,7 +7,9 @@ from app.models.perfil import Perfil as PerfilModel  # ← Alias para evitar con
 from app.services import perfil
 from app.services.perfil import create
 
-router = APIRouter(prefix="/perfis", tags=["Perfis"])
+# router = APIRouter(prefix="/perfis", tags=["Perfis"])
+
+router = APIRouter()
 
 @router.get("/", response_model=List[PerfilOut])
 def listar_perfis(db: Session = Depends(get_db)):

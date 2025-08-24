@@ -3,6 +3,9 @@ FROM node:20 AS builder
 
 WORKDIR /app
 
+ARG VITE_PUBLIC_API_URL
+ENV VITE_PUBLIC_API_URL=$VITE_PUBLIC_API_URL
+
 # Copia só os arquivos necessários para cache mais eficiente
 COPY package.json package-lock.json ./
 

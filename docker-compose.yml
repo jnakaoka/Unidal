@@ -60,7 +60,7 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_API_URL: http://api:8000
+        VITE_PUBLIC_API_URL: https://api.apontamento-unidal.duckdns.org
     container_name: unidal_frontend
     expose:
       - "80"
@@ -83,6 +83,96 @@ networks:
     driver: bridge
   internal:
     driver: bridge
+
+
+
+# version: "3" sem funcionar
+# services:
+#   # Serviço para atualizar IP no DuckDNS
+#   duckdns:
+#     image: linuxserver/duckdns
+#     container_name: duckdns
+#     environment:
+#       - SUBDOMAINS=apontamento-unidal
+#       - TOKEN=aba80c93-6027-4802-9d4b-5c89b57dd0af
+#       - LOG_FILE=false
+#     restart: always
+#     networks:
+#       - proxy
+
+#   # Gerenciador de proxy reverso + HTTPS
+#   npm:
+#     image: jc21/nginx-proxy-manager:latest
+#     container_name: npm
+#     restart: always
+#     ports:
+#       - "80:80"     # HTTP
+#       - "81:81"     # Painel do NPM
+#       - "443:443"   # HTTPS
+#     volumes:
+#       - npm_data:/data
+#       - npm_letsencrypt:/etc/letsencrypt
+#     networks:
+#       - proxy
+
+#   api:
+#     build: ./backend
+#     container_name: unidal_api
+#     expose:
+#       - "8000"
+#     depends_on:
+#       - db
+#     environment:
+#       - DATABASE_URL=mysql+mysqlconnector://unidal:admin_135@db/unidal
+#     volumes:
+#       - ./backend:/app
+#       - ./alembic.ini:/app/alembic.ini
+#     networks:
+#       - proxy
+#       - internal
+
+#   db:
+#     image: mysql:8
+#     container_name: unidal_db
+#     restart: always
+#     environment:
+#       MYSQL_DATABASE: unidal
+#       MYSQL_ROOT_PASSWORD: admin_135
+#       MYSQL_USER: unidal
+#       MYSQL_PASSWORD: admin_135
+#     volumes:
+#       - db_data:/var/lib/mysql
+#     networks:
+#       - internal
+
+#   frontend:
+#     build:
+#       context: ./frontend
+#       args:
+#         #VITE_API_URL: http://api:8000
+#         VITE_PUBLIC_API_URL: https://api.apontamento-unidal.duckdns.org
+#     container_name: unidal_frontend
+#     expose:
+#       - "80"
+#     depends_on:
+#       - api
+#     volumes:
+#       - ./frontend:/app
+#       - /app/node_modules
+#     restart: always
+#     networks:
+#       - proxy
+
+# volumes:
+#   db_data:
+#   npm_data:
+#   npm_letsencrypt:
+
+# networks:
+#   proxy:
+#     driver: bridge
+#   internal:
+#     driver: bridge
 
 
 
