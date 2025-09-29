@@ -9,8 +9,10 @@ import PrivateRoute from "./routes/PrivateRoute";
 import Relatorio from "./pages/Relatorios";
 import GestaoUsuarios from "./pages/GestaoUsuarios";
 import DefaultLayout from "./layouts/DefaultLayout";
-import Projetos from "./pages/Projetos";
+//import Projetos from "./pages/Projetos";
 import RegistroHoras from "./pages/RegistroHoras";
+import Clientes from "./pages/Clientes";
+import Obras from "./pages/Obras";
 
 const App: React.FC = () => {
   return (
@@ -30,8 +32,10 @@ const App: React.FC = () => {
         <Route path="operador-dashboard" element={<OperadorDashboard />} />
         <Route path="relatorios" element={<Relatorio />} />
         <Route path="usuarios" element={<GestaoUsuarios />} />
-        <Route path="Projetos" element={<Projetos />} />
+        {/* <Route path="Projetos" element={<Projetos />} /> */}
         <Route path="registro-horas" element={<RegistroHoras />} />
+        <Route path="clientes" element={<Clientes />} />
+        <Route path="obras" element={<Obras />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

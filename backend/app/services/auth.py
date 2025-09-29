@@ -24,16 +24,37 @@ def authenticate_user(db: Session, email: str, password: str):
     return {"access_token": access_token, "token_type": "bearer"}
 
 def autenticar_usuario(email: str, senha: str):
+    email = (email or "").strip()
+    print(f"[auth] tentando login para: {email!r}")
+
     db = SessionLocal()
     usuario = (
         db.query(User)
-        .options(joinedload(User.perfil))  # <- carrega o relacionamento imediatamente
+        .options(joinedload(User.perfil))
         .filter(User.email == email)
         .first()
     )
-    if not usuario or not verify_password(senha, usuario.hashed_password):
-        return None
-    return usuario
+    print(f"[auth] usuario encontrado? {bool(usuario)}")
+
+    if usuario:
+        ok = verify_password(senha, usuario.hashed_password)
+        print(f"[auth] verify_password => {ok}")
+        if ok:
+            return usuario
+
+    return None
+
+    
+    # db = SessionLocal()
+    # usuario = (
+    #     db.query(User)
+    #     .options(joinedload(User.perfil))  # <- carrega o relacionamento imediatamente
+    #     .filter(User.email == email)
+    #     .first()
+    # )
+    # if not usuario or not verify_password(senha, usuario.hashed_password):
+    #     return None
+    # return usuario
 
     # db = SessionLocal()
     # usuario = db.query(User).filter(User.email == email).first()

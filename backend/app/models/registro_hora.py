@@ -2,6 +2,7 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date, Float
 from sqlalchemy.orm import relationship
 from app.database import Base
+from sqlalchemy import JSON as SAJSON
 #from app.models.registro_hora_equipa import registro_hora_equipa
 
 class RegistroHora(Base):
@@ -13,8 +14,14 @@ class RegistroHora(Base):
     data = Column(Date, nullable=False)
     horas = Column(Float, nullable=False)
 
-    cliente = Column(String(255), nullable=True)
-    obra = Column(String(255), nullable=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True)
+    obra_id    = Column(Integer, ForeignKey("obras.id"), nullable=True)
+    
+    # cliente_id = Column(Integer, ForeignKey("clientes.id", ondelete="RESTRICT"), nullable=False)
+    # obra_id    = Column(Integer, ForeignKey("obras.id", ondelete="RESTRICT"),    nullable=False)
+
+    cliente = relationship("Cliente", lazy="joined")
+    obra = relationship("Obra", lazy="joined")
     metros_quadrados = Column(String(255), nullable=True)
 
     preparacao = Column(Boolean, default=False)
@@ -22,7 +29,12 @@ class RegistroHora(Base):
     colagem = Column(Boolean, default=False)
     acabamento = Column(Boolean, default=False)
     serragem = Column(Boolean, default=False)
+    coli = Column(Boolean, default=False)
     intervencao_maquinas = Column(Boolean, default=False)
+    intervencao_maquinas_opcoes = Column(SAJSON, nullable=True)
+
+    cliente = relationship("Cliente")
+    obra = relationship("Obra")
 
     user = relationship("User", back_populates="registros")
     equipa = relationship("RegistroHoraEquipa", back_populates="registro", cascade="all, delete-orphan")
@@ -42,6 +54,7 @@ class RegistroHoraEquipa(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     registro_id = Column(Integer, ForeignKey("registros_hora.id"))
+    intemperie = Column(Boolean, default=False)
 
     user = relationship("User", back_populates="registros_hora_equipa")
     registro = relationship("RegistroHora", back_populates="equipa")

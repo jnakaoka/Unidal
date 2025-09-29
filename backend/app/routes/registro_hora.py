@@ -1,8 +1,10 @@
 # routes/registro_hora.py
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import List
 from fastapi import Response, status
+from typing import List, Optional
+from app.models.user import User
 
 from app.database import get_db
 from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraResponse, RegistroHoraUpdate
@@ -15,6 +17,14 @@ from app.services.registro_hora import (
 
 router = APIRouter()
 
+def is_operador(u: User) -> bool:
+    nome = ""
+    try:
+        nome = (u.perfil.nome or "").strip().lower()
+    except Exception:
+        nome = str(getattr(u, "perfil", "") or "").strip().lower()
+    return nome == "operador"
+
 #esse route n se aplica mais pq eu centralizei no main.py
 # router = APIRouter(prefix="/registro-horas", tags=["Registro de Horas"])
 
@@ -25,8 +35,8 @@ def criar(registro: RegistroHoraCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[RegistroHoraResponse])
-def listar(db: Session = Depends(get_db)):
-    return listar_registros_horas(db)
+def listar(usuario_id: Optional[int] = Query(None), db: Session = Depends(get_db)):
+    return listar_registros_horas(db, usuario_id=usuario_id)
 
 
 @router.put("/{registro_id}", response_model=RegistroHoraResponse)

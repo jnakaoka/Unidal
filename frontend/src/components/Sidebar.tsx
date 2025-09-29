@@ -49,6 +49,18 @@ const Sidebar = () => {
       icon: <UserCog size={18} />,
       showFor: ["admin"],
     },
+    {
+      label: "Clientes",
+      to: "/clientes",
+      icon: <UserCog size={18} />,
+      showFor: ["admin"],
+    },
+    {
+      label: "Obras",
+      to: "/obras",
+      icon: <UserCog size={18} />,
+      showFor: ["admin"],
+    },
   ];
 
   const visibleMenuItems = menuItems.filter(item => item.showFor.includes(user?.perfil || ""));

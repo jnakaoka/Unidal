@@ -1,3 +1,4 @@
+#routes/user.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -7,6 +8,8 @@ from app.services import user as user_service
 from app.dependencies.auth import verificar_permissao
 from app.dependencies.auth import require_role
 from sqlalchemy.orm import joinedload
+from typing import Optional
+from fastapi import Query
 
 router = APIRouter()
 
@@ -15,8 +18,9 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return user_service.create_user(db, user)
 
 @router.get("/", response_model=list[UserOut])
-def get_users(db: Session = Depends(get_db)):
-    return db.query(User).options(joinedload(User.perfil)).all()
+def get_users(is_active: Optional[bool] = Query(None), db: Session = Depends(get_db)):
+    return user_service.get_users(db, is_active=is_active)
+    #return db.query(User).options(joinedload(User.perfil)).all()
     # return user_service.get_users(db)
 
 @router.put("/{user_id}")
@@ -35,6 +39,8 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
         user.perfil_id = user_update.perfil_id
     if user_update.empresa is not None:
         user.empresa = user_update.empresa
+    if user_update.is_active is not None:
+        user.is_active = user_update.is_active
 
     db.commit()
     db.refresh(user)
@@ -44,7 +50,8 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
         "name": user.name,
         "email": user.email,
         "empresa": user.empresa,
-        "perfil": user.perfil.nome
+        "perfil": user.perfil.nome,
+        "is_active": user.is_active
     }
 
 #@router.delete("/{user_id}", dependencies=[Depends(verificar_permissao(["admin"]))])

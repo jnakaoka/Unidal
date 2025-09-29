@@ -1,5 +1,5 @@
 //RegistroHoras.tsx
-import React, { use, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import { Button } from '../components/ui/button';
@@ -8,9 +8,8 @@ import { Textarea } from '../components/ui/textarea';
 import { Label } from '../components/ui/label';
 import { Select, SelectItem } from '../components/ui/select';
 import axios from 'axios';
-import { u, U } from 'framer-motion/dist/types.d-CtuPurYT';
 import { FiltroRegistros } from "../components/FiltroRegistros";
-import { stringify } from 'querystring';
+import Pagination, { usePagination } from "@/components/pagination-utils";
 
 interface User {
   id: number;
@@ -24,9 +23,32 @@ interface Projeto {
   nome: string;
 }
 
+interface Cliente {
+  id: number;
+  nome: string;
+  is_active: boolean;
+}
+
+interface Obra {
+  id: number;
+  nome: string;
+  descricao?: string;
+  cliente_id: number;
+  cliente?: { id: number; nome: string };
+}
+
 interface RegistroEquipa {
   user: User;
+  intemperie: boolean;
 }
+
+type IntervencaoMaquinasOpcoes = {
+  laserComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  poComManobrador?:    { checked?: boolean; m2?: string; empresa?: string };
+  manobrador?:         { checked?: boolean; qtd?: number; empresa?: string }; // 1 ou 2
+  soLaser?:            { checked?: boolean; m2?: string; empresa?: string };
+  soPo?:               { checked?: boolean; m2?: string; empresa?: string };
+};
 
 interface RegistroHoras {
   id: number;
@@ -35,8 +57,10 @@ interface RegistroHoras {
   data: string;
   horas: string;
 
-  cliente?: string;
-  obra?: string;
+  cliente_id: number | null;
+  obra_id: number | null;
+  cliente?: Cliente | null;   // ← objeto vindo do backend
+  obra?: Obra | null;         // ← objeto vindo do backend
   metros_quadrados?: string;
 
   preparacao: boolean;
@@ -44,7 +68,9 @@ interface RegistroHoras {
   colagem: boolean;
   acabamento: boolean;
   serragem: boolean;
+  coli: boolean;
   intervencao_maquinas: boolean;
+  intervencao_maquinas_opcoes?: IntervencaoMaquinasOpcoes | null;
 
   user?: User;
   projeto?: Projeto;
@@ -53,64 +79,206 @@ interface RegistroHoras {
 }
 
 const empresaColors: Record<string, string> = {
-  Unidal: 'bg-red-100',
+  UNIDAL: 'bg-red-100',
   HPR: 'bg-blue-100',
   HPNC: 'bg-yellow-100',
-  Aruncasols: 'bg-orange-100',
-  Floridamplitude: 'bg-green-100',
+  ARUNCA: 'bg-orange-100',
+  UNISOL: 'bg-orange-100',
+  FLORIDAMPLITUDE: 'bg-green-100',
 };
 
+const empresasLista = ["UNIDAL","HPR","HPNC","ARUNCA","UNISOL","FLORIDAMPLITUDE"];
+
 const RegistroHoras: React.FC = () => {
+  type FormData = {
+    id: number;
+    usuario_id: number;
+    projeto_id: number;
+    data: string;
+    horas: string;
+    cliente_id: number | null;
+    obra_id: number | null;
+    metros_quadrados: string;
+    preparacao: boolean;
+    bruto: boolean;
+    colagem: boolean;
+    acabamento: boolean;
+    serragem: boolean;
+    coli: boolean;
+    intervencao_maquinas: boolean;
+    intervencao_maquinas_opcoes: IntervencaoMaquinasOpcoes;
+    equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean }[];
+  };
   const { user } = useAuth();
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [registrosFiltrados, setRegistrosFiltrados] = useState<RegistroHoras[]>([]);
   const [registroHoras, setRegistroHoras] = useState<RegistroHoras[]>([]);
   const [registroHorasFullList, setRegistroHorasFullList] = useState<RegistroHoras[]>([]);
-  const [projetos, setProjetos] = useState<Projeto[]>([]);
+  //const [projetos, setProjetos] = useState<Projeto[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [obras, setObras] = useState<Obra[]>([]);
+  // --- NOVOS clientes antigo ---
+  // const [showPopup, setShowPopup] = useState(false);
+  // const [modalClienteObraAberto, setModalClienteObraAberto] = useState(false);
+  // const [novoClienteNome, setNovoClienteNome] = useState('');
+  // const [novaObraNome, setNovaObraNome] = useState('');
+  // const [novaObraDescricao, setNovaObraDescricao] = useState('');
+  // const [criandoClienteObra, setCriandoClienteObra] = useState(false);
+
+  // --- POPUPS separados ---
+  const [showClientePopup, setShowClientePopup] = useState(false);
+  const [showObraPopup, setShowObraPopup] = useState(false);
+
+  const [novoClienteNome, setNovoClienteNome] = useState('');
+  const [criandoCliente, setCriandoCliente] = useState(false);
+
+  const [novaObraNome, setNovaObraNome] = useState('');
+  const [novaObraDescricao, setNovaObraDescricao] = useState('');
+  const [obraClienteId, setObraClienteId] = useState<number | null>(null); // cliente escolhido dentro do popup de Obra
+  const [criandoObra, setCriandoObra] = useState(false);
+
   const [registros, setRegistros] = useState<RegistroHoras[]>([]);
   const [descricao, setDescricao] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingRegistroHoras, setEditingRegistroHoras] = useState<RegistroHoras | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const registrosPorPagina = 10;
-  const indexUltimoRegistro = currentPage * registrosPorPagina;
-  const indexPrimeiroRegistro = indexUltimoRegistro - registrosPorPagina;
-  const registrosPaginados = registroHoras.slice(indexPrimeiroRegistro, indexUltimoRegistro);
-  const totalPaginas = Math.ceil(registroHoras.length / registrosPorPagina);
-  const [formData, setFormData] = useState({id: 0, usuario_id: 0,
-  projeto_id: 1,
-  data: '',
-  horas: '',
-  cliente: '',
-  obra: '',
-  metros_quadrados: '',
-  preparacao: false,
-  bruto: false,
-  colagem: false,
-  acabamento: false,
-  serragem: false,
-  intervencao_maquinas: false,
-  equipa: [] as { user_id: number; email: string, empresa: string }[],
+  const { pageItems, currentPage, setCurrentPage, totalPages } =
+  usePagination<RegistroHoras>(registroHoras, 20);
+  const [empresasAbertas, setEmpresasAbertas] = useState<Record<string, boolean>>({});
+  const [obrasFiltro, setObrasFiltro] = useState<Obra[]>([]);
+  const [intemperiePorUserId, setIntemperiePorUserId] = useState<Record<number, boolean>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [notice, setNotice] = useState<{type: 'success'|'error'|'info', text: string} | null>(null);
+
+  const loadObrasFiltro = async (clienteId: number | null) => {
+    if (!clienteId) { setObrasFiltro([]); return; }
+    try {
+      const { data } = await api.get<Obra[]>(`/obras/?cliente_id=${clienteId}`);
+      setObrasFiltro(data);
+    } catch {
+      setObrasFiltro([]);
+    }
+  };
+  
+  //const totalPaginas = Math.max(1, Math.ceil(registroHoras.length / registrosPorPagina));
+  // const indexUltimoRegistro = currentPage * registrosPorPagina;
+  // const indexPrimeiroRegistro = indexUltimoRegistro - registrosPorPagina;
+  // const registrosPaginados = registroHoras.slice(indexPrimeiroRegistro, indexUltimoRegistro);
+  // const totalPaginas = Math.ceil(registroHoras.length / registrosPorPagina);
+  const [formData, setFormData] = useState<FormData>({
+    id: 0,
+    usuario_id: 0,
+    projeto_id: 1,
+    data: '',
+    horas: '',
+    cliente_id: null,   // <- ok ser null
+    obra_id: null,      // <- ok ser null
+    metros_quadrados: '',
+    preparacao: false,
+    bruto: false,
+    colagem: false,
+    acabamento: false,
+    serragem: false,
+    coli: false,
+    intervencao_maquinas: false,
+    intervencao_maquinas_opcoes: {
+      laserComManobrador: { checked: false, m2: '', empresa: '' },
+      poComManobrador:    { checked: false, m2: '', empresa: '' },
+      manobrador:         { checked: false, qtd: 1, empresa: '' },
+      soLaser:            { checked: false, m2: '', empresa: '' },
+      soPo:               { checked: false,  m2: '', empresa: '' },
+    },
+    equipa: [],
+  
+    // id: 0, usuario_id: 0,
+  // projeto_id: 1,
+  // data: '',
+  // horas: '',
+  // cliente_id: 0,
+  // obra_id: 0,
+  // // cliente: '',
+  // // obra: '',
+  // metros_quadrados: '',
+  // preparacao: false,
+  // bruto: false,
+  // colagem: false,
+  // acabamento: false,
+  // serragem: false,
+  // intervencao_maquinas: false,
+  // intervencao_maquinas_opcoes: {
+  //   laserComManobrador: { checked: false, m2: '' },
+  //   poComManobrador:    { checked: false, m2: '' },
+  //   manobrador:         { checked: false, qtd: 1 },
+  //   soLaser:            { checked: false, m2: '' },
+  //   soPo:               { checked: false,  m2: '' },
+  // } as IntervencaoMaquinasOpcoes,
+  // equipa: [] as { user_id: number; email: string, empresa: string }[],
   });
   const { accessToken } = useAuth();
 
-  useEffect(() => {
-    fetchProjetos();
-    fetchUsuarios();
-    async function fetchRegistros() {
-      const response = await fetch("/registro-horas/");
-      const data = await response.json();
-      setRegistrosFiltrados(data);
-    }
-    fetchRegistroHoras();
-  }, []);
+  const rawPerfil =
+  (user as any)?.perfil?.nome ??
+  (user as any)?.perfil_nome ??
+  (user as any)?.perfil ??
+  "";
 
+  const isOperador = String(rawPerfil).trim().toLowerCase() === "operador";
+
+  // useEffect(() => {
+  //   //fetchProjetos();
+  //   fetchUsuarios();
+  //   fetchClientes();
+  //   if (formData.cliente_id) {
+  //     fetchObrasByCliente(formData.cliente_id);
+  //   } else {
+  //     setObras([]);
+  //   }
+
+  //   // async function fetchRegistros() {
+  //   //   const response = await fetch("/registro-horas/");
+  //   //   const data = await response.json();
+  //   //   setRegistrosFiltrados(data);
+  //   // }
+    
+  //   fetchRegistroHoras();
+  //   // const anyOpen = modalAberto || showClientePopup || showObraPopup;
+  //   // document.body.style.overflow = anyOpen ? 'hidden' : '';
+  //   const anyPopup = showClientePopup || showObraPopup; // só para os popups reais
+  //   document.body.style.overflow = anyPopup ? 'hidden' : '';
+  //   return () => { document.body.style.overflow = ''; };
+
+  // }, [modalAberto, showClientePopup, showObraPopup, user?.id, isOperador]);
+
+
+  useEffect(() => {
+    fetchUsuarios();
+    fetchClientes();
+
+    if (formData.cliente_id) {
+      fetchObrasByCliente(formData.cliente_id);
+    } else {
+      setObras([]);
+    }
+
+    // ✅ Só busca registros quando tiver token e user.id
+    console.log('user?.id', user?.id);
+    console.log('localStorage.getItem("accessToken")', localStorage.getItem("accessToken"));
+    if (user?.id) {
+      fetchRegistroHoras();
+    }
+
+    const anyPopup = showClientePopup || showObraPopup;
+    document.body.style.overflow = anyPopup ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+
+  }, [modalAberto, showClientePopup, showObraPopup, user?.id]);
+  
   const fetchUsuarios = async () => {
     try {
-      const response = await api.get<User[]>('/users');
+      const response = await api.get<User[]>('/users/');
+      //console.log('usuarios',response.data);
       const usuariosData = response.data;
       if (Array.isArray(usuariosData)) {
         setUsuarios(usuariosData);
@@ -126,74 +294,149 @@ const RegistroHoras: React.FC = () => {
     }
   };
 
-  const fetchProjetos = async () => {
+  const fetchClientes = async () => {
     try {
-      const response = await axios.get<Projeto[]>(
-        `${import.meta.env.VITE_API_URL}/projetos/projetos`
-      );
-      
-      const projetosData = response.data;
-      if (Array.isArray(projetosData)) {
-        setProjetos(projetosData);
-      } else {
-        console.error("Resposta de perfis inválida:", projetosData);
-      }
-
-      if (projetosData.length > 0 && formData.projeto_id === 0) {
-        setFormData((prev) => ({ ...prev, projeto_id: projetosData[0].id }));
-      }
-    } catch (error) {
-      console.error("Erro ao buscar perfis:", error);
+      const { data } = await api.get<Cliente[]>('/clientes/');
+      console.log('clientes', data);
+      setClientes(data);
+    } catch (e) {
+      console.error('Erro ao buscar clientes:', e);
     }
   };
+
+  const fetchObrasByCliente = async (clienteId: number) => {
+    console.log('fetchObrasByCliente', clienteId);
+    if (!clienteId) { setObras([]); return; }
+    try {
+      const { data } = await api.get<Obra[]>(`/obras/?cliente_id=${clienteId}`);
+      console.log('obras', data);
+      setObras(data);
+    } catch (e) {
+      console.error('Erro ao buscar obras:', e);
+      setObras([]);
+    }
+  };
+
+  // const fetchProjetos = async () => {
+  //   try {
+  //     const response = await axios.get<Projeto[]>(
+  //       `${import.meta.env.VITE_API_URL}/projetos/projetos`
+  //     );
+      
+  //     const projetosData = response.data;
+  //     if (Array.isArray(projetosData)) {
+  //       setProjetos(projetosData);
+  //     } else {
+  //       console.error("Resposta de perfis inválida:", projetosData);
+  //     }
+
+  //     if (projetosData.length > 0 && formData.projeto_id === 0) {
+  //       setFormData((prev) => ({ ...prev, projeto_id: projetosData[0].id }));
+  //     }
+  //   } catch (error) {
+  //     console.error("Erro ao buscar perfis:", error);
+  //   }
+  // };
+
+  // const fetchRegistroHoras = async () => {
+  //   try {
+  //       const response = await api.get<RegistroHoras[]>('/registro-horas/');
+  //       setRegistroHoras(response.data);
+  //       setRegistroHorasFullList(response.data);
+  //       console.log('response do registro de horas', response.data);
+  //   } catch (error) {
+  //     console.error('Erro ao buscar registro de horas:', error);
+  //   }
+  // };
 
   const fetchRegistroHoras = async () => {
     try {
-        const response = await api.get<RegistroHoras[]>('/registro-horas/');
-        setRegistroHoras(response.data);
-        setRegistroHorasFullList(response.data);
-        console.log('response do registro de horas', response.data);
-      } catch (error) {
-        console.error('Erro ao buscar registro de horas:', error);
+      // Tente filtrar no backend (se a API aceitar ?usuario_id=)
+      if (isOperador && user?.id) {
+        const { data } = await api.get<RegistroHoras[]>('/registro-horas/', {
+          params: { usuario_id: user.id },
+        });
+        console.log('response do registro de horas', data);
+        setRegistroHoras(data);
+        setRegistroHorasFullList(data);
+        return;
       }
-    };
 
-    type Filtros = { mes: string; ano: string; cliente: string };
+      // Senão, pega tudo e filtra no cliente como fallback
+      const { data } = await api.get<RegistroHoras[]>('/registro-horas/');
+      const lista = isOperador && user?.id
+        ? data.filter(r => r.usuario_id === user.id)
+        : data;
 
-  const handleFiltro = ({ mes, ano, cliente }: Filtros) => {
-    console.log('Filtro recebido:', { mes, ano, cliente });
-
-    // Caso não tenha nenhum filtro, retorna a lista completa
-    if (!mes && !ano && !cliente) {
-      console.log('Sem filtros: resetando lista');
-      setRegistrosFiltrados([]);
-      setRegistroHoras(registroHorasFullList);
-      return;
+      setRegistroHoras(lista);
+      setRegistroHorasFullList(lista);
+    } catch (error) {
+      console.error('Erro ao buscar registro de horas:', error);
     }
+  };
 
-    // Base da filtragem SEMPRE parte da lista original
+  type Filtros = { clienteId: number | null; obraId: number | null; usuario: string };
+
+  const handleFiltro = ({ clienteId, obraId, usuario }: Filtros) => {
     let filtrados = [...registroHorasFullList];
 
-    if (ano && mes) {
-      console.log('Filtrando por ano e mês');
-      filtrados = filtrados.filter((r) => r.data.startsWith(`${ano}-${mes}`));
-    } else if (ano) {
-      console.log('Filtrando por ano');
-      filtrados = filtrados.filter((r) => r.data.startsWith(`${ano}`));
+    if (clienteId) {
+      filtrados = filtrados.filter(r => (r.cliente_id ?? r.cliente?.id ?? null) === clienteId);
     }
-
-    if (cliente) {
-      console.log('Filtrando por cliente');
-      filtrados = filtrados.filter((r) =>
-        r.cliente?.toLowerCase().includes(cliente.toLowerCase())
-      );
+    if (obraId) {
+      filtrados = filtrados.filter(r => (r.obra_id ?? r.obra?.id ?? null) === obraId);
     }
-
-    console.log('Resultado da filtragem:', filtrados);
+    if (usuario) {
+      const u = usuario.toLowerCase();
+      filtrados = filtrados.filter(r => (r.user?.name || "").toLowerCase().includes(u));
+    }
 
     setRegistrosFiltrados(filtrados);
     setRegistroHoras(filtrados);
+    setCurrentPage(1);
   };
+
+  // const handleFiltro = ({ mes, ano, cliente, usuario }: Filtros) => {
+  //   console.log('Filtro recebido:', { mes, ano, cliente, usuario });
+
+  //   // Caso não tenha nenhum filtro, retorna a lista completa
+  //   if (!mes && !ano && !cliente && !usuario) {
+  //     console.log('Sem filtros: resetando lista');
+  //     setRegistrosFiltrados([]);
+  //     setRegistroHoras(registroHorasFullList);
+  //     return;
+  //   }
+
+  //   // Base da filtragem SEMPRE parte da lista original
+  //   let filtrados = [...registroHorasFullList];
+
+  //   if (ano && mes) {
+  //     console.log('Filtrando por ano e mês');
+  //     filtrados = filtrados.filter((r) => r.data.startsWith(`${ano}-${mes}`));
+  //   } else if (ano) {
+  //     console.log('Filtrando por ano');
+  //     filtrados = filtrados.filter((r) => r.data.startsWith(`${ano}`));
+  //   }
+
+  //   if (cliente) {
+  //     filtrados = filtrados.filter((r) =>
+  //       r.cliente?.nome?.toLowerCase().includes(cliente.toLowerCase())
+  //     );
+  //   }
+
+  //   if (usuario !== '') {
+  //     console.log('Filtrando por usuário');
+  //     filtrados = filtrados.filter((r) =>
+  //       r.user?.name?.toLowerCase().includes(usuario.toLowerCase())
+  //     );
+  //   }
+
+  //   console.log('Resultado da filtragem:', filtrados);
+
+  //   setRegistrosFiltrados(filtrados);
+  //   setRegistroHoras(filtrados);
+  //   setCurrentPage(1);
+  // };
 
   const handleEquipaChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(event.target.value);
@@ -220,7 +463,19 @@ const RegistroHoras: React.FC = () => {
       .filter(Boolean); // remove nulls se algum id não for encontrado
     };
   
+  // const handleDelete = async (id: number) => {
+  //   if (!confirm('Tem certeza que deseja excluir este registo?')) return;
+  //   try {
+  //     await api.delete(`/registro-horas/${id}`);
+  //     fetchRegistroHoras();
+  //   } catch (error) {
+  //     console.error('Erro ao excluir registo:', error);
+  //   }
+  // };
+
   const handleDelete = async (id: number) => {
+    // Segurança extra no cliente: operador não pode excluir
+    if (isOperador) return;
     if (!confirm('Tem certeza que deseja excluir este registo?')) return;
     try {
       await api.delete(`/registro-horas/${id}`);
@@ -230,23 +485,57 @@ const RegistroHoras: React.FC = () => {
     }
   };
 
-  const handleEditClick = (regHora: RegistroHoras) => {
+  const handleEditClick = async (regHora: RegistroHoras) => {
     const equipeSelecionada = regHora.equipa.map(e => e.user.id);
+    console.log('equipeSelecionada', equipeSelecionada);
     setSelectedUsers(equipeSelecionada);
-    console.log('selected user', selectedUsers);
+    setIntemperiePorUserId(
+      Object.fromEntries(
+        regHora.equipa.map(e => [e.user.id, !!(e as any).intemperie])
+      )
+    );
+
+    const cid: number | null = regHora.cliente_id ?? regHora.cliente?.id ?? null;
+    const oid: number | null = regHora.obra_id ?? regHora.obra?.id ?? null;
+
+    if (cid) await fetchObrasByCliente(cid);
+
     setEditingRegistroHoras(regHora);
+    console.log('regHora', regHora);
     setFormData({
       id: regHora.id,
-      cliente: regHora?.cliente ?? '',
-      obra: regHora.obra ?? '',
+      cliente_id: cid,
+      obra_id: oid,
       metros_quadrados: regHora.metros_quadrados ?? '',
       preparacao: regHora.preparacao,
       bruto: regHora.bruto,
       colagem: regHora.colagem,
       acabamento: regHora.acabamento,
       serragem: regHora.serragem,
+      coli: regHora.coli,
       intervencao_maquinas: regHora.intervencao_maquinas,
-      //projeto_id: regHora.projeto_id,
+      intervencao_maquinas_opcoes: {
+        laserComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserComManobrador?.checked, 
+                              m2: regHora?.intervencao_maquinas_opcoes?.laserComManobrador?.m2 ?? '',
+                              empresa: regHora.intervencao_maquinas_opcoes?.laserComManobrador?.empresa ?? ''
+                            },
+        poComManobrador:    { checked: !!regHora.intervencao_maquinas_opcoes?.poComManobrador?.checked, 
+                              m2: regHora?.intervencao_maquinas_opcoes?.poComManobrador?.m2 ?? '',
+                              empresa: regHora.intervencao_maquinas_opcoes?.poComManobrador?.empresa ?? ''
+                            },
+        manobrador:         { checked: !!regHora.intervencao_maquinas_opcoes?.manobrador?.checked, 
+                              qtd: regHora?.intervencao_maquinas_opcoes?.manobrador?.qtd ?? 0 ,
+                              empresa: regHora.intervencao_maquinas_opcoes?.manobrador?.empresa ?? ''
+                            },
+        soLaser:            { checked: !!regHora.intervencao_maquinas_opcoes?.soLaser?.checked, 
+                              m2: regHora?.intervencao_maquinas_opcoes?.soLaser?.m2 ?? '', 
+                              empresa: regHora.intervencao_maquinas_opcoes?.soLaser?.empresa ?? ''
+                            },
+        soPo:               { checked: !!regHora.intervencao_maquinas_opcoes?.soPo?.checked, 
+                              m2: regHora?.intervencao_maquinas_opcoes?.soPo?.m2 ?? '', 
+                              empresa: regHora.intervencao_maquinas_opcoes?.soPo?.empresa ?? ''
+                            },
+      },
       projeto_id: 1,
       usuario_id: regHora.usuario_id,
       data: regHora.data,
@@ -254,16 +543,64 @@ const RegistroHoras: React.FC = () => {
       equipa: regHora.equipa?.map((e) => ({
         user_id: e.user.id,
         email: e.user.email,
-        name: e.user.name,
-        empresa: e.user.empresa
+        empresa: e.user.empresa,
+        intemperie: !!intemperiePorUserId[e.user.id],
       })) ?? [],
     });
-    setSelectedUsers(equipeSelecionada);
+
     setIsEditing(true);
     setModalAberto(true);
   };
 
+  // const handleEditClick = async (regHora: RegistroHoras) => {
+  //   const equipeSelecionada = regHora.equipa.map(e => e.user.id);
+  //   setSelectedUsers(equipeSelecionada);
+  //   console.log('selected user', selectedUsers);
+  //   const cid = regHora.cliente_id ?? null;
+  //   if (cid) await fetchObrasByCliente(cid);  // garante a lista certa no select
+
+  //   setEditingRegistroHoras(regHora);
+  //   setFormData({
+  //     id: regHora.id,
+  //     cliente_id: cid,
+  //     obra_id: regHora.obra_id ?? null,
+  //     // cliente: regHora?.cliente ?? '',
+  //     // obra: regHora.obra ?? '',
+  //     metros_quadrados: regHora.metros_quadrados ?? '',
+  //     preparacao: regHora.preparacao,
+  //     bruto: regHora.bruto,
+  //     colagem: regHora.colagem,
+  //     acabamento: regHora.acabamento,
+  //     serragem: regHora.serragem,
+  //     intervencao_maquinas: regHora.intervencao_maquinas,
+  //     intervencao_maquinas_opcoes: {
+  //       laserComManobrador: { checked: false, m2: '' },
+  //       poComManobrador:    { checked: false, m2: '' },
+  //       manobrador:         { checked: false, qtd: 1 },
+  //       soLaser:            { checked: false, m2: '' },
+  //       soPo:               { checked: false,  m2: '' },
+  //     } as IntervencaoMaquinasOpcoes,
+  //     //projeto_id: regHora.projeto_id,
+  //     projeto_id: 1,
+  //     usuario_id: regHora.usuario_id,
+  //     data: regHora.data,
+  //     horas: regHora?.horas ?? '',
+  //     equipa: regHora.equipa?.map((e) => ({
+  //       user_id: e.user.id,
+  //       email: e.user.email,
+  //       name: e.user.name,
+  //       empresa: e.user.empresa
+  //     })) ?? [],
+  //   });
+  //   setSelectedUsers(equipeSelecionada);
+  //   setIsEditing(true);
+  //   setModalAberto(true);
+  // };
+
   const handleSalvarRegistroHoras = async () => {
+    if (isSubmitting) return; // evita duplo clique
+      setIsSubmitting(true);
+
     try {
       
       const equipa_user = selectedUsers
@@ -273,13 +610,23 @@ const RegistroHoras: React.FC = () => {
         return {
           user_id: user.id,
           email: user.email,
+          empresa: user.empresa,
+          intemperie: !!intemperiePorUserId[user.id]
         };
       })
       .filter(Boolean); // remove nulls se algum id não for encontrado
       
-      if(!formData.data || !formData.cliente || !formData.obra) {
-        alert('Por favor, preencha todos os campos obrigatórios. Data, Cliente e Obra.');
-        return
+      const cid = formData.cliente_id && formData.cliente_id > 0 ? formData.cliente_id : null;
+      const oid = formData.obra_id && formData.obra_id > 0 ? formData.obra_id : null;
+
+      if (!formData.data || cid == null || oid == null) {
+        showNotice('error', 'Preencha Data, Cliente e Obra.');
+        return;
+      }
+
+      if (!formData.data || cid == null || oid == null) {
+        alert('Por favor, preencha Data, Cliente e Obra.');
+        return;
       }
 
 
@@ -291,8 +638,9 @@ const RegistroHoras: React.FC = () => {
           data: formData.data,
           //horas: parseFloat(formData.horas),
 
-          cliente: formData.cliente,
-          obra: formData.obra,
+          cliente_id: cid,
+          obra_id: oid,
+          
           metros_quadrados: formData.metros_quadrados,
 
           preparacao: !!formData.preparacao,
@@ -300,7 +648,11 @@ const RegistroHoras: React.FC = () => {
           colagem: !!formData.colagem,
           acabamento: !!formData.acabamento,
           serragem: !!formData.serragem,
+          coli: !!formData.coli,
           intervencao_maquinas: !!formData.intervencao_maquinas,
+          intervencao_maquinas_opcoes: formData.intervencao_maquinas
+            ? formData.intervencao_maquinas_opcoes
+            : null,
 
           equipa: equipa_user,
       };
@@ -311,23 +663,37 @@ const RegistroHoras: React.FC = () => {
         console.log('edit selected user', selectedUsers);
 
         await api.put(`/registro-horas/${editingRegistroHoras.id}`,payload);
+        showNotice('success', 'Registo de trabalho atualizado com sucesso.');
       } else {
         console.log('create selected user', selectedUsers);
         await api.post('/registro-horas/', payload);
+        showNotice('success', 'Registo de trabalho criado com sucesso.');
       }
 
       resetForm();
       fetchRegistroHoras();
       setSelectedUsers([]);
-    } 
-    catch (error: any) {
-      if (error.response) {
-        console.error("Erro na resposta:", error.response.data);
-        alert(JSON.stringify(error.response.data.detail, null, 2));
-      } else {
-        console.error("Erro genérico:", error.message);
-      }
     }
+    catch (error: any) {
+      const msg = error?.response?.data?.detail
+        ? (Array.isArray(error.response.data.detail)
+            ? error.response.data.detail.map((d:any)=>d.msg||JSON.stringify(d)).join('\n')
+            : String(error.response.data.detail))
+        : (error?.message || 'Erro inesperado ao salvar.');
+      console.error(error);
+      showNotice('error', msg, 6000);
+    } finally {
+      setIsSubmitting(false);
+    } 
+    // catch (error: any) {
+    //   if (error.response) {
+    //     console.error("Erro na resposta:", error.response.data);
+    //     alert(JSON.stringify(error.response.data.detail, null, 2));
+    //   } else {
+    //     console.error("Erro genérico:", error.message);
+    //   }
+    // }
+
   };
 
   const resetForm = () => {
@@ -335,19 +701,222 @@ const RegistroHoras: React.FC = () => {
       projeto_id: 0,
       data: '',
       horas: '',
-      cliente: '',
-      obra: '',
+      //cliente: '',
+      //obra: '',
+      cliente_id: null,
+      obra_id: null,
       metros_quadrados: '',
       preparacao: false,
       bruto: false,
       colagem: false,
       acabamento: false,
       serragem: false,
+      coli: false,
       intervencao_maquinas: false,
+      intervencao_maquinas_opcoes: {
+        laserComManobrador: { checked: false, m2: '' },
+        poComManobrador:    { checked: false, m2: '' },
+        manobrador:         { checked: false, qtd: 1 },
+        soLaser:            { checked: false, m2: '' },
+        soPo:               { checked: false,  m2: '' },
+      } as IntervencaoMaquinasOpcoes,
       equipa: [] as { user_id: number; email: string, empresa: string }[]});
     setEditingRegistroHoras(null);
     setIsEditing(false);
     setModalAberto(false);
+  };
+
+  const toggleOpcaoIntervencao = (key: keyof IntervencaoMaquinasOpcoes, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        [key]: {
+          ...(prev.intervencao_maquinas_opcoes as IntervencaoMaquinasOpcoes)[key],
+          checked
+        }
+      }
+    }));
+  };
+
+  const setValorM2 = (key: Exclude<keyof IntervencaoMaquinasOpcoes, 'manobrador'>, m2: string) => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        [key]: {
+          ...(prev.intervencao_maquinas_opcoes as IntervencaoMaquinasOpcoes)[key],
+          m2
+        }
+      }
+    }));
+  };
+
+  const setQtdManobrador = (qtd: number) => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        manobrador: {
+          ...prev.intervencao_maquinas_opcoes!.manobrador,
+          qtd
+        }
+      }
+    }));
+  };
+
+  // const abrirModalClienteObra = () => {
+  //   console.log('abrirModalClienteObra');
+  //   setNovoClienteNome('');
+  //   setNovaObraNome('');
+  //   setNovaObraDescricao('');
+  //   setModalClienteObraAberto(true);
+  // };
+  // const fecharModalClienteObra = () => setModalClienteObraAberto(false);
+
+  // --- CRIAR CLIENTE + OBRA (em sequência) ---
+  // const handleCriarClienteEObra = async () => {
+  //   if (!novoClienteNome.trim() || !novaObraNome.trim()) {
+  //     alert('Preencha o nome do cliente e o nome da obra.');
+  //     return;
+  //   }
+
+  //   try {
+  //     setCriandoClienteObra(true);
+
+  //     // 1) Cria o cliente
+  //     const { data: clienteCriado } = await api.post<Cliente>('/clientes/', {
+  //       nome: novoClienteNome.trim(),
+  //       is_active: true,
+  //     });
+
+  //     // Atualiza a lista de clientes
+  //     setClientes((prev) => [...prev, clienteCriado].sort((a, b) => a.nome.localeCompare(b.nome)));
+
+  //     // 2) Cria a obra vinculada a esse cliente
+  //     const { data: obraCriada } = await api.post<Obra>('/obras/', {
+  //       nome: novaObraNome.trim(),
+  //       descricao: novaObraDescricao?.trim() || null,
+  //       cliente_id: clienteCriado.id,
+  //     });
+
+  //     // Atualiza a lista de obras atual
+  //     setObras((prev) => {
+  //       const nova = [...prev, obraCriada];
+  //       return nova.sort((a, b) => a.nome.localeCompare(b.nome));
+  //     });
+
+  //     // Seleciona os dois no form principal
+  //     setFormData((prev) => ({
+  //       ...prev,
+  //       cliente_id: clienteCriado.id,
+  //       obra_id: obraCriada.id,
+  //     }));
+
+  //     // Se quiser, recarregue as obras desse cliente (garante consistência com backend)
+  //     await fetchObrasByCliente(clienteCriado.id);
+
+  //     setModalClienteObraAberto(false);
+  //   } catch (err: any) {
+  //     console.error(err);
+  //     alert(err?.response?.data?.detail ?? 'Erro ao criar cliente/obra.');
+  //   } finally {
+  //     setCriandoClienteObra(false);
+  //   }
+  // };
+
+  const abrirPopupCliente = () => {
+    setNovoClienteNome('');
+    setShowClientePopup(true);
+  };
+
+  const abrirPopupObra = () => {
+    setNovaObraNome('');
+    setNovaObraDescricao('');
+    // pré-seleciona o cliente atual do form, se houver
+    setObraClienteId(formData.cliente_id ?? null);
+    setShowObraPopup(true);
+  };
+
+  const handleCriarCliente = async () => {
+    if (!novoClienteNome.trim()) { alert('Informe o nome do cliente.'); return; }
+
+    try {
+      setCriandoCliente(true);
+      const { data: clienteCriado } = await api.post<Cliente>('/clientes/', {
+        nome: novoClienteNome.trim(),
+        is_active: true,
+      });
+
+      // adiciona e ordena a lista
+      setClientes(prev => [...prev, clienteCriado].sort((a,b) => a.nome.localeCompare(b.nome)));
+      setObraClienteId(clienteCriado.id);
+      
+      // seleciona o novo cliente no form e limpa a obra (para forçar a escolha)
+      setFormData(prev => ({ ...prev, cliente_id: clienteCriado.id, obra_id: null }));
+
+      // carrega obras do novo cliente (vai vir vazia até criar uma)
+      await fetchObrasByCliente(clienteCriado.id);
+
+      setShowClientePopup(false);
+    } catch (e: any) {
+      alert(e?.response?.data?.detail ?? 'Erro ao criar cliente.');
+    } finally {
+      setCriandoCliente(false);
+    }
+  };
+
+  const handleCriarObra = async () => {
+    const cid = obraClienteId ?? formData.cliente_id;
+    if (!cid) { alert('Selecione um cliente para vincular a obra.'); return; }
+    if (!novaObraNome.trim()) { alert('Informe o nome da obra.'); return; }
+
+    try {
+      setCriandoObra(true);
+      const { data: obraCriada } = await api.post<Obra>('/obras/', {
+        nome: novaObraNome.trim(),
+        descricao: (novaObraDescricao ?? '').trim() || null,
+        cliente_id: cid,
+      });
+
+      // sempre recarrega do backend para garantir consistência
+      await fetchObrasByCliente(cid);
+
+      // assegura cliente_id correto no form
+      setFormData((prev) => ({ ...prev, cliente_id: cid, obra_id: obraCriada.id }));
+
+      setShowObraPopup(false);
+    } catch (e: any) {
+      alert(e?.response?.data?.detail ?? 'Erro ao criar obra.');
+    } finally {
+      setCriandoObra(false);
+    }
+  };
+
+  const renderIntervencoes = (reg: RegistroHoras) => {
+    const o = reg.intervencao_maquinas_opcoes;
+    if (!reg.intervencao_maquinas || !o) return '—';
+
+    const parts: string[] = [];
+
+    if (o.laserComManobrador?.checked) {
+      parts.push(`Laser c/ manobr.: ${o.laserComManobrador.m2 || '0'} m² (${o.laserComManobrador.empresa||'-'})`);
+    }
+    if (o.poComManobrador?.checked) {
+      parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || '0'} m² (${o.poComManobrador.empresa||'-'})`);
+    }
+    if (o.manobrador?.checked) {
+      parts.push(`Manobrador: ${o.manobrador.qtd ?? 1} (${o.manobrador.empresa||'-'})`);
+    }
+    if (o.soLaser?.checked) {
+      parts.push(`Só Laser: ${o.soLaser.m2 || '0'} m² (${o.soLaser.empresa||'-'})`);
+    }
+    if (o.soPo?.checked) {
+      parts.push(`Só Pó: ${o.soPo.m2 || '0'} m² (${o.soPo.empresa||'-'})`);
+    }
+
+    // return parts.length ? parts.join(' • ') : '—';
+    return parts.length ? parts.join(', ') : '—';
   };
 
   // Função para mostrar o nome do usuário pelo ID
@@ -358,22 +927,56 @@ const RegistroHoras: React.FC = () => {
 
   const usuariosPorEmpresa = usuarios.reduce((acc, user) => {
     const empresa = (user.empresa || 'Sem Empresa').trim();
+    //console.log('empresa', empresa);
+    //console.log('user', user);
     if (!acc[empresa]) acc[empresa] = [];
     acc[empresa].push(user);
     return acc;
   }, {} as Record<string, User[]>);
 
-  useEffect(() => {
-    setFormData((prev: any) => ({
+  // quais empresas estão abertas (por nome)
+  
+  const toggleEmpresa = (empresa: string) => {
+    setEmpresasAbertas((prev) => ({
       ...prev,
-      equipa: selectedUsers
+      [empresa]: !prev[empresa],
     }));
-  }, [selectedUsers]);
+  };
+
+  const setEmpresaOpt = (
+    key: keyof IntervencaoMaquinasOpcoes,
+    empresa: string
+  ) => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        [key]: {
+          ...(prev.intervencao_maquinas_opcoes as any)[key],
+          empresa,
+        },
+      },
+    }));
+  };
+
+  function showNotice(type: 'success'|'error'|'info', text: string, timeout = 30000) {
+    setNotice({ type, text });
+    if (timeout) {
+      setTimeout(() => setNotice(null), timeout);
+    }
+  }
+
+  // useEffect(() => {
+  //   setFormData((prev: any) => ({
+  //     ...prev,
+  //     equipa: selectedUsers
+  //   }));
+  // }, [selectedUsers]);
 
   return (
     <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
       <div className="flex justify-between items-center">
-        <h2 className="text-3xl font-bold border-b pb-2 mb-6">Registos de Horas</h2>
+        <h2 className="text-3xl font-bold border-b pb-2 mb-6">Registo de Trabalho</h2>
         
         <Button
           onClick={() => {
@@ -385,114 +988,30 @@ const RegistroHoras: React.FC = () => {
           + Novo Registo
         </Button>
       </div>
-      <div className="flex justify-between items-center">
-        <FiltroRegistros onFilter={handleFiltro} />
-      </div>
-      {/* Tabela */}
-      <div className="rounded-xl shadow overflow-x-auto">
-        <table cellSpacing="0" cellPadding="20" className="w-full table-auto text-sm divide-y divide-gray-200 table-spacing-0">
-          <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide text-left">
-            <tr className="head-lista">
-              <th className="px-4 py-2">Usuário</th>
-              {/* <th className="px-4 py-2">Projeto</th> */}
-              <th className="px-4 py-2">Data</th>
-              {/* <th className="px-4 py-2">Horas</th> */}
-              <th className="px-4 py-2">Cliente</th>
-              <th className="px-4 py-2">Obra</th>
-              <th className="px-4 py-2">m²</th>
-              <th className="px-4 py-2">Equipa</th>
-              <th className="px-4 py-2">Etapas</th>
-              <th className="px-4 py-2">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="bg-gray-50 text-xs text-gray-500 tracking-wide text-left">
-            {registroHoras.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center text-gray-500">Nenhum registo encontrado</td>
-              </tr>
-            ) : (
-              registroHoras
-              .slice((currentPage - 1) * registrosPorPagina, currentPage * registrosPorPagina)
-              .map((reg, index) => (
-                <tr key={reg.id} className={index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
-                  <td className="px-4 py-2">{reg.user?.name}</td>
-                  {/* <td className="px-4 py-2">{reg.projeto?.nome}</td> */}
-                  <td className="px-4 py-2">{reg.data}</td>
-                  {/* <td className="px-4 py-2">{reg.horas}</td> */}
-                  <td className="px-4 py-2">{reg.cliente}</td>
-                  <td className="px-4 py-2">{reg.obra}</td>
-                  <td className="px-4 py-2">{reg.metros_quadrados}</td>
-                  <td className="px-4 py-2">
-                    {reg.equipa?.map(e =>
-                      e.user
-                        ? `${e.user.name} (${e.user.empresa})`
-                        : `ID ${(e.user as any)?.id ?? 'N/A'}`
-                    ).join(', ')}
-                  </td>
-                  {/* <td className="px-4 py-2">{reg.equipa?.map(e => e.user?.name + ' (' + e.user?.empresa + ')' ?? `ID ${e.user?.id ?? 'N/A'}`).join(', ')}</td> */}
-                  {/* <td>{reg.equipa?.map(u => u.nome).join(', ')}</td> */}
-                  <td className="px-4 py-2">
-                    {['preparacao', 'bruto', 'colagem', 'acabamento', 'serragem', 'intervencao_maquinas']
-                      .filter((campo) => (reg as any)[campo]) // workaround temporário se quiser
-                      .map((campo) => campo[0].toUpperCase() + campo.slice(1))
-                      .join(', ')
-                    }
-                  </td>
-                  <td className="px-4 py-2 space-x-2" style={{ float: 'right' }}>
-                    <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => handleEditClick(reg)}>
-                      Editar
-                    </Button>
-                    <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => handleDelete(reg.id)}>
-                      Excluir
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        <div className="flex justify-center mt-4 space-x-2" style={{ margin: '1% 0 1% 0' }}>
-          <button
-            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-            disabled={currentPage === 1}
-            className={`px-3 py-1 rounded ${currentPage === 1 ? 'bg-gray-300 text-gray-600' : 'bg-blue-500 text-white'}`}
-          >
-            Anterior
-          </button>
-
-          {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((page) => (
-            <button
-              key={page}
-              onClick={() => setCurrentPage(page)}
-              className={`px-3 py-1 rounded ${
-                currentPage === page
-                  ? 'bg-blue-700 text-white font-bold'
-                  : 'bg-white text-gray-800 border border-gray-300'
-              }`}
-            >
-              {page}
-            </button>
-          ))}
-
-          <button
-            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPaginas))}
-            disabled={currentPage === totalPaginas}
-            className={`px-3 py-1 rounded ${currentPage === totalPaginas ? 'bg-gray-300 text-gray-600' : 'bg-blue-500 text-white'}`}
-          >
-            Próxima
-          </button>
+      {notice && (
+        <div
+          className={[
+            "rounded-lg px-4 py-2 text-sm border",
+            notice.type === 'success' ? 'bg-green-50 text-green-800 border-green-200' :
+            notice.type === 'error'   ? 'bg-red-50 text-red-800 border-red-200' :
+                                        'bg-blue-50 text-blue-800 border-blue-200'
+          ].join(' ')}
+          role={notice.type === 'error' ? 'alert' : 'status'}
+        >
+          {notice.text}
         </div>
-      </div>
-
+      )}
       {/* Modal de edição/criação */}
       {modalAberto && (
-        <div className="relative inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50" style={{ zIndex: 9999, width: '100%' }}>
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 space-y-4">
+        // <div className="fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 10000, width: '100%' }}>
+        //   <div className="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl shadow-xl">
+        <section className="bg-white rounded-xl shadow-xl border p-6 space-y-4 mb-8
+                      after:content-[''] after:block after:clear-both" style={{ margin: '0 0 2% 0', borderStyle: 'hidden' }}>    
             <h2 className="text-xl font-semibold text-gray-700 mb-2">
               {isEditing ? 'Editar Registro' : 'Novo Registro'}
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 align-float-left">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 align-float-left" style={{ width: '99%' }}>
               <div className="space-y-4 align-float-left" style={{ marginBottom: '1%' }}>
                 <div className="ff-class-form-registro-hora-elements align-float-left" >
                   <Label className="ff-class-form-registro-hora-elements-lbl">Usuário</Label>
@@ -527,7 +1046,7 @@ const RegistroHoras: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, data: e.target.value })}
                   />
                 </div>
-                <div className="ff-class-form-registro-hora-elements align-float-left" >
+                {/* <div className="ff-class-form-registro-hora-elements align-float-left" >
                   <Label className="ff-class-form-registro-hora-elements-lbl">Cliente</Label>
                   <Input
                     value={formData.cliente ?? ''}
@@ -544,20 +1063,203 @@ const RegistroHoras: React.FC = () => {
                     className={`bg-gray-100 cursor-not-allowed px-3 py-1 rounded ${formData?.obra === '' ? 'border-red-500' : 'border-gray-300'}`}
                     onChange={(e) => setFormData({ ...formData, obra: e.target.value })}
                   />
-                </div>
-              
+                </div> */}
+
+                {/* Cliente */}
                 <div className="ff-class-form-registro-hora-elements align-float-left" >
-                  <Label className="ff-class-form-registro-hora-elements-lbl">Metros Quadrados</Label>
-                  <Input
-                    value={formData.metros_quadrados ?? ''}
-                    onChange={(e) => setFormData({ ...formData, metros_quadrados: e.target.value })}
-                  />
+                  <Label className="ff-class-form-registro-hora-elements-lbl">Cliente</Label>
+                  <select
+                    value={formData.cliente_id ?? ''}
+                    onChange={(e) => {
+                      // const v = e.target.value === '' ? null : Number(e.target.value);
+                      // const v = Number(e.target.value);
+                      // setFormData({ ...formData, cliente_id: v, obra_id: null }); // reset obra ao trocar cliente
+                      // fetchObrasByCliente(v);
+                      const v = e.target.value ? Number(e.target.value) : null; // 👈 aqui
+                      setFormData((prev) => ({ ...prev, cliente_id: v, obra_id: null }));
+                      if (v) fetchObrasByCliente(v); else setObras([]);
+                    }}
+                  >
+                    <option value="">Selecione</option>
+                    {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                  </select>
+                  {/* Wrapper âncora do botão + popup */}
+                  <div className="relative inline-block ml-2 align-top" style={{ margin: '0 0 0 1%', width: '70%' }}>
+                    {/* <Button
+                      type="button"
+                      className="btn-bg-blue-500"
+                      style={{ padding: '0.1em 1.2em !important'  }}
+                      onClick={() => {
+                        setNovoClienteNome('');
+                        setNovaObraNome('');
+                        setNovaObraDescricao('');
+                        setShowPopup((v) => !v);
+                      }}
+                    >
+                      + Cliente & Obra
+                    </Button> */}
+
+                    <Button type="button" className="btn-bg-blue-500" onClick={abrirPopupCliente}>
+                      + Cliente
+                    </Button>
+
+                    {/* POPUP: Novo Cliente */}
+                    {showClientePopup && (
+                      <div
+                        className="relative inset-0 z-[12000] flex items-start justify-center p-4 bg-black/40"
+                        role="dialog" aria-modal="true"
+                        style={{ width: '70%' }}
+                        onClick={() => setShowClientePopup(false)}  // fecha ao clicar fora
+                      >
+                        <div
+                          className="bg-white w-full max-w-md rounded-xl shadow-2xl border p-5"
+                          style={{ padding: '2%' }}
+                          onClick={(e) => e.stopPropagation()}      // evita fechar ao clicar dentro
+                        >
+                          <h3 className="text-base font-semibold mb-3">Novo cliente</h3>
+
+                          <div className="space-y-3">
+                            <div>
+                              <Label>Nome do cliente</Label>
+                              <Input
+                                placeholder="Ex.: ACME Ltda"
+                                value={novoClienteNome}
+                                onChange={(e) => setNovoClienteNome(e.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end gap-2 mt-4">
+                            <Button className="btn-bg-gray-500" variant="outline" onClick={() => setShowClientePopup(false)} disabled={criandoCliente}>
+                              Cancelar
+                            </Button>
+                            <Button className="btn-bg-blue-500" onClick={handleCriarCliente} disabled={criandoCliente}>
+                              {criandoCliente ? 'Criando...' : 'Criar'}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                  </div>  
+                  {/* <Button type="button" className="btn-bg-blue-500" onClick={abrirModalClienteObra}>
+                    + Cliente & Obra
+                  </Button> */}
                 </div>
+                {/* <Label>Cliente</Label>
+                <select
+                  value={formData.cliente_id || ''}
+                  onChange={(e) => setFormData({ ...formData, cliente_id: Number(e.target.value), obra_id: 0 })}
+                  className="border rounded px-3 py-1 bg-white"
+                >
+                  <option value="">Selecione</option>
+                  {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                </select> */}
+
+                {/* Obra (carrega pelas do cliente selecionado) */}
+                <div className="ff-class-form-registro-hora-elements align-float-left" >
+                  <Label className="ff-class-form-registro-hora-elements-lbl">Obra</Label>
+                  <select
+                    value={formData.obra_id ?? ''}                  // '' quando null
+                    onChange={(e) => setFormData({
+                      ...formData,
+                      obra_id: e.target.value ? Number(e.target.value) : null,
+                    })}
+                    disabled={!formData.cliente_id}
+                    className="border rounded px-3 py-1 bg-white"
+                  >
+                    <option value="">Selecione</option>
+                    {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                  </select>
+                  <div className="relative inline-block ml-2 align-top" style={{ margin: '0 0 0 1%', width: '85%' }}>
+                    <Button type="button" className="btn-bg-blue-500" onClick={abrirPopupObra}>
+                      + Obra
+                    </Button>
+                    {/* POPUP: Nova Obra */}
+                    {showObraPopup && (
+                      <div
+                        className="relative inset-0 z-[12000] flex items-start justify-center p-4 bg-black/40"
+                        style={{ width: '85%' }}
+                        role="dialog" aria-modal="true"
+                        onClick={() => setShowObraPopup(false)}
+                      >
+                        <div
+                          className="bg-white w-full max-w-lg rounded-xl shadow-2xl border p-5"
+                          style={{ padding: '2%' }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <h3 className="text-base font-semibold mb-3">Nova obra</h3>
+
+                          <div className="space-y-3">
+                            <div>
+                              <Label>Cliente da obra</Label>
+                              <select
+                                className="border rounded px-3 py-1 w-full bg-white"
+                                value={obraClienteId ?? ''}
+                                onChange={(e) => setObraClienteId(e.target.value ? Number(e.target.value) : null)}
+                              >
+                                <option value="">Selecione</option>
+                                {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                              </select>
+                            </div>
+
+                            <div>
+                              <Label>Nome da obra</Label>
+                              <Input
+                                placeholder="Ex.: 1194"
+                                value={novaObraNome}
+                                onChange={(e) => setNovaObraNome(e.target.value)}
+                              />
+                            </div>
+
+                            <div>
+                              <Label>Descrição (opcional)</Label>
+                              <Input
+                                placeholder="Descrição da obra"
+                                value={novaObraDescricao}
+                                onChange={(e) => setNovaObraDescricao(e.target.value)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end gap-2 mt-4">
+                            <Button className="btn-bg-gray-500" variant="outline" onClick={() => setShowObraPopup(false)} disabled={criandoObra}>
+                              Cancelar
+                            </Button>
+                            <Button className="btn-bg-blue-500" onClick={handleCriarObra} disabled={criandoObra}>
+                              {criandoObra ? 'Criando...' : 'Criar e selecionar'}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* <Label>Obra</Label>
+                <select
+                  value={formData.obra_id || ''}
+                  onChange={(e) => setFormData({ ...formData, obra_id: Number(e.target.value) })}
+                  disabled={!formData.cliente_id}
+                  className="border rounded px-3 py-1 bg-white"
+                >
+                  <option value="">Selecione</option>
+                  {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
+                </select> */}
+              
+                
+              </div>
+              <div className="ff-class-form-registro-hora-elements align-float-left" >
+                <Label className="ff-class-form-registro-hora-elements-lbl">Metros Quadrados</Label>
+                <Input
+                  value={formData.metros_quadrados ?? ''}
+                  onChange={(e) => setFormData({ ...formData, metros_quadrados: e.target.value })}
+                />
               </div>
               {/* Campos booleanos como checkboxes */}
               <div className="align-float-left" style={{ marginBottom: '1%' }}>
                 <label className="block text-sm font-medium text-gray-700 ff-class-form-registro-hora-elements-100">Descrição de Serviço</label>
-                {["preparacao", "bruto", "colagem", "acabamento", "serragem", "intervencao_maquinas"].map((field) => (
+                {["preparacao", "bruto", "colagem", "acabamento", "serragem", "coli", "intervencao_maquinas"].map((field) => (
                   <div key={field} className="mt-1 grid grid-cols-2 gap-2" style={{ float: 'left' }}>
                     <label key={field} className="flex items-center space-x-2">
                       <input
@@ -575,19 +1277,224 @@ const RegistroHoras: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <div className="mt-1 space-y-3">
-                <div className="bg-red-100 p-4 rounded text-black">
-                  Se você está vendo essa cor vermelha clara, Tailwind está funcionando
+              {formData.intervencao_maquinas && (
+                <div className="sm:col-span-2 mt-2 p-4 rounded-xl border border-gray-200 bg-gray-50">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                    Opções de Intervenção de Máquinas
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Máq Laser c/ manobrador (m2) */}
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.intervencao_maquinas_opcoes.laserComManobrador?.checked}
+                        onChange={(e) => toggleOpcaoIntervencao('laserComManobrador', e.target.checked)}
+                      />
+                      <span className="min-w-[14ch]">Máq Laser c/ manobrador (m²)</span>
+                      <Input
+                        type="number"
+                        placeholder="m²"
+                        className="w-32"
+                        disabled={!formData.intervencao_maquinas_opcoes.laserComManobrador?.checked}
+                        value={formData.intervencao_maquinas_opcoes.laserComManobrador?.m2}
+                        onChange={(e) => setValorM2('laserComManobrador', e.target.value)}
+                      />
+                      <select
+                        className="border rounded px-2 py-1"
+                        disabled={!formData.intervencao_maquinas_opcoes.laserComManobrador?.checked}
+                        value={formData.intervencao_maquinas_opcoes.laserComManobrador?.empresa || ""}
+                        onChange={(e) => setEmpresaOpt('laserComManobrador', e.target.value)}
+                      >
+                        <option value="">Empresa</option>
+                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
+                      </select>
+                    </label>
+
+                    {/* Máq Pó c/ manobrador (m2) */}
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.intervencao_maquinas_opcoes.poComManobrador?.checked}
+                        onChange={(e) => toggleOpcaoIntervencao('poComManobrador', e.target.checked)}
+                      />
+                      <span className="min-w-[14ch]">Máq Pó c/ manobrador (m²)</span>
+                      <Input
+                        type="number"
+                        placeholder="m²"
+                        className="w-32"
+                        disabled={!formData.intervencao_maquinas_opcoes.poComManobrador?.checked}
+                        value={formData.intervencao_maquinas_opcoes.poComManobrador?.m2}
+                        onChange={(e) => setValorM2('poComManobrador', e.target.value)}
+                      />
+                      <select
+                        className="border rounded px-2 py-1"
+                        disabled={!formData.intervencao_maquinas_opcoes.poComManobrador?.checked}
+                        value={formData.intervencao_maquinas_opcoes.poComManobrador?.empresa || ""}
+                        onChange={(e) => setEmpresaOpt('poComManobrador', e.target.value)}
+                      >
+                        <option value="">Empresa</option>
+                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
+                      </select>
+                    </label>
+
+                    {/* Manobrador (Quantidade 1 ou 2) */}
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.intervencao_maquinas_opcoes.manobrador?.checked}
+                        onChange={(e) => toggleOpcaoIntervencao('manobrador', e.target.checked)}
+                      />
+                      <span className="min-w-[14ch]">Manobrador (Qtd 1 ou 2)</span>
+                      <Input
+                        type="number"
+                        className="w-24"
+                        min={1}
+                        max={2}
+                        disabled={!formData.intervencao_maquinas_opcoes.manobrador?.checked}
+                        value={formData.intervencao_maquinas_opcoes.manobrador?.qtd}
+                        onChange={(e) => setQtdManobrador(Math.max(1, Math.min(2, Number(e.target.value) || 1)))}
+                      />
+                      <select
+                        className="border rounded px-2 py-1"
+                        disabled={!formData.intervencao_maquinas_opcoes.manobrador?.checked}
+                        value={formData.intervencao_maquinas_opcoes.manobrador?.empresa || ""}
+                        onChange={(e) => setEmpresaOpt('manobrador', e.target.value)}
+                      >
+                        <option value="">Empresa</option>
+                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
+                      </select>
+                    </label>
+
+                    {/* Só Máq Laser (m2) */}
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.intervencao_maquinas_opcoes.soLaser?.checked}
+                        onChange={(e) => toggleOpcaoIntervencao('soLaser', e.target.checked)}
+                      />
+                      <span className="min-w-[14ch]">Só Máq Laser (m²)</span>
+                      <Input
+                        type="number"
+                        placeholder="m²"
+                        className="w-32"
+                        disabled={!formData.intervencao_maquinas_opcoes.soLaser?.checked}
+                        value={formData.intervencao_maquinas_opcoes.soLaser?.m2}
+                        onChange={(e) => setValorM2('soLaser', e.target.value)}
+                      />
+                      <select
+                        className="border rounded px-2 py-1"
+                        disabled={!formData.intervencao_maquinas_opcoes.soLaser?.checked}
+                        value={formData.intervencao_maquinas_opcoes.soLaser?.empresa || ""}
+                        onChange={(e) => setEmpresaOpt('soLaser', e.target.value)}
+                      >
+                        <option value="">Empresa</option>
+                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
+                      </select>
+                    </label>
+
+                    {/* Só Máq Pó (m2) */}
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={formData.intervencao_maquinas_opcoes.soPo?.checked}
+                        onChange={(e) => toggleOpcaoIntervencao('soPo', e.target.checked)}
+                      />
+                      <span className="min-w-[14ch]">Só Máq Pó (m²)</span>
+                      <Input
+                        type="number"
+                        placeholder="m²"
+                        className="w-32"
+                        disabled={!formData.intervencao_maquinas_opcoes.soPo?.checked}
+                        value={formData.intervencao_maquinas_opcoes.soPo?.m2}
+                        onChange={(e) => setValorM2('soPo', e.target.value)}
+                      />
+                      <select
+                        className="border rounded px-2 py-1"
+                        disabled={!formData.intervencao_maquinas_opcoes.soPo?.checked}
+                        value={formData.intervencao_maquinas_opcoes.soPo?.empresa || ""}
+                        onChange={(e) => setEmpresaOpt('soPo', e.target.value)}
+                      >
+                        <option value="">Empresa</option>
+                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
+                      </select>
+                    </label>
+                  </div>
                 </div>
-                {Object.entries(usuariosPorEmpresa).map(([empresa, lista], index) => (
+              )}
+              <div className="mt-1 space-y-3">
+                <label className="block text-sm font-medium text-gray-700" style={{ fontWeight: '700' }} >Equipa</label>
+                {Object.entries(usuariosPorEmpresa).map(([empresa, lista]) => {
+                  const opened = !!empresasAbertas[empresa];
+
+                  return (
+                    <div
+                      key={empresa}
+                      className={`rounded p-3 ${
+                        empresa === 'UNIDAL' || empresa === 'Unidal' ? 'empresa-bg-red-100' :
+                        empresa === 'HPR'    || empresa === 'Hpr'    ? 'empresa-bg-blue-100' :
+                        empresa === 'HPNC'   || empresa === 'Hpnc'   ? 'empresa-bg-yellow-100' :
+                        empresa === 'ARUNCA' || empresa === 'Arunca' ? 'empresa-bg-orange-100' :
+                        empresa === 'UNISOL' || empresa === 'Unisol' ? 'empresa-bg-orange-100' :
+                        empresa === 'FLORIDAMPLITUDE' || empresa === 'Floridamplitude' ? 'empresa-bg-green-100' :
+                        'bg-gray-100'
+                      }`}
+                    >
+                      {/* Cabeçalho clicável */}
+                      <button
+                        type="button"
+                        onClick={() => toggleEmpresa(empresa)}
+                        aria-expanded={opened}
+                        aria-controls={`lista-${empresa}`}
+                        className="w-full flex items-center justify-between -mx-1 px-1 py-1 rounded cursor-pointer hover:bg-black/5"
+                      >
+                        <h4 className="font-semibold text-gray-700">{empresa}</h4>
+                        <span className={`transition-transform ${opened ? 'rotate-90' : ''}`}>▸</span>
+                      </button>
+
+                      {/* Lista de usuários (expand/collapse) */}
+                      <div
+                        id={`lista-${empresa}`}
+                        className={opened ? 'grid grid-cols-2 gap-2 mt-2' : 'hidden'}
+                      >
+                        {lista.map((u) => (
+                          <label key={u.id} className="block text-sm text-gray-800">
+                            <input
+                              type="checkbox"
+                              value={u.id}
+                              checked={selectedUsers.includes(u.id)}
+                              onChange={handleEquipaChange}
+                              className="mr-2"
+                            />
+                            {u.name}
+                            {selectedUsers.includes(u.id) && (
+                              <label className="ml-2 inline-flex items-center gap-1 text-xs">
+                                <input
+                                  type="checkbox"
+                                  checked={!!intemperiePorUserId[u.id]}
+                                  onChange={(e) =>
+                                    setIntemperiePorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
+                                  }
+                                />
+                                <span><b>Intempérie</b></span>
+                              </label>
+                            )}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* {Object.entries(usuariosPorEmpresa).map(([empresa, lista], index) => (
                   <div
                     key={empresa}
                     className={`rounded p-3 ${
-                      empresa === 'Unidal' ? 'empresa-bg-red-100' :
-                      empresa === 'HPR' ? 'empresa-bg-blue-100' :
-                      empresa === 'HPNC' ? 'empresa-bg-yellow-100' :
-                      empresa === 'Aruncasols' ? 'empresa-bg-orange-100' :
-                      empresa === 'Floridamplitude' ? 'empresa-bg-green-100' :
+                      empresa === 'UNIDAL' || empresa === 'Unidal' ? 'empresa-bg-red-100' :
+                      empresa === 'HPR' || empresa === 'Hpr' ? 'empresa-bg-blue-100' :
+                      empresa === 'HPNC' || empresa === 'Hpnc' ? 'empresa-bg-yellow-100' :
+                      empresa === 'ARUNCA' || empresa === 'Arunca' ? 'empresa-bg-orange-100' :
+                      empresa === 'UNISOL' || empresa === 'Unisol' ? 'empresa-bg-orange-100' :
+                      empresa === 'FLORIDAMPLITUDE' || empresa === 'Floridamplitude' ? 'empresa-bg-green-100' :
                       'bg-gray-100'
                     }`}
                   >
@@ -607,7 +1514,7 @@ const RegistroHoras: React.FC = () => {
                       ))}
                     </div>
                   </div>
-                ))}
+                ))} */}
               </div>
 
               {/* <div className="" style={{ marginBottom: '1%', float: 'left' }}>
@@ -630,14 +1537,264 @@ const RegistroHoras: React.FC = () => {
             </div>
 
             <div className="flex justify-end gap-2 div-form-btn">
-              <Button className='generic-btn' variant="outline" onClick={resetForm}>Cancelar</Button>
+              <Button
+                className="btn-bg-blue-500"
+                onClick={handleSalvarRegistroHoras}
+                disabled={isSubmitting}
+                aria-busy={isSubmitting}
+              >
+                {isSubmitting ? 'Salvando...' : (isEditing ? 'Atualizar' : 'Salvar')}
+              </Button>
+              <Button
+                className="generic-btn"
+                variant="outline"
+                onClick={resetForm}
+                disabled={isSubmitting}
+              >
+                Cancelar
+              </Button>
+            </div>
+
+            {/* <div className="flex justify-end gap-2 div-form-btn">
               <Button className='btn-bg-blue-500' onClick={handleSalvarRegistroHoras}>
                 {isEditing ? 'Atualizar' : 'Salvar'}
+              </Button>  
+              <Button className='generic-btn' variant="outline" onClick={resetForm}>Cancelar</Button>
+            </div> */}
+          {/* </div>
+        </div> */}
+          {isSubmitting && (
+            <div className="fixed inset-0 z-[20000] bg-black/30 backdrop-blur-[1px] flex items-center justify-center cursor-wait">
+              <div className="bg-white rounded-lg px-4 py-2 shadow border text-sm">
+                Processando, por favor aguarde…
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+      {/* {modalClienteObraAberto && (
+        <div className="relative inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50
+                          bg-black/50" style={{ zIndex: 11000, width: '100%' }}>
+          <div className="bg-white w-full max-w-md rounded-xl p-5 space-y-4 shadow-xl">
+            <h3 className="text-lg font-semibold">Novo cliente e obra</h3>
+
+            <div className="space-y-3">
+              <div>
+                <Label>Cliente</Label>
+                <Input
+                  placeholder="Nome do cliente"
+                  value={novoClienteNome}
+                  onChange={(e) => setNovoClienteNome(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label>Obra</Label>
+                <Input
+                  placeholder="Nome da obra"
+                  value={novaObraNome}
+                  onChange={(e) => setNovaObraNome(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label>Descrição (opcional)</Label>
+                <Input
+                  placeholder="Descrição da obra"
+                  value={novaObraDescricao}
+                  onChange={(e) => setNovaObraDescricao(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={fecharModalClienteObra} disabled={criandoClienteObra}>
+                Cancelar
+              </Button>
+              <Button className="btn-bg-blue-500" onClick={handleCriarClienteEObra} disabled={criandoClienteObra}>
+                {criandoClienteObra ? 'Criando...' : 'Criar e selecionar'}
               </Button>
             </div>
           </div>
         </div>
-      )}
+      )} */}
+      <div className="flex justify-between items-center">
+        <FiltroRegistros
+          clientes={clientes}          // lista que você já tem no pai
+          obras={obrasFiltro}          // lista carregada conforme o cliente
+          onChangeCliente={loadObrasFiltro}
+          onFilter={handleFiltro}      // nome certo, sem “1”
+        />
+      </div>
+      {/* Tabela */}
+      <div className="rounded-xl shadow overflow-x-auto mt-8 clear-both">
+        <table cellSpacing="0" cellPadding="20" className="w-full table-auto text-sm divide-y divide-gray-200 table-spacing-0">
+          <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide text-left">
+            <tr className="head-lista">
+              <th className="px-4 py-2">Líder equipa</th>
+              {/* <th className="px-4 py-2">Projeto</th> */}
+              <th className="px-4 py-2">Data</th>
+              {/* <th className="px-4 py-2">Horas</th> */}
+              <th className="px-4 py-2">Cliente</th>
+              <th className="px-4 py-2">Obra</th>
+              <th className="px-4 py-2">m²</th>
+              <th className="px-4 py-2">Equipa</th>
+              <th className="px-4 py-2">Etapas</th>
+              <th className="px-4 py-2">Interv. Máq. (detalhes)</th>
+              <th className="px-4 py-2">Ações</th>
+            </tr>
+          </thead>
+          <tbody className="bg-gray-50 text-xs text-gray-500 tracking-wide text-left">
+            {/* {registroHoras.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center text-gray-500">Nenhum registo encontrado</td>
+              </tr>
+            ) : (
+              registroHoras
+              .slice((currentPage - 1) * registrosPorPagina, currentPage * registrosPorPagina)
+              .map((reg, index) => (
+                <tr key={reg.id} className={index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
+                  <td className="px-4 py-2">{reg.user?.name}</td>
+                  <td className="px-4 py-2">{reg.data}</td>
+                  <td className="px-4 py-2">{reg.cliente?.nome ?? '-'}</td>
+                  <td className="px-4 py-2">{reg.obra?.nome ?? '-'}</td>
+                  <td className="px-4 py-2">{reg.metros_quadrados}</td>
+                  <td className="px-4 py-2">
+                    {reg.equipa?.map(e =>
+                      e.user
+                        ? `${e.user.name} (${e.user.empresa})`
+                        : `ID ${(e.user as any)?.id ?? 'N/A'}`
+                    ).join(', ')}
+                  </td>
+                  <td className="px-4 py-2">
+                    {['preparacao', 'bruto', 'colagem', 'acabamento', 'serragem']
+                      .filter((campo) => (reg as any)[campo]) // workaround temporário se quiser
+                      .map((campo) => campo[0].toUpperCase() + campo.slice(1))
+                      .join(', ')
+                    }
+                  </td>
+                  <td className="px-4 py-2 whitespace-pre-wrap">
+                    {renderIntervencoes(reg)}
+                  </td>
+                  <td className="px-4 py-2 space-x-2" style={{ float: 'right' }}>
+                    <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => handleEditClick(reg)}>
+                      Editar
+                    </Button>
+                    <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => handleDelete(reg.id)}>
+                      Excluir
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            )} */}
+            {pageItems.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="text-center text-gray-500">Nenhum registo encontrado</td>
+              </tr>
+            ) : (
+              pageItems.map((reg, index) => (
+                <tr key={reg.id} className={index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
+                  <td className="px-4 py-2">{reg.user?.name}</td>
+                  <td className="px-4 py-2">{reg.data}</td>
+                  <td className="px-4 py-2">{reg.cliente?.nome ?? '-'}</td>
+                  <td className="px-4 py-2">{reg.obra?.nome ?? '-'}</td>
+                  <td className="px-4 py-2">{reg.metros_quadrados}</td>
+                  <td className="px-4 py-2">
+                    {reg.equipa?.map((e, i) => {
+                      const label = e.user
+                        ? `${e.user.name} (${e.user.empresa})`
+                        : `ID ${(e.user as any)?.id ?? 'N/A'}`;
+
+                      return (
+                        <span key={e.user?.id ?? i}>
+                          {i > 0 && ', '}
+                          {label}
+                          {e.intemperie && <strong> [Intempérie]</strong>}
+                        </span>
+                      );
+                    })}
+                  </td>
+                  {/* <td className="px-4 py-2">
+                    {reg.equipa?.map(e =>
+                      e.user
+                        ? `${e.user.name} (${e.user.empresa}) ${e.intemperie ? '[Intempérie]' : ''}`
+                        : `ID ${(e.user as any)?.id ?? 'N/A'}`
+                    ).join(', ')}
+                  </td> */}
+                  <td className="px-4 py-2">
+                    {['preparacao', 'bruto', 'colagem', 'acabamento', 'serragem', 'coli']
+                      .filter((campo) => (reg as any)[campo]) // workaround temporário se quiser
+                      .map((campo) => campo[0].toUpperCase() + campo.slice(1))
+                      .join(', ')
+                    }
+                  </td>
+                  <td className="px-4 py-2 whitespace-pre-wrap">
+                    {renderIntervencoes(reg)}
+                  </td>
+                  <td className="px-4 py-2 space-x-2" style={{ float: 'right' }}>
+                    <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => handleEditClick(reg)}>
+                      Editar
+                    </Button>
+                    {!isOperador && (
+                      <Button
+                        className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm"
+                        variant="destructive"
+                        onClick={() => handleDelete(reg.id)}
+                      >
+                        Excluir
+                      </Button>
+                    )}
+                    {/* <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => handleDelete(reg.id)}>
+                      Excluir
+                    </Button> */}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+        {/* <div className="flex justify-center mt-4 space-x-2" style={{ margin: '1% 0 1% 0' }}>
+          <button
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className={`px-3 py-1 rounded ${currentPage === 1 ? 'bg-gray-300 text-gray-600' : 'bg-blue-500 text-white'}`}
+          >
+            Anterior
+          </button>
+
+          {Array.from({ length: totalPaginas }, (_, i) => i + 1).map((page) => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`px-3 py-1 rounded ${
+                currentPage === page
+                  ? 'bg-blue-700 text-white font-bold'
+                  : 'bg-white text-gray-800 border border-gray-300'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+
+          <button
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPaginas))}
+            disabled={currentPage === totalPaginas}
+            className={`px-3 py-1 rounded ${currentPage === totalPaginas ? 'bg-gray-300 text-gray-600' : 'bg-blue-500 text-white'}`}
+          >
+            Próxima
+          </button>
+        </div> */}
+        {/* Paginação */}
+        <div className="mt-4">
+          <Pagination
+            totalPages={totalPages}       // << do hook usePagination
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            siblingCount={1}
+            boundaryCount={1}
+          />
+        </div>
+      </div>
     </div>
   );
 };

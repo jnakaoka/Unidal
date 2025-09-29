@@ -1,3 +1,4 @@
+#schemas/user.py
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 
@@ -18,7 +19,8 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[EmailStr] = None
     perfil_id: Optional[int] = None
-    empresa: Optional[str]
+    empresa: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class PerfilOut(BaseModel):

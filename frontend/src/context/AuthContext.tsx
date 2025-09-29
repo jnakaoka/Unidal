@@ -60,7 +60,7 @@ const login = async (email: string, password: string): Promise<boolean> => {
     const response = await api.post<{
             access_token: string;
             refresh_token: string;
-        }>("/login", params, {
+        }>("/login/", params, {
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
         });
 

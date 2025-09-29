@@ -1,6 +1,7 @@
+# services/perfil.py
 from sqlalchemy.orm import Session
 from app.models.perfil import Perfil
-from app.schemas.perfil import PerfilCreate
+from app.schemas.perfil import PerfilCreate, PerfilUpdate
 
 def get_all(db: Session):
     return db.query(Perfil).all()
@@ -8,8 +9,8 @@ def get_all(db: Session):
 def get_by_id(db: Session, perfil_id: int):
     return db.query(Perfil).filter(Perfil.id == perfil_id).first()
 
-def create(db: Session, perfil: PerfilCreate):
-    db_perfil = Perfil(**perfil.dict())
+def create(db: Session, payload: PerfilCreate):
+    db_perfil = Perfil(**payload.dict())
     db.add(db_perfil)
     db.commit()
     db.refresh(db_perfil)
@@ -22,11 +23,48 @@ def delete(db: Session, perfil_id: int):
         db.commit()
     return db_perfil
 
-def update(db: Session, perfil_id: int, perfil: PerfilCreate):
+def update(db: Session, perfil_id: int, payload: PerfilUpdate):
     db_perfil = get_by_id(db, perfil_id)
-    if db_perfil:
-        for key, value in perfil.dict().items():
-            setattr(db_perfil, key, value)
-        db.commit()
-        db.refresh(db_perfil)
+    if not db_perfil:
+        return None
+    data = payload.dict(exclude_unset=True)
+    for k, v in data.items():
+        setattr(db_perfil, k, v)
+    db.commit()
+    db.refresh(db_perfil)
     return db_perfil
+
+
+# #services/perfil.py
+# from sqlalchemy.orm import Session
+# from app.models.perfil import Perfil
+# from app.schemas.perfil import PerfilCreate
+
+# def get_all(db: Session):
+#     return db.query(Perfil).all()
+
+# def get_by_id(db: Session, perfil_id: int):
+#     return db.query(Perfil).filter(Perfil.id == perfil_id).first()
+
+# def create(db: Session, perfil: PerfilCreate):
+#     db_perfil = Perfil(**perfil.dict())
+#     db.add(db_perfil)
+#     db.commit()
+#     db.refresh(db_perfil)
+#     return db_perfil
+
+# def delete(db: Session, perfil_id: int):
+#     db_perfil = get_by_id(db, perfil_id)
+#     if db_perfil:
+#         db.delete(db_perfil)
+#         db.commit()
+#     return db_perfil
+
+# def update(db: Session, perfil_id: int, perfil: PerfilCreate):
+#     db_perfil = get_by_id(db, perfil_id)
+#     if db_perfil:
+#         for key, value in perfil.dict().items():
+#             setattr(db_perfil, key, value)
+#         db.commit()
+#         db.refresh(db_perfil)
+#     return db_perfil

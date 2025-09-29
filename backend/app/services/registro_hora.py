@@ -2,48 +2,112 @@
 from sqlalchemy.orm import Session, joinedload
 from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraUpdate, RegistroHoraResponse
 from app.models.registro_hora import RegistroHora, RegistroHoraEquipa
+from app.models.obra import Obra
+from typing import Optional
 
-
+def _validate_cliente_obra(db: Session, cliente_id: int, obra_id: int):
+    obra = db.query(Obra).filter(Obra.id == obra_id).first()
+    if not obra:
+        raise Exception("Obra inválida")
+    if obra.cliente_id != cliente_id:
+        raise Exception("Obra não pertence ao cliente informado")
 
 def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
-    novo_registro = RegistroHora(
-        projeto_id=registro.projeto_id,
-        usuario_id=registro.usuario_id,
-        data=registro.data,
-        horas=registro.horas,
-        cliente=registro.cliente,
-        obra=registro.obra,
-        metros_quadrados=registro.metros_quadrados,
-        preparacao=registro.preparacao,
-        bruto=registro.bruto,
-        colagem=registro.colagem,
-        acabamento=registro.acabamento,
-        serragem=registro.serragem,
-        intervencao_maquinas=registro.intervencao_maquinas,
-    )
+    print("criar_registro_hora", registro)
+    # novo_registro = RegistroHora(
+    #     projeto_id=registro.projeto_id,
+    #     usuario_id=registro.usuario_id,
+    #     data=registro.data,
+    #     horas=registro.horas,
+    #     cliente_id=registro.cliente_id,
+    #     obra_id=registro.obra_id,
+    #     # cliente=registro.cliente,
+    #     # obra=registro.obra,
+    #     metros_quadrados=registro.metros_quadrados,
+    #     preparacao=registro.preparacao,
+    #     bruto=registro.bruto,
+    #     colagem=registro.colagem,
+    #     acabamento=registro.acabamento,
+    #     serragem=registro.serragem,
+    #     intervencao_maquinas=registro.intervencao_maquinas,
+    #     intervencao_maquinas_opcoes=(
+    #         registro.intervencao_maquinas_opcoes.model_dump()
+    #         if registro.intervencao_maquinas_opcoes else None
+    #     ),
+    # )
 
-    db.add(novo_registro)
-    db.commit()
-    db.refresh(novo_registro)
+    # print(novo_registro)
+    # db.add(novo_registro)
+    # db.commit()
+    # db.refresh(novo_registro)
 
-    for membro in registro.equipa:
-        db.add(RegistroHoraEquipa(user_id=membro.user_id, registro_id=novo_registro.id))
+    # for membro in registro.equipa:
+    #     db.add(RegistroHoraEquipa(user_id=membro.user_id, registro_id=novo_registro.id))
 
-    db.commit()
-    db.refresh(novo_registro)
-    return RegistroHoraResponse.from_orm(novo_registro)
+    # db.commit()
+    # db.refresh(novo_registro)
+    # return RegistroHoraResponse.from_orm(novo_registro)
     #return novo_registro
 
-def listar_registros_horas(db: Session):
-    registros = db.query(RegistroHora)\
+    # NÃO incluir 'cliente'/'obra' no dict; só colunas
+    data = registro.model_dump(exclude_none=True)
+    # o dict acima já tem cliente_id/obra_id (sem os objetos)
+
+    # Se sua coluna for JSON, passe dict; se for TEXT, serialize
+    if data.get("intervencao_maquinas_opcoes") is not None:
+        data["intervencao_maquinas_opcoes"] = data["intervencao_maquinas_opcoes"]  # dict puro
+    # else: deixe como None (evita 'null' string)
+
+    equipa_payload = data.pop("equipa", [])  # tratar fora
+    reg = RegistroHora(**data)
+    db.add(reg)
+    db.flush()  # garante reg.id
+
+    for m in equipa_payload:
+        db.add(RegistroHoraEquipa(
+            registro_id=reg.id, 
+            user_id=m["user_id"],
+            intemperie=bool(m.get("intemperie", False))
+        ))
+
+    db.commit()
+    db.refresh(reg)
+    return reg
+
+
+# def listar_registros_horas(db: Session):
+#     registros = db.query(RegistroHora)\
+#         .options(
+#             joinedload(RegistroHora.user),
+#             joinedload(RegistroHora.projeto),
+#             joinedload(RegistroHora.cliente),
+#             joinedload(RegistroHora.obra),
+#             joinedload(RegistroHora.equipa).joinedload(RegistroHoraEquipa.user)
+#         ).order_by(RegistroHora.data.desc()).all()
+    
+#     print('lista registos',[RegistroHoraResponse.from_orm(reg) for reg in registros])
+
+#     # Converte ORM → Schema Pydantic
+#     return [RegistroHoraResponse.from_orm(reg) for reg in registros]
+
+def listar_registros_horas(db: Session, usuario_id: Optional[int] = None):
+    q = (
+        db.query(RegistroHora)
         .options(
             joinedload(RegistroHora.user),
             joinedload(RegistroHora.projeto),
-            joinedload(RegistroHora.equipa).joinedload(RegistroHoraEquipa.user)
-        ).all()
+            joinedload(RegistroHora.cliente),
+            joinedload(RegistroHora.obra),
+            joinedload(RegistroHora.equipa).joinedload(RegistroHoraEquipa.user),
+        )
+        .order_by(RegistroHora.data.desc())
+    )
+    print("usuario_id", usuario_id)
+    if isinstance(usuario_id, int):  # só filtra se for int válido
+        q = q.filter(RegistroHora.usuario_id == usuario_id)
 
-    # Converte ORM → Schema Pydantic
-    return [RegistroHoraResponse.from_orm(reg) for reg in registros]
+    regs = q.all()
+    return [RegistroHoraResponse.from_orm(reg) for reg in regs]
 
 
 # def listar_registros_horas(db: Session):
@@ -56,24 +120,54 @@ def listar_registros_horas(db: Session):
 
 
 def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHoraUpdate):
-    db_registro = db.query(RegistroHora).filter(RegistroHora.id == registro_id).first()
-    if not db_registro:
-        raise Exception("Registro de horas não encontrado")
+    reg = db.get(RegistroHora, registro_id)
+    if not reg:
+        raise Exception(status_code=404, detail="Registro não encontrado")
 
-    for field, value in registro.dict(exclude_unset=True).items():
-        if field != "equipa":
-            setattr(db_registro, field, value)
+    data = registro.model_dump(exclude_none=True)
+    equipa_payload = data.pop("equipa", None)
+
+    # Atualiza campos simples
+    for k, v in data.items():
+        setattr(reg, k, v)
+
+    # (Re)grava equipa se vier no update
+    if equipa_payload is not None:
+        db.query(RegistroHoraEquipa).filter_by(registro_id=reg.id).delete()
+        for m in equipa_payload:
+            db.add(RegistroHoraEquipa(
+                registro_id=reg.id, 
+                user_id=m["user_id"],
+                intemperie=bool(m.get("intemperie", False))
+            ))
 
     db.commit()
+    db.refresh(reg)
+    return reg
+    
+    # db_registro = db.query(RegistroHora).filter(RegistroHora.id == registro_id).first()
+    # if not db_registro:
+    #     raise Exception("Registro de horas não encontrado")
 
-    db.query(RegistroHoraEquipa).filter(RegistroHoraEquipa.registro_id == registro_id).delete()
-    db.commit()
-    for membro in registro.equipa:
-        db.add(RegistroHoraEquipa(user_id=membro.user_id, registro_id=registro_id))
-    db.commit()
+    # data = registro.model_dump(exclude_unset=True)
+    # if "intervencao_maquinas_opcoes" in data and data["intervencao_maquinas_opcoes"] is not None:
+    #     data["intervencao_maquinas_opcoes"] = data["intervencao_maquinas_opcoes"]
 
-    db.refresh(db_registro)
-    return RegistroHoraResponse.from_orm(db_registro)
+    # for field, value in registro.dict(exclude_unset=True).items():
+    #     if field != "equipa":
+    #         setattr(db_registro, field, value)
+    # print(db_registro)
+    # print(data)
+    # db.commit()
+
+    # db.query(RegistroHoraEquipa).filter(RegistroHoraEquipa.registro_id == registro_id).delete()
+    # db.commit()
+    # for membro in registro.equipa:
+    #     db.add(RegistroHoraEquipa(user_id=membro.user_id, registro_id=registro_id))
+    # db.commit()
+
+    # db.refresh(db_registro)
+    # return RegistroHoraResponse.from_orm(db_registro)
     #return db_registro
 
 def deletar_registro_hora(db: Session, registro_id: int):

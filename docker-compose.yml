@@ -38,6 +38,7 @@ services:
     volumes:
       - ./backend:/app
       - ./alembic.ini:/app/alembic.ini
+      - ./backend/app/data:/app/data:rw
     networks:
       - proxy
       - internal

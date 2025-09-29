@@ -10,14 +10,15 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 router = APIRouter()
 
-@router.post("/login", response_model=Token)
+@router.post("/login/", response_model=Token)
 # def login(username: str = Form(...), password: str = Form(...), # db: Session = Depends(get_db)
 # ):
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     # usuario = autenticar_usuario(db, username, password)
+    print(form_data)
     usuario = autenticar_usuario(form_data.username, form_data.password)
     if not usuario:
-        raise HTTPException(status_code=401, detail="Credenciais inválidas")
+        raise HTTPException(status_code=401, detail="Credenciais inválidassss")
 
     tokens = criar_tokens(usuario, usuario.perfil.nome)
     return tokens
