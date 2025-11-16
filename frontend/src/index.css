@@ -473,4 +473,25 @@ a {
 .text-blue-800 { color: #1e40af; }
 .border-blue-200 { border-color: #bfdbfe; }
 
+@media print {
+  /* Esconde sidebar, header ou botões que não interessam */
+  header, nav, .btn-bg-blue-600, .btn-bg-green-600 {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 6px;
+  }
+}
+
 

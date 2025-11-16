@@ -111,7 +111,8 @@ export function Pagination({
           type="button"
           onClick={() => canPrev && onPageChange(currentPage - 1)}
           disabled={!canPrev}
-          className="px-3 py-2 rounded border text-sm disabled:opacity-50"
+          style={{ margin: "2% 0 2% 0" }}
+          className="btn-bg-green-600 hover:bg-blue-700 text-white px-3 py-2 rounded border text-sm disabled:opacity-50"
         >
           Anterior
         </button>
@@ -122,7 +123,8 @@ export function Pagination({
           type="button"
           onClick={() => canNext && onPageChange(currentPage + 1)}
           disabled={!canNext}
-          className="px-3 py-2 rounded border text-sm disabled:opacity-50"
+          style={{ margin: "2% 0 2% 0" }}
+          className="btn-bg-green-600 hover:bg-blue-700 text-white px-3 py-2 rounded border text-sm disabled:opacity-50"
         >
           Próxima
         </button>
@@ -137,7 +139,8 @@ export function Pagination({
                 type="button"
                 onClick={() => canPrev && onPageChange(currentPage - 1)}
                 disabled={!canPrev}
-                className="px-3 py-2 rounded-xl border text-sm disabled:opacity-50"
+                style={{ margin: "2% 0 2% 0" }}
+                className="btn-bg-green-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl border text-sm disabled:opacity-50"
               >
                 Anterior
               </button>
@@ -170,7 +173,8 @@ export function Pagination({
                 type="button"
                 onClick={() => canNext && onPageChange(currentPage + 1)}
                 disabled={!canNext}
-                className="px-3 py-2 rounded-xl border text-sm disabled:opacity-50"
+                style={{ margin: "2% 0 2% 0" }}
+                className="btn-bg-green-600 hover:bg-blue-700 text-white px-3 py-2 rounded-xl border text-sm disabled:opacity-50"
               >
                 Próxima
               </button>

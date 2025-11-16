@@ -8,6 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from app.models.user import User  # ou o caminho correto do modelo
+from app.utils.security import hash_password, verify_password
+from app.utils.passwords import generate_temp_password, check_strength
 
 def get_users(db: Session, is_active: Optional[bool] = None):
     print("flag active",is_active)
@@ -48,23 +50,53 @@ def delete(db: Session, user_id: int):
         db.commit()
     return db_user
 
-def update(db: Session, user_id: int, user: UserCreate):
-    print("usuario update", user)
+def update(db: Session, user_id: int, user_in) -> Optional[User]:
+    """
+    Aceita UserUpdate (ou UserCreate, se você quiser reutilizar). 
+    Atualiza campos parciais e, se 'password' vier preenchida, faz o hash.
+    """
     db_user = get_by_id(db, user_id)
     if not db_user:
         return None
 
-    data = user.dict(exclude_unset=True)
-    if "password" in data and data["password"]:
-        db_user.hashed_password = hash_password(data["password"])
-        data.pop("password")
+    # Pydantic v2: model_dump; v1: dict
+    data = user_in.model_dump(exclude_unset=True) if hasattr(user_in, "model_dump") else user_in.dict(exclude_unset=True)
 
+    # senha?
+    pwd = data.pop("password", None)
+    if pwd:
+        # opcional: validar força, se quiser aplicar política
+        ok, reason = check_strength(pwd)
+        if not ok:
+            raise HTTPException(status_code=400, detail=f"Senha fraca: {reason}")
+        db_user.hashed_password = hash_password(pwd)
+        db_user.must_change_password = False  # ao atualizar explicitamente, não obriga troca
+
+    # demais campos
     for k, v in data.items():
         setattr(db_user, k, v)
 
     db.commit()
     db.refresh(db_user)
     return db_user
+
+# def update(db: Session, user_id: int, user: UserCreate):
+#     print("usuario update", user)
+#     db_user = get_by_id(db, user_id)
+#     if not db_user:
+#         return None
+
+#     data = user.dict(exclude_unset=True)
+#     if "password" in data and data["password"]:
+#         db_user.hashed_password = hash_password(data["password"])
+#         data.pop("password")
+
+#     for k, v in data.items():
+#         setattr(db_user, k, v)
+
+#     db.commit()
+#     db.refresh(db_user)
+#     return db_user
     
     # db_user = get_by_id(db, user_id)
     # if db_user:

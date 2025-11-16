@@ -1,5 +1,5 @@
 #models/registro_hora.py
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date, Float
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date, DateTime, Float
 from sqlalchemy.orm import relationship
 from app.database import Base
 from sqlalchemy import JSON as SAJSON
@@ -33,10 +33,28 @@ class RegistroHora(Base):
     intervencao_maquinas = Column(Boolean, default=False)
     intervencao_maquinas_opcoes = Column(SAJSON, nullable=True)
 
+    modificado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
+    modificado_em  = Column(DateTime(timezone=True), nullable=True)
+
     cliente = relationship("Cliente")
     obra = relationship("Obra")
 
-    user = relationship("User", back_populates="registros")
+    #user = relationship("User", back_populates="registros")
+    
+    # usuário "dono / criador" do registo
+    user = relationship(
+        "User",
+        back_populates="registros",
+        foreign_keys=[usuario_id],
+    )
+
+    # usuário que modificou por último
+    usuario_modificador = relationship(
+        "User",
+        foreign_keys=[modificado_por],
+        viewonly=True,
+    )
+
     equipa = relationship("RegistroHoraEquipa", back_populates="registro", cascade="all, delete-orphan")
     
     # equipa = relationship(

@@ -11,15 +11,56 @@ services:
     networks:
       - proxy
 
+  cloudflared:
+    image: cloudflare/cloudflared:2024.6.0
+    container_name: cloudflared
+    restart: unless-stopped
+    entrypoint: ["cloudflared"]
+    command: ["tunnel","--no-autoupdate", "--config", "/etc/cloudflared/config.yml", "run"]
+    dns:                       # NÃO use 127.0.0.11
+    - 1.1.1.1
+    - 8.8.8.8
+    volumes:
+      - ./etc/cloudflared:/etc/cloudflared:ro
+    networks:
+      - proxy
+
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: cloudflared
+  #   restart: unless-stopped
+  #   networks:
+  #     - proxy
+  #   dns:
+  #     - 1.1.1.1
+  #     - 8.8.8.8
+  #   volumes:
+  #     - ./cloudflared:/etc/cloudflared:ro
+  #   entrypoint: ["cloudflared"]
+  #   command: ["tunnel", "--config", "/etc/cloudflared/config.yml", "run"]
+
+  # Cloudflare Tunnel (serviço separado!)
+  # cloudflared:
+  #   image: cloudflare/cloudflared:latest
+  #   container_name: cloudflared
+  #   command: tunnel --no-autoupdate run --token eyJhIjoiY2Y1ZGM0YmNjYzBjZGJlZWMwODgyODk4MzFlZDBiZDgiLCJ0IjoiZTQzNTNjZjktNDA4ZC00NzU1LWIyZWUtNDk5NGY4YWUwMWU2IiwicyI6IlkyRmlOemt3TXpFdE5EWXhOQzAwTURZekxXRXlZemt0TWpGaU9UQXpaV015T0dFeCJ9
+  #   restart: always
+  #   networks:
+  #     - proxy
+  #   logging:
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+
   # Gerenciador de proxy reverso + HTTPS
   npm:
     image: jc21/nginx-proxy-manager:latest
     container_name: npm
     restart: always
     ports:
-      - "80:80"     # HTTP
-      - "81:81"     # Painel do NPM
-      - "443:443"   # HTTPS
+      - "80:80"     # HTTP (opcional com tunnel; pode deixar)
+      - "81:81"     # Painel do NPM (local)
+      - "443:443"   # HTTPS (opcional com tunnel)
     volumes:
       - npm_data:/data
       - npm_letsencrypt:/etc/letsencrypt
@@ -61,7 +102,8 @@ services:
     build:
       context: ./frontend
       args:
-        VITE_PUBLIC_API_URL: https://api.apontamento-unidal.duckdns.org
+        # VITE_PUBLIC_API_URL: https://api.apontamento-unidal.duckdns.org
+        VITE_PUBLIC_API_URL: https://api.unidal.pt
     container_name: unidal_frontend
     expose:
       - "80"
@@ -81,13 +123,19 @@ volumes:
 
 networks:
   proxy:
-    driver: bridge
+    external: true
+    name: unidal_proxy
   internal:
     driver: bridge
 
+# networks:
+#   proxy:
+#     driver: bridge
+#   internal:
+#     driver: bridge
 
 
-# version: "3" sem funcionar
+
 # services:
 #   # Serviço para atualizar IP no DuckDNS
 #   duckdns:
@@ -128,6 +176,7 @@ networks:
 #     volumes:
 #       - ./backend:/app
 #       - ./alembic.ini:/app/alembic.ini
+#       - ./backend/app/data:/app/data:rw
 #     networks:
 #       - proxy
 #       - internal
@@ -150,7 +199,6 @@ networks:
 #     build:
 #       context: ./frontend
 #       args:
-#         #VITE_API_URL: http://api:8000
 #         VITE_PUBLIC_API_URL: https://api.apontamento-unidal.duckdns.org
 #     container_name: unidal_frontend
 #     expose:
@@ -178,52 +226,4 @@ networks:
 
 
 
-# docker-compose.yml para rodar localmente.
-# version: '3.8'
 
-# services:
-#   api:
-#     build: ./backend
-#     container_name: unidal_api
-#     ports:
-#       - "8000:8000"
-#     depends_on:
-#       - db
-#     environment:
-#       - DATABASE_URL=mysql+mysqlconnector://unidal:admin_135@db/unidal
-#     volumes:
-#       - ./backend:/app
-#       - ./alembic.ini:/app/alembic.ini
-#     # command: ["sh", "-c", "PYTHONPATH=. python app/create_tables.py && PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8000"]
-
-#   db:
-#     image: mysql:8
-#     container_name: unidal_db
-#     restart: always
-#     environment:
-#       MYSQL_DATABASE: unidal
-#       MYSQL_ROOT_PASSWORD: admin_135
-#       MYSQL_USER: unidal
-#       MYSQL_PASSWORD: admin_135
-#     ports:
-#       - "3308:3306"
-#     volumes:
-#       - db_data:/var/lib/mysql
-
-#   frontend:
-#     build:
-#       context: ./frontend
-#       args:
-#         VITE_API_URL: http://api:8000
-#     container_name: unidal_frontend
-#     ports:
-#       - "3010:80"
-#     depends_on:
-#       - api
-#     volumes:
-#     - ./frontend:/app
-#     - /app/node_modules  # evita sobrescrever o node_modules do container
-#     restart: always
-
-# volumes:
-#   db_data:

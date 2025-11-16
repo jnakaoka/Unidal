@@ -1,7 +1,7 @@
 # schemas/registro_hora.py
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict, Field
-from datetime import date
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+from datetime import date, datetime
 
 # --- Saída (read) ---
 class ClienteOut(BaseModel):
@@ -33,6 +33,10 @@ class IntervencaoMaquinasOpcoes(BaseModel):
     manobrador:         ManoOpt = ManoOpt()
     soLaser:            M2Opt = M2Opt()
     soPo:               M2Opt = M2Opt()
+    laserWS940CComManobrador: M2Opt = M2Opt()
+    lazerYZ30ComManobrador: M2Opt = M2Opt()
+    soMaqLaserWS940C: M2Opt = M2Opt()
+    soMaqLazerYZ30: M2Opt = M2Opt()
 
 class MembroEquipa(BaseModel):
     user_id: int  # valor obrigatório (se quiser opcional, use = None)
@@ -41,10 +45,50 @@ class MembroEquipa(BaseModel):
     class Config:
         from_attributes = True
 
+def _ensure_full(v):
+    """Preenche faltantes com defaults do modelo."""
+    if v is None:
+        return IntervencaoMaquinasOpcoes().model_dump()
+    if isinstance(v, dict):
+        return IntervencaoMaquinasOpcoes(**v).model_dump()
+    if isinstance(v, IntervencaoMaquinasOpcoes):
+        return v.model_dump()
+    return v
+
 # --- ENTRADA (create/update): só IDs e campos escalares ---
-class RegistroHoraIn(BaseModel):
+# class RegistroHoraIn(BaseModel):
+#     projeto_id: int
+#     usuario_id: int
+#     data: date
+#     horas: int = 0
+
+#     cliente_id: int | None = None
+#     obra_id: int | None = None
+
+#     metros_quadrados: Optional[str] = None
+#     preparacao: bool = False
+#     bruto: bool = False
+#     colagem: bool = False
+#     acabamento: bool = False
+#     serragem: bool = False
+#     coli: bool = False
+#     intervencao_maquinas: bool = False
+#     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
+
+#     equipa: List[MembroEquipa] = Field(default_factory=list)
+
+#     model_config = ConfigDict(from_attributes=True)
+
+# class RegistroHoraCreate(RegistroHoraIn):
+#     pass
+
+# class RegistroHoraUpdate(RegistroHoraIn):
+#     pass
+
+# -------- CREATE --------
+class RegistroHoraCreate(BaseModel):
     projeto_id: int
-    usuario_id: int
+    usuario_id: int              # <- criador (fixo na criação)
     data: date
     horas: int = 0
 
@@ -65,11 +109,45 @@ class RegistroHoraIn(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class RegistroHoraCreate(RegistroHoraIn):
-    pass
+    @field_validator("intervencao_maquinas_opcoes", mode="before")
+    @classmethod
+    def fill_opcoes_create(cls, v):  # preenche defaults
+        return _ensure_full(v)
 
-class RegistroHoraUpdate(RegistroHoraIn):
-    pass
+
+# -------- UPDATE --------
+class RegistroHoraUpdate(BaseModel):
+    # NÃO tem usuario_id mais!
+    projeto_id: int
+    data: date
+    horas: int = 0
+
+    cliente_id: int | None = None
+    obra_id: int | None = None
+
+    metros_quadrados: Optional[str] = None
+    preparacao: bool = False
+    bruto: bool = False
+    colagem: bool = False
+    acabamento: bool = False
+    serragem: bool = False
+    coli: bool = False
+    intervencao_maquinas: bool = False
+    intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
+
+    equipa: List[MembroEquipa] = Field(default_factory=list)
+
+    modificado_por: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("intervencao_maquinas_opcoes", mode="before")
+    @classmethod
+    def fill_opcoes_update(cls, v):
+        return _ensure_full(v)
+
+
+
 
 # --- SAÍDA (read): pode incluir objetos relacionados ---
 class UserResponse(BaseModel):
@@ -113,6 +191,9 @@ class RegistroHoraResponse(BaseModel):
     coli: Optional[bool] = None
     intervencao_maquinas: Optional[bool] = None
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
+    modificado_por: Optional[int] = None
+    modificado_em: Optional[datetime] = None
+
 
     user: UserResponse
     projeto: ProjetoResponse
@@ -120,6 +201,11 @@ class RegistroHoraResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+    @field_validator("intervencao_maquinas_opcoes", mode="before")
+    @classmethod
+    def fill_opcoes_response(cls, v):
+        return _ensure_full(v)
 
 
 #old

@@ -37,12 +37,12 @@ const Sidebar = () => {
     //   icon: <FolderKanban size={18} />,
     //   showFor: ["admin"],
     // },
-    // {
-    //   label: "Relatórios",
-    //   to: "/relatorios",
-    //   icon: <BarChartBig size={18} />,
-    //   showFor: ["admin", "operador"],
-    // },
+    {
+      label: "Relatórios",
+      to: "/relatorios",
+      icon: <BarChartBig size={18} />,
+      showFor: ["admin"],
+    },
     {
       label: "Usuários",
       to: "/usuarios",
@@ -61,6 +61,12 @@ const Sidebar = () => {
       icon: <UserCog size={18} />,
       showFor: ["admin"],
     },
+    // {
+    //   label: "Trocar Password",
+    //   to: "/change-password",
+    //   icon: <Clock size={18} />,
+    //   showFor: ["admin", "operador"],
+    // },
   ];
 
   const visibleMenuItems = menuItems.filter(item => item.showFor.includes(user?.perfil || ""));

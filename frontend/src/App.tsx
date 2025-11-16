@@ -13,6 +13,7 @@ import DefaultLayout from "./layouts/DefaultLayout";
 import RegistroHoras from "./pages/RegistroHoras";
 import Clientes from "./pages/Clientes";
 import Obras from "./pages/Obras";
+import ChangePassword from "./pages/ChangePassword";
 
 const App: React.FC = () => {
   return (
@@ -36,6 +37,7 @@ const App: React.FC = () => {
         <Route path="registro-horas" element={<RegistroHoras />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="obras" element={<Obras />} />
+        <Route path="change-password" element={<ChangePassword />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />

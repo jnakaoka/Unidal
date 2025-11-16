@@ -1,3 +1,4 @@
+# app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,7 +14,8 @@ from app.routes import relatorio
 app = FastAPI()
 
 ALLOWED_ORIGINS = [
-    "https://apontamento-unidal.duckdns.org",  # front prod
+    #"https://apontamento-unidal.duckdns.org",  # front prod
+    "https://apontamento.unidal.pt",
     "http://localhost:3010",
     "http://127.0.0.1:3010",
 ]
@@ -22,8 +24,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,  # deixe False se usa Authorization: Bearer
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "Origin"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    # allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    # allow_headers=["Authorization", "Content-Type", "Accept", "Origin"],
 )
 
 app.include_router(user_router, prefix="/users", tags=["Users"])

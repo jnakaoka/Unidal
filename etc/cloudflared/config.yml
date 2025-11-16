@@ -1,0 +1,13 @@
+﻿tunnel: c1c61812-8888-4048-94bd-12a04936e9cc
+credentials-file: /etc/cloudflared/c1c61812-8888-4048-94bd-12a04936e9cc.json
+
+protocol: http2
+
+ingress:
+  - hostname: apontamento.unidal.pt
+    service: http://unidal_frontend:80
+
+  - hostname: api.unidal.pt
+    service: http://unidal_api:8000
+
+  - service: http_status:404

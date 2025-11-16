@@ -1,3 +1,4 @@
+// src/routes/index.tsx
 import { createBrowserRouter } from "react-router-dom";
 import DefaultLayout from "../layouts/DefaultLayout";
 import Login from "../pages/Login";
@@ -9,6 +10,7 @@ import PrivateRoute from "./PrivateRoute";
 import Projetos from "../pages/Projetos";
 import RegistroHoras from "../pages/RegistroHoras";
 import Relatorios from "../pages/Relatorios";
+import ChangePassword from "@/pages/ChangePassword";
 
 const router = createBrowserRouter([
   {
@@ -62,6 +64,14 @@ const router = createBrowserRouter([
     element: (
         <PrivateRoute allowedProfiles={['admin', 'operador']}>
         <Relatorios />
+        </PrivateRoute>
+    ),
+  },
+  {
+    path: "/change-password",
+    element: (
+        <PrivateRoute allowedProfiles={['admin', 'operador']}>
+        <ChangePassword />
         </PrivateRoute>
     ),
   },

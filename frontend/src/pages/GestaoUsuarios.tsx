@@ -35,7 +35,7 @@ const GestaoUsuarios: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', empresa: '', password: "", perfil_id: 0 });
+  const [formData, setFormData] = useState({ id: 0, name: '', email: '', empresa: '', password: "", perfil_id: 0 });
   const [perfis, setPerfis] = useState<Perfil[]>([]);
   const registrosPorPagina = 10;
   const {
@@ -68,6 +68,7 @@ const GestaoUsuarios: React.FC = () => {
     is_active: boolean;
   }>) {
     const base = {
+      id: u.id,
       name: u.name,
       email: u.email,
       empresa: u.empresa,
@@ -251,7 +252,7 @@ const GestaoUsuarios: React.FC = () => {
 
   const handleNovoUsuario = () => {
     const perfilInicial = perfis[0]?.id || 0;
-    setFormData({ name: "", email: "", empresa: "", password: "", perfil_id: perfilInicial });
+    setFormData({id: 0, name: "", email: "", empresa: "", password: "", perfil_id: perfilInicial });
     setModalAberto(true);
     setEditingUser(null);
   };
@@ -271,10 +272,11 @@ const GestaoUsuarios: React.FC = () => {
     console.log('user.perfil', user.perfil);
     console.log('user', user);
     setFormData({
+      id: user.id,
       name: user.name,
       email: user.email,
       empresa: user.empresa,
-      password: user.password,
+      password: "",
       perfil_id: typeof user.perfil === 'object' ? user.perfil.id : user.perfil,
     });
     console.log('formData.perfil_id:', formData.perfil_id, typeof formData.perfil_id);
@@ -285,8 +287,8 @@ const GestaoUsuarios: React.FC = () => {
 
   const handleSalvarUsuario = async () => {
     
-    if(!formData.name || !formData.email || !formData.empresa || !formData.password) {
-      alert('Por favor, preencha todos os campos obrigatórios. Nome, Email, Empresa e Senha.');
+    if(!formData.name || !formData.email || !formData.empresa) {
+      alert('Por favor, preencha todos os campos obrigatórios. Nome, Email, Empresa.');
       return
     }
     try {
@@ -296,7 +298,6 @@ const GestaoUsuarios: React.FC = () => {
           name: formData.name,
           email: formData.email,
           empresa: formData.empresa,
-          password: formData.password,
           perfil_id: formData.perfil_id,
         });
       } else {
@@ -323,11 +324,21 @@ const GestaoUsuarios: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', empresa: '', password: '', perfil_id: perfis[0]?.id || 0 });
+    setFormData({ id: 0, name: '', email: '', empresa: '', password: '', perfil_id: perfis[0]?.id || 0 });
     setEditingUser(null);
     setIsEditing(false);
     setModalAberto(false);
   };
+
+  async function definirSenhaTemporaria(userId?:number){
+    try {
+      const { data } = await api.post(`/users/${userId}/temporary-password`);
+      // data = { temporary_password: "Abc12345" }
+      window.prompt("Senha temporária gerada. Copie:", data.temporary_password);
+    } catch(e:any){
+      alert(e?.response?.data?.detail || "Erro ao gerar senha temporária.");
+    }
+  }
 
   return (
     <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
@@ -477,12 +488,18 @@ const GestaoUsuarios: React.FC = () => {
                   ))}
                 </select>
               </div>
+              {/* <div>
+                <Label className="mb-1 block">Senha</Label>
+                <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => definirSenhaTemporaria(formData.id)}>
+                  Gerar nova senha
+                </Button>  
+              </div> */}
               <div className="ff-class-form-registro-hora-elements mb-1 block align-float-left">
                 <Label className="mb-1 block">Senha</Label>
                 <Input
                   type="password"
                   value={formData.password}
-                  required
+                  required={!isEditing}
                   className={`bg-gray-100 cursor-not-allowed px-3 py-1 rounded ${formData?.password === '' ? 'border-red-500' : 'border-gray-300'}`}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
@@ -514,7 +531,7 @@ const GestaoUsuarios: React.FC = () => {
                 onClick={() => {
                   setModalAberto(false);
                   setEditingUser(null);
-                  setFormData({ name: "", email: "", empresa: "", password: "", perfil_id: perfis[0]?.id || 0 });
+                  setFormData({id: 0, name: "", email: "", empresa: "", password: "", perfil_id: perfis[0]?.id || 0 });
                 }}
               >
                 Cancelar
@@ -525,7 +542,18 @@ const GestaoUsuarios: React.FC = () => {
       )}
       <div className="flex justify-between items-end flex-wrap gap-2 mb-3">
         <FiltroUsuarios onFiltrar={handleFiltro} />
+        <div className="flex items-center justify-between gap-4">
+          <label className="flex items-center gap-2 normal-case font-normal">
+            <input
+              type="checkbox"
+              checked={mostrarInativos}
+              onChange={(e) => setMostrarInativos(e.target.checked)}
+            />
+            Mostrar inativos
+          </label>
+        </div>
       </div>
+      
       <div className="rounded-xl shadow overflow-x-auto bg-white">
         <table cellSpacing="0" cellPadding="20" className="w-full table-auto text-sm divide-y divide-gray-200 table-spacing-0">
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide text-left">
@@ -536,16 +564,7 @@ const GestaoUsuarios: React.FC = () => {
               <th className="px-4 py-2">Empresa</th>
               <th className="px-4 py-2">Perfil</th>
               <th className="px-4 py-2">Status</th>
-              <th className="px-4 py-2">Ações 
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={mostrarInativos}
-                    onChange={(e) => setMostrarInativos(e.target.checked)}
-                  />
-                  Mostrar inativos
-                </label>
-              </th>
+              <th colSpan={2} className="px-4 py-2">Ações</th>
             </tr>
           </thead>
           <tbody className="bg-gray-50 text-xs text-gray-500 tracking-wide text-left">

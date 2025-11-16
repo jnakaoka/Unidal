@@ -1,3 +1,4 @@
+#services/auth.py
 from sqlalchemy.orm import Session, joinedload
 from app.models.user import User
 from app.utils.security import verify_password, create_access_token
@@ -64,24 +65,46 @@ def autenticar_usuario(email: str, senha: str):
     #     return None
     # return usuario
 
+# def criar_tokens(usuario: User, perfil: str):
+#     access_token = create_access_token(data={
+#         "sub": usuario.email,   # não passe o objeto inteiro!
+#         "perfil": perfil,
+#         "name": usuario.name,
+#         "id": usuario.id
+#     })
+#     refresh_token = create_refresh_token(data={
+#         "sub": usuario.email,
+#         "name": usuario.name,
+#         "perfil": perfil,
+#         "id": usuario.id
+#     })
+#     return {
+#         "access_token": access_token,
+#         "refresh_token": refresh_token,
+#         "token_type": "bearer"
+#     }
+
 def criar_tokens(usuario: User, perfil: str):
     access_token = create_access_token(data={
-        "sub": usuario.email,   # não passe o objeto inteiro!
-        "perfil": perfil,
+        "sub": usuario.email,
+        "email": usuario.email,
+        "id": usuario.id,
         "name": usuario.name,
-        "id": usuario.id
+        "perfil": perfil
     })
     refresh_token = create_refresh_token(data={
         "sub": usuario.email,
+        "email": usuario.email,
+        "id": usuario.id,
         "name": usuario.name,
-        "perfil": perfil,
-        "id": usuario.id
+        "perfil": perfil
     })
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
+
 
 def login(db: Session, email: str, password: str):
     user = db.query(User).options(joinedload(User.perfil)).filter(User.email == email).first()

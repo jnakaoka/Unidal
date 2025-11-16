@@ -4,6 +4,7 @@ from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraUpdate, Re
 from app.models.registro_hora import RegistroHora, RegistroHoraEquipa
 from app.models.obra import Obra
 from typing import Optional
+from datetime import datetime, timezone
 
 def _validate_cliente_obra(db: Session, cliente_id: int, obra_id: int):
     obra = db.query(Obra).filter(Obra.id == obra_id).first()
@@ -59,6 +60,10 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
     # else: deixe como None (evita 'null' string)
 
     equipa_payload = data.pop("equipa", [])  # tratar fora
+
+    data["modificado_por"] = None
+    data["modificado_em"] = None
+
     reg = RegistroHora(**data)
     db.add(reg)
     db.flush()  # garante reg.id
@@ -95,6 +100,7 @@ def listar_registros_horas(db: Session, usuario_id: Optional[int] = None):
         db.query(RegistroHora)
         .options(
             joinedload(RegistroHora.user),
+            joinedload(RegistroHora.usuario_modificador),
             joinedload(RegistroHora.projeto),
             joinedload(RegistroHora.cliente),
             joinedload(RegistroHora.obra),
@@ -127,9 +133,18 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
     data = registro.model_dump(exclude_none=True)
     equipa_payload = data.pop("equipa", None)
 
+    mod_por = data.pop("modificado_por", None)
+
+    # segurança absoluta: NÃO deixar que alterem usuario_id via update
+    if "usuario_id" in data:
+        data.pop("usuario_id")
+
     # Atualiza campos simples
     for k, v in data.items():
         setattr(reg, k, v)
+
+    reg.modificado_por = mod_por
+    reg.modificado_em  = datetime.now(timezone.utc)
 
     # (Re)grava equipa se vier no update
     if equipa_payload is not None:
