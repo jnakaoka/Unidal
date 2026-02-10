@@ -9,12 +9,17 @@
 
 
 #!/bin/bash
+set -e
+
 echo "Aplicando migrações..."
 alembic upgrade head
 
 echo "Iniciando servidor..."
-uvicorn app.main:app --host 0.0.0.0 --port 8000
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips="*"
 
-exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+# echo "Iniciando servidor..."
+# uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# exec uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 echo "Servidor iniciado!"

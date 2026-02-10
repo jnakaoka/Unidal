@@ -23,7 +23,7 @@ ALLOWED_ORIGINS = [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=False,  # deixe False se usa Authorization: Bearer
+    allow_credentials=True,  # deixe False se usa Authorization: Bearer
     allow_methods=["*"],
     allow_headers=["*"],
     # allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

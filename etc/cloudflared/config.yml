@@ -1,7 +1,8 @@
-﻿tunnel: c1c61812-8888-4048-94bd-12a04936e9cc
+﻿# config.yml
+tunnel: c1c61812-8888-4048-94bd-12a04936e9cc
 credentials-file: /etc/cloudflared/c1c61812-8888-4048-94bd-12a04936e9cc.json
 
-protocol: http2
+protocol: auto
 
 ingress:
   - hostname: apontamento.unidal.pt
@@ -9,5 +10,7 @@ ingress:
 
   - hostname: api.unidal.pt
     service: http://unidal_api:8000
+    originRequest:
+      connectTimeout: 30s
 
   - service: http_status:404

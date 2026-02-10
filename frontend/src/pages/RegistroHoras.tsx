@@ -82,6 +82,12 @@ interface RegistroHoras {
   user?: User;
   projeto?: Projeto;
 
+  origem?: string;
+  destino?: string;
+  matricula: string;
+  km_rodados: number;
+  maquinas_transportadas: string;
+
   equipa: RegistroEquipa[]; // cada item tem a forma { user: { id, name, email } }
 }
 
@@ -114,6 +120,11 @@ const RegistroHoras: React.FC = () => {
     coli: boolean;
     intervencao_maquinas: boolean;
     intervencao_maquinas_opcoes: IntervencaoMaquinasOpcoes;
+    origem?: string;
+    destino?: string;
+    matricula?: string;
+    km_rodados?: string;
+    maquinas_transportadas?: string;
     equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean }[];
   };
   const { user } = useAuth();
@@ -203,6 +214,11 @@ const RegistroHoras: React.FC = () => {
       soMaqLaserWS940C: { checked: false,  m2: '', empresa: '' },
       soMaqLazerYZ30: { checked: false,  m2: '', empresa: '' }, //Só  Maq Lazer YZ30
     },
+    origem: "",
+    destino: "",
+    matricula: "",
+    km_rodados: "",
+    maquinas_transportadas: "",
     equipa: [],
   
     // id: 0, usuario_id: 0,
@@ -237,7 +253,11 @@ const RegistroHoras: React.FC = () => {
   (user as any)?.perfil ??
   "";
 
-  const isOperador = String(rawPerfil).trim().toLowerCase() === "operador";
+  const perfil = String(rawPerfil).trim().toLowerCase();
+  const isOperador = perfil === "operador";
+  const isMotorista = perfil === "motorista";
+  const isOperadorOuMotorista = isOperador || isMotorista;
+  const isAdmin = perfil === "admin" || perfil === "administrador";
 
   // useEffect(() => {
   //   //fetchProjetos();
@@ -365,7 +385,7 @@ const RegistroHoras: React.FC = () => {
   const fetchRegistroHoras = async () => {
     try {
       // Tente filtrar no backend (se a API aceitar ?usuario_id=)
-      if (isOperador && user?.id) {
+      if (isOperadorOuMotorista && user?.id) {
         const { data } = await api.get<RegistroHoras[]>('/registro-horas/', {
           params: { usuario_id: user.id },
         });
@@ -377,7 +397,7 @@ const RegistroHoras: React.FC = () => {
 
       // Senão, pega tudo e filtra no cliente como fallback
       const { data } = await api.get<RegistroHoras[]>('/registro-horas/');
-      const lista = isOperador && user?.id
+      const lista = isOperadorOuMotorista && user?.id
         ? data.filter(r => r.usuario_id === user.id)
         : data;
 
@@ -388,9 +408,9 @@ const RegistroHoras: React.FC = () => {
     }
   };
 
-  type Filtros = { clienteId: number | null; obraId: number | null; usuario: string };
+  type Filtros = { clienteId: number | null; obraId: number | null; usuario: string; funcionario: string };
 
-  const handleFiltro = ({ clienteId, obraId, usuario }: Filtros) => {
+  const handleFiltro = ({ clienteId, obraId, usuario, funcionario }: Filtros) => {
     let filtrados = [...registroHorasFullList];
 
     if (clienteId) {
@@ -402,6 +422,20 @@ const RegistroHoras: React.FC = () => {
     if (usuario) {
       const u = usuario.toLowerCase();
       filtrados = filtrados.filter(r => (r.user?.name || "").toLowerCase().includes(u));
+    }
+    // filtra por FUNCIONÁRIO dentro da equipa (reg.equipa[].user)
+    if (funcionario) {
+      const f = funcionario.toLowerCase();
+      filtrados = filtrados.filter((r) =>
+        r.equipa?.some((e) => {
+          const nome  = e.user?.name  ?? "";
+          const email = e.user?.email ?? "";
+          return (
+            nome.toLowerCase().includes(f) ||
+            email.toLowerCase().includes(f)
+          );
+        })
+      );
     }
 
     setRegistrosFiltrados(filtrados);
@@ -488,7 +522,7 @@ const RegistroHoras: React.FC = () => {
 
   const handleDelete = async (id: number) => {
     // Segurança extra no cliente: operador não pode excluir
-    if (isOperador) return;
+    if (isOperadorOuMotorista) return;
     if (!confirm('Tem certeza que deseja excluir este registo?')) return;
     try {
       await api.delete(`/registro-horas/${id}`);
@@ -570,6 +604,11 @@ const RegistroHoras: React.FC = () => {
       usuario_id: regHora.usuario_id,
       data: regHora.data,
       horas: regHora?.horas ?? '',
+      origem: regHora.origem ?? "",
+      destino: regHora.destino ?? "",
+      matricula: regHora.matricula ?? "",
+      km_rodados: regHora.km_rodados != null ? String(regHora.km_rodados) : "",
+      maquinas_transportadas: regHora.maquinas_transportadas ?? "",
       equipa: regHora.equipa?.map((e) => ({
         user_id: e.user.id,
         email: e.user.email,
@@ -687,6 +726,20 @@ const RegistroHoras: React.FC = () => {
       //     equipa: equipa_user,
       // };
 
+      const motoristaPayload = isMotorista ? {
+        origem: formData.origem || null,
+        destino: formData.destino || null,
+        matricula: formData.matricula || null,
+        km_rodados: formData.km_rodados ? parseFloat(formData.km_rodados) : null,
+        maquinas_transportadas: formData.maquinas_transportadas || null,
+      } : {
+        origem: null,
+        destino: null,
+        matricula: null,
+        km_rodados: null,
+        maquinas_transportadas: null,
+      };
+
       const basePayload = {
         projeto_id: 1,
         data: formData.data,
@@ -706,7 +759,12 @@ const RegistroHoras: React.FC = () => {
         intervencao_maquinas_opcoes: formData.intervencao_maquinas
           ? formData.intervencao_maquinas_opcoes
           : null,
-
+        origem: formData.origem || null,
+        destino: formData.destino || null,
+        matricula: formData.matricula || null,
+        km_rodados: formData.km_rodados ? parseFloat(formData.km_rodados) : null,
+        maquinas_transportadas: formData.maquinas_transportadas || null,
+        motoristaPayload,
         equipa: equipa_user,
       };
 
@@ -1146,7 +1204,7 @@ const RegistroHoras: React.FC = () => {
               {isEditing ? 'Editar Registro' : 'Novo Registro'}
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 align-float-left" style={{ width: '99%' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 align-float-left" style={{ width: '99%', padding: '1%' }}>
               <div className="space-y-4 align-float-left" style={{ marginBottom: '1%' }}>
                 <div className="ff-class-form-registro-hora-elements align-float-left" >
                   <Label className="ff-class-form-registro-hora-elements-lbl">Usuário</Label>
@@ -1834,6 +1892,43 @@ const RegistroHoras: React.FC = () => {
                 </div>
               </div> */}
             </div>
+            
+            {isMotorista || isAdmin && (
+              <div className="sm:col-span-2 mt-2 p-4 rounded-xl border border-gray-200 bg-gray-50">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3" style={{ marginLeft: '1%' }}>Dados de Motorista</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginLeft: '1%' }}>
+                  <div className="ff-class-form-registro-hora-elements align-float-left">
+                    <Label className="ff-class-form-registro-hora-elements-lbl">Origem</Label>
+                    <Input value={formData.origem} onChange={(e)=>setFormData({...formData, origem: e.target.value})}/>
+                  </div>
+
+                  <div className="ff-class-form-registro-hora-elements align-float-left">
+                    <Label className="ff-class-form-registro-hora-elements-lbl">Destino</Label>
+                    <Input value={formData.destino} onChange={(e)=>setFormData({...formData, destino: e.target.value})}/>
+                  </div>
+
+                  <div className="ff-class-form-registro-hora-elements align-float-left">
+                    <Label className="ff-class-form-registro-hora-elements-lbl">Matrícula</Label>
+                    <Input value={formData.matricula} onChange={(e)=>setFormData({...formData, matricula: e.target.value})}/>
+                  </div>
+
+                  <div className="ff-class-form-registro-hora-elements align-float-left">
+                    <Label className="ff-class-form-registro-hora-elements-lbl">KM Rodados</Label>
+                    <Input type="number" value={formData.km_rodados} onChange={(e)=>setFormData({...formData, km_rodados: e.target.value})}/>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <Label className="ff-class-form-registro-hora-elements-lbl">Máquinas transportadas</Label>
+                    <Input
+                      placeholder="Ex.: WS940C, YZ30, Pá carregadora..."
+                      value={formData.maquinas_transportadas}
+                      onChange={(e)=>setFormData({...formData, maquinas_transportadas: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
 
             <div className="flex justify-end gap-2 div-form-btn">
               <Button
@@ -2048,7 +2143,7 @@ const RegistroHoras: React.FC = () => {
                     <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => handleEditClick(reg)}>
                       Editar
                     </Button>
-                    {!isOperador && (
+                    {!isOperadorOuMotorista  && (
                       <Button
                         className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm"
                         variant="destructive"

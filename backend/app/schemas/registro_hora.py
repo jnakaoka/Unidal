@@ -104,6 +104,11 @@ class RegistroHoraCreate(BaseModel):
     coli: bool = False
     intervencao_maquinas: bool = False
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
+    origem: Optional[str] = None
+    destino: Optional[str] = None
+    matricula: Optional[str] = None
+    km_rodados: Optional[float] = None
+    maquinas_transportadas: Optional[str] = None
 
     equipa: List[MembroEquipa] = Field(default_factory=list)
 
@@ -134,6 +139,11 @@ class RegistroHoraUpdate(BaseModel):
     coli: bool = False
     intervencao_maquinas: bool = False
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
+    origem: Optional[str] = None
+    destino: Optional[str] = None
+    matricula: Optional[str] = None
+    km_rodados: Optional[float] = None
+    maquinas_transportadas: Optional[str] = None
 
     equipa: List[MembroEquipa] = Field(default_factory=list)
 
@@ -193,7 +203,11 @@ class RegistroHoraResponse(BaseModel):
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
     modificado_por: Optional[int] = None
     modificado_em: Optional[datetime] = None
-
+    origem: Optional[str] = None
+    destino: Optional[str] = None
+    matricula: Optional[str] = None
+    km_rodados: Optional[float] = None
+    maquinas_transportadas: Optional[str] = None
 
     user: UserResponse
     projeto: ProjetoResponse

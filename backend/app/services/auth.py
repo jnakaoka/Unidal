@@ -7,43 +7,72 @@ from datetime import timedelta
 
 from app.database import SessionLocal
 from app.schemas.token import Token
-from app.utils.tokens import (
-    create_access_token,
-    create_refresh_token,
-    decode_access_token,
-    decode_refresh_token,
-)
+# from app.utils.tokens import (
+#     create_access_token,
+#     create_refresh_token,
+#     decode_access_token,
+#     decode_refresh_token,
+#)
+
+from app.utils.security import create_access_token, create_refresh_token, decode_access_token, decode_refresh_token
+
+# def authenticate_user(db: Session, email: str, password: str):
+#     user = db.query(User).filter(User.email == email).first()
+#     if not user or not verify_password(password, user.hashed_password):
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Credenciais inválidas"
+#         )
+#     access_token = create_access_token(data={"sub": str(user.id), "role": user.perfil_id})
+#     return {"access_token": access_token, "token_type": "bearer"}
 
 def authenticate_user(db: Session, email: str, password: str):
-    user = db.query(User).filter(User.email == email).first()
+    user = db.query(User).options(joinedload(User.perfil)).filter(User.email == email).first()
     if not user or not verify_password(password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciais inválidas"
-        )
-    access_token = create_access_token(data={"sub": str(user.id), "role": user.perfil_id})
-    return {"access_token": access_token, "token_type": "bearer"}
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
+
+    return user
 
 def autenticar_usuario(email: str, senha: str):
     email = (email or "").strip()
-    print(f"[auth] tentando login para: {email!r}")
 
     db = SessionLocal()
-    usuario = (
-        db.query(User)
-        .options(joinedload(User.perfil))
-        .filter(User.email == email)
-        .first()
-    )
-    print(f"[auth] usuario encontrado? {bool(usuario)}")
+    try:
+        usuario = (
+            db.query(User)
+            .options(joinedload(User.perfil))
+            .filter(User.email == email)
+            .first()
+        )
 
-    if usuario:
-        ok = verify_password(senha, usuario.hashed_password)
-        print(f"[auth] verify_password => {ok}")
-        if ok:
+        if usuario and verify_password(senha, usuario.hashed_password):
             return usuario
 
-    return None
+        return None
+    finally:
+        db.close()
+
+
+# def autenticar_usuario(email: str, senha: str):
+#     email = (email or "").strip()
+#     print(f"[auth] tentando login para: {email!r}")
+
+#     db = SessionLocal()
+#     usuario = (
+#         db.query(User)
+#         .options(joinedload(User.perfil))
+#         .filter(User.email == email)
+#         .first()
+#     )
+#     print(f"[auth] usuario encontrado? {bool(usuario)}")
+
+#     if usuario:
+#         ok = verify_password(senha, usuario.hashed_password)
+#         print(f"[auth] verify_password => {ok}")
+#         if ok:
+#             return usuario
+
+#     return None
 
     
     # db = SessionLocal()
@@ -84,54 +113,67 @@ def autenticar_usuario(email: str, senha: str):
 #         "token_type": "bearer"
 #     }
 
-def criar_tokens(usuario: User, perfil: str):
-    access_token = create_access_token(data={
-        "sub": usuario.email,
-        "email": usuario.email,
-        "id": usuario.id,
-        "name": usuario.name,
-        "perfil": perfil
-    })
-    refresh_token = create_refresh_token(data={
-        "sub": usuario.email,
-        "email": usuario.email,
-        "id": usuario.id,
-        "name": usuario.name,
-        "perfil": perfil
-    })
+#Token creation
+def criar_tokens(usuario, perfil_nome: str):
+    payload = {"sub": usuario.email, "perfil": perfil_nome, "user_id": usuario.id}
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer"
+        "access_token": create_access_token(payload),
+        "refresh_token": create_refresh_token(payload),
+        "token_type": "bearer",
     }
+
+# def criar_tokens(usuario: User, perfil: str):
+#     access_token = create_access_token(data={
+#         "sub": usuario.email,
+#         "email": usuario.email,
+#         "id": usuario.id,
+#         "name": usuario.name,
+#         "perfil": perfil
+#     })
+#     refresh_token = create_refresh_token(data={
+#         "sub": usuario.email,
+#         "email": usuario.email,
+#         "id": usuario.id,
+#         "name": usuario.name,
+#         "perfil": perfil
+#     })
+#     return {
+#         "access_token": access_token,
+#         "refresh_token": refresh_token,
+#         "token_type": "bearer"
+#     }
 
 
 def login(db: Session, email: str, password: str):
-    user = db.query(User).options(joinedload(User.perfil)).filter(User.email == email).first()
+    user = authenticate_user(db, email, password)
+    return criar_tokens(user, user.perfil.nome)
 
-    if not user or not verify_password(password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciais inválidas"
-        )
+# def login(db: Session, email: str, password: str):
+#     user = db.query(User).options(joinedload(User.perfil)).filter(User.email == email).first()
 
-    access_token = create_access_token(data={
-        "sub": user.email,
-        "name": user.name,
-        "perfil": user.perfil.nome   # Aqui agora vai funcionar!
-    })
+#     if not user or not verify_password(password, user.hashed_password):
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Credenciais inválidas"
+#         )
 
-    refresh_token = create_refresh_token(data={
-        "sub": user.email,
-        "name": user.name,
-        "perfil": user.perfil
-    })
+#     access_token = create_access_token(data={
+#         "sub": user.email,
+#         "name": user.name,
+#         "perfil": user.perfil.nome   # Aqui agora vai funcionar!
+#     })
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer"
-    }
+#     refresh_token = create_refresh_token(data={
+#         "sub": user.email,
+#         "name": user.name,
+#         "perfil": user.perfil
+#     })
+
+#     return {
+#         "access_token": access_token,
+#         "refresh_token": refresh_token,
+#         "token_type": "bearer"
+#     }
 
 # def login(db: Session, email: str, password: str):
 #     user = authenticate_user(email, password)

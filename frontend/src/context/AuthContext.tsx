@@ -70,76 +70,148 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   if (isLoading) return <Loader />;
 
+  // helper: normaliza perfil
+  const normalizePerfil = (v: any) => String(v ?? "").trim().toLowerCase();
+
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
       const params = new URLSearchParams();
-      params.append('username', email); // FastAPI espera "username"
-      params.append('password', password);
+      params.append("username", email);
+      params.append("password", password);
 
-      // Se precisar enviar cookies/sessão entre domínios, descomente withCredentials
-      const response = await api.post<{
-        access_token?: string;
-        refresh_token?: string;
-      }>('/auth/login/', params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        // withCredentials: true,
-      });
+      const response = await api.post<{ access_token?: string; refresh_token?: string }>(
+        "/auth/login/",
+        params,
+        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
+      );
 
-      if (response.status === 200 && response.data?.access_token) {
-        const access_token = response.data.access_token;
-        const refresh_token = response.data.refresh_token ?? '';
+      if (!(response.status === 200 && response.data?.access_token)) return false;
 
-        // decode JWT (base64url)
-        const parts = access_token.split('.');
-        const payload = parts.length >= 2 ? base64UrlDecode(parts[1]) : null;
+      const access_token = response.data.access_token;
+      const refresh_token = response.data.refresh_token ?? "";
 
-        // fallback para diferentes formatos (sub/email)
-        const payloadEmail = payload?.email ?? payload?.sub ?? email;
-        const payloadName = payload?.name ?? '';
-        const payloadPerfil = payload?.perfil ?? payload?.role ?? '';
-        const payloadId = payload?.id ?? payload?.user_id ?? undefined;
+      // salva tokens
+      localStorage.setItem("access_token", access_token);
+      if (refresh_token) localStorage.setItem("refresh_token", refresh_token);
 
-        // store only what exists
-        localStorage.setItem('access_token', access_token);
-        if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
-        if (payloadEmail) localStorage.setItem('userEmail', payloadEmail);
-        if (payloadName) localStorage.setItem('userName', payloadName);
-        if (payloadPerfil) localStorage.setItem('userPerfil', payloadPerfil);
-        if (payloadId !== undefined) localStorage.setItem('userId', String(payloadId));
+      // seta no axios (importantíssimo para a chamada /me)
+      api.defaults.headers.common.Authorization = `Bearer ${access_token}`;
 
-        setAccessToken(access_token);
-        setUser({
-          id: payloadId,
-          email: payloadEmail,
-          perfil: payloadPerfil,
-          name: payloadName,
-        });
+      // 🔥 busca usuário real no backend (com perfil)
+      // troque o endpoint conforme seu backend
+      const me = await api.get("/auth/me");
 
-        // redireciona conforme perfil
-        if (payloadPerfil === 'admin') {
-          navigate('/dashboard');
-        } else if (payloadPerfil === 'operador') {
-          navigate('/operador-dashboard');
-        } else {
-          navigate('/home');
-        }
+      // tente achar o perfil em formatos comuns
+      const perfilRaw =
+        me.data?.perfil?.nome ??
+        me.data?.perfil_nome ??
+        me.data?.perfil ??
+        me.data?.role ??
+        "";
 
-        return true;
-      }
+      const perfil = normalizePerfil(perfilRaw);
 
-      return false;
+      const id = me.data?.id;
+      const name = me.data?.name ?? me.data?.nome ?? "";
+      const emailReal = me.data?.email ?? email;
+
+      // salva user
+      localStorage.setItem("userEmail", emailReal);
+      localStorage.setItem("userName", name);
+      localStorage.setItem("userPerfil", perfil);
+      if (id != null) localStorage.setItem("userId", String(id));
+
+      setAccessToken(access_token);
+      setUser({ id, email: emailReal, name, perfil });
+
+      // redireciona conforme perfil (normalizado)
+      if (perfil === "admin") navigate("/dashboard");
+      else if (perfil === "operador" || perfil === "motorista") navigate("/operador-dashboard");
+      else navigate("/unauthorized");
+
+      return true;
     } catch (err: any) {
-      console.error('Erro ao fazer login:', err);
-      // tenta extrair mensagem amigável do backend
+      console.error("Erro ao fazer login:", err);
       const msg =
         err?.response?.data?.detail ??
         err?.response?.data ??
         err?.message ??
-        'Erro de rede ou servidor';
-      alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+        "Erro de rede ou servidor";
+      alert(typeof msg === "string" ? msg : JSON.stringify(msg));
       return false;
     }
   };
+
+  // const login = async (email: string, password: string): Promise<boolean> => {
+  //   try {
+  //     const params = new URLSearchParams();
+  //     params.append('username', email); // FastAPI espera "username"
+  //     params.append('password', password);
+
+  //     // Se precisar enviar cookies/sessão entre domínios, descomente withCredentials
+  //     const response = await api.post<{
+  //       access_token?: string;
+  //       refresh_token?: string;
+  //     }>('/auth/login/', params, {
+  //       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+  //       // withCredentials: true,
+  //     });
+
+  //     if (response.status === 200 && response.data?.access_token) {
+  //       const access_token = response.data.access_token;
+  //       const refresh_token = response.data.refresh_token ?? '';
+
+  //       // decode JWT (base64url)
+  //       const parts = access_token.split('.');
+  //       const payload = parts.length >= 2 ? base64UrlDecode(parts[1]) : null;
+
+  //       // fallback para diferentes formatos (sub/email)
+  //       const payloadEmail = payload?.email ?? payload?.sub ?? email;
+  //       const payloadName = payload?.name ?? '';
+  //       const payloadPerfil = payload?.perfil ?? payload?.role ?? '';
+  //       const payloadId = payload?.id ?? payload?.user_id ?? undefined;
+
+  //       // store only what exists
+  //       localStorage.setItem('access_token', access_token);
+  //       if (refresh_token) localStorage.setItem('refresh_token', refresh_token);
+  //       if (payloadEmail) localStorage.setItem('userEmail', payloadEmail);
+  //       if (payloadName) localStorage.setItem('userName', payloadName);
+  //       if (payloadPerfil) localStorage.setItem('userPerfil', payloadPerfil);
+  //       if (payloadId !== undefined) localStorage.setItem('userId', String(payloadId));
+
+  //       setAccessToken(access_token);
+  //       setUser({
+  //         id: payloadId,
+  //         email: payloadEmail,
+  //         perfil: payloadPerfil,
+  //         name: payloadName,
+  //       });
+
+  //       // redireciona conforme perfil
+  //       if (payloadPerfil === 'admin') {
+  //         navigate('/dashboard');
+  //       } else if (payloadPerfil === 'operador' || payloadPerfil === 'motorista') {
+  //         navigate('/operador-dashboard');
+  //       } else {
+  //         navigate('/home');
+  //       }
+
+  //       return true;
+  //     }
+
+  //     return false;
+  //   } catch (err: any) {
+  //     console.error('Erro ao fazer login:', err);
+  //     // tenta extrair mensagem amigável do backend
+  //     const msg =
+  //       err?.response?.data?.detail ??
+  //       err?.response?.data ??
+  //       err?.message ??
+  //       'Erro de rede ou servidor';
+  //     alert(typeof msg === 'string' ? msg : JSON.stringify(msg));
+  //     return false;
+  //   }
+  // };
 
   const logout = () => {
     // se tiver endpoint de logout, pode chamá-lo via logoutService()

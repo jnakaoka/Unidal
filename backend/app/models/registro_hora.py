@@ -33,11 +33,18 @@ class RegistroHora(Base):
     intervencao_maquinas = Column(Boolean, default=False)
     intervencao_maquinas_opcoes = Column(SAJSON, nullable=True)
 
+    # --- MOTORISTA ---
+    origem = Column(String(255), nullable=True)
+    destino = Column(String(255), nullable=True)
+    matricula = Column(String(50), nullable=True)
+    km_rodados = Column(Float, nullable=True)
+    maquinas_transportadas = Column(SAJSON, nullable=True)
+
     modificado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
     modificado_em  = Column(DateTime(timezone=True), nullable=True)
 
-    cliente = relationship("Cliente")
-    obra = relationship("Obra")
+    # cliente = relationship("Cliente")
+    # obra = relationship("Obra")
 
     #user = relationship("User", back_populates="registros")
     

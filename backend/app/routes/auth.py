@@ -6,10 +6,10 @@ from app.services.auth import autenticar_usuario, criar_tokens
 from app.dependencies.auth import get_db, get_current_user, require_role
 from app.models import User
 from app.schemas.token import Token
-from app.utils.jwt import decode_access_token, create_access_token
+# from app.utils.jwt import decode_access_token, create_access_token
 from fastapi.security import OAuth2PasswordRequestForm
 from app.schemas.password import ChangeOwnPasswordInput, AdminResetPasswordInput
-from app.utils.security import verify_password, hash_password
+from app.utils.security import verify_password, hash_password, create_access_token, decode_refresh_token
 from app.utils.passwords import check_strength
 
 #router = APIRouter()
@@ -89,20 +89,44 @@ def logout():
 @router.post("/refresh", response_model=Token)
 def refresh_token(refresh_token: str = Form(...)):
     try:
-        payload = decode_access_token(refresh_token)
+        payload = decode_refresh_token(refresh_token)
         email = payload.get("sub")
         perfil = payload.get("perfil")
-        if email is None or perfil is None:
+
+        if not email or not perfil:
             raise HTTPException(status_code=401, detail="Token inválido")
 
-        new_token = create_access_token({"sub": email, "perfil": perfil})
+        #new_access = create_access_token({"sub": email, "perfil": perfil})
+
+        user_id = payload.get("user_id")
+        data = {"sub": email, "perfil": perfil}
+        if user_id:
+            data["user_id"] = user_id
+        new_access = create_access_token(data)
+
         return {
-            "access_token": new_token,
+            "access_token": new_access,
             "refresh_token": refresh_token,
-            "token_type": "bearer"
+            "token_type": "bearer",
         }
     except JWTError:
         raise HTTPException(status_code=401, detail="Token inválido ou expirado")
+# def refresh_token(refresh_token: str = Form(...)):
+#     try:
+#         payload = decode_access_token(refresh_token)
+#         email = payload.get("sub")
+#         perfil = payload.get("perfil")
+#         if email is None or perfil is None:
+#             raise HTTPException(status_code=401, detail="Token inválido")
+
+#         new_token = create_access_token({"sub": email, "perfil": perfil})
+#         return {
+#             "access_token": new_token,
+#             "refresh_token": refresh_token,
+#             "token_type": "bearer"
+#         }
+#     except JWTError:
+#         raise HTTPException(status_code=401, detail="Token inválido ou expirado")
 
 @router.get("/me")
 def get_me(current_user: User = Depends(get_current_user)):
@@ -149,11 +173,11 @@ def change_own_password(
     return {"detail": "Senha alterada com sucesso."}
 
     # atualiza hash
-    current_user.hashed_password = get_password_hash(payload.new_password)
-    db.add(current_user)
-    db.commit()
+    # # current_user.hashed_password = get_password_hash(payload.new_password)
+    # # db.add(current_user)
+    # # db.commit()
 
-    return {"detail": "Senha alterada com sucesso."}
+    # # return {"detail": "Senha alterada com sucesso."}
 
 
 @router.post("/admin-reset-password")

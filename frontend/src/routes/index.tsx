@@ -16,7 +16,7 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: (
-      <PrivateRoute allowedProfiles={["admin", "operador"]}>
+      <PrivateRoute allowedProfiles={["admin", "operador", "motorista"]}>
         <DefaultLayout />
       </PrivateRoute>
     ),
@@ -38,7 +38,7 @@ const router = createBrowserRouter([
   {
     path: "/operador-dashboard",
     element: (
-      <PrivateRoute allowedProfiles={["operador"]}>
+      <PrivateRoute allowedProfiles={["operador", "motorista"]}>
         <OperadorDashboard />
       </PrivateRoute>
     ),
@@ -54,7 +54,7 @@ const router = createBrowserRouter([
     {
     path: "/registro-horas",
     element: (
-        <PrivateRoute allowedProfiles={["operador"]}>
+        <PrivateRoute allowedProfiles={["operador", "motorista"]}>
         <RegistroHoras />
         </PrivateRoute>
     ),
@@ -62,7 +62,7 @@ const router = createBrowserRouter([
   {
     path: "/relatorios",
     element: (
-        <PrivateRoute allowedProfiles={['admin', 'operador']}>
+        <PrivateRoute allowedProfiles={['admin', 'operador', 'motorista']}>
         <Relatorios />
         </PrivateRoute>
     ),
@@ -70,7 +70,7 @@ const router = createBrowserRouter([
   {
     path: "/change-password",
     element: (
-        <PrivateRoute allowedProfiles={['admin', 'operador']}>
+        <PrivateRoute allowedProfiles={['admin', 'operador', 'motorista']}>
         <ChangePassword />
         </PrivateRoute>
     ),

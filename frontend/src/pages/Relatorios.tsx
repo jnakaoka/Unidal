@@ -16,6 +16,10 @@ type IntervencaoMaquinasOpcoes = {
   manobrador?: { checked?: boolean; qtd?: number; empresa?: string };
   soLaser?: { checked?: boolean; m2?: string; empresa?: string };
   soPo?: { checked?: boolean; m2?: string; empresa?: string };
+  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };  
+  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string }; 
+  soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
+  soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string };
 };
 
 type RegistroHoras = {
@@ -53,7 +57,11 @@ type FiltroMaquinas =
   | "poComManobrador"
   | "manobrador"
   | "soLaser"
-  | "soPo";
+  | "soPo"
+  | "laserWS940CComManobrador"
+  | "lazerYZ30ComManobrador"
+  | "soMaqLaserWS940C"
+  | "soMaqLazerYZ30";
 
 const Relatorios: React.FC = () => {
   // dados
@@ -124,37 +132,36 @@ const Relatorios: React.FC = () => {
   //   return parts.length ? parts.join(" | ") : "—";
   // };
 
-  const resumoEmpresas = (r: RegistroHoras): string => {
-    // mapa: empresa -> { total, intemperie }
-    const map: Record<string, { total: number; intemperie: number }> = {};
+  const resumoEmpresas = (r: RegistroHoras, asHtmlBreak: boolean = false): string => {
+    // mapa: empresa -> { total, intemperie, normais }
+    const map: Record<string, { total: number; intemperie: number; normais: number }> = {};
 
     (r.equipa || []).forEach((e) => {
-      console.log(e.user?.empresa?.substring(0, 7));
       const empRaw = e.user?.empresa?.substring(0, 7) || "Sem Empresa";
       const emp = empRaw.trim() || "Sem Empresa";
 
       if (!map[emp]) {
-        map[emp] = { total: 0, intemperie: 0 };
+        map[emp] = { total: 0, intemperie: 0, normais: 0 };
       }
 
       map[emp].total += 1;
+
       if (e.intemperie) {
         map[emp].intemperie += 1;
+      } else {
+        map[emp].normais += 1;
       }
     });
 
-    // montar string
     const parts = Object.entries(map).map(([empresa, info]) => {
-      const { total, intemperie } = info;
-      // se tiver pelo menos 1 intempérie naquela empresa, inclui
-      if (intemperie > 0) {
-        return `${empresa} (${intemperie} intempérie): ${total}`;
-      }
-      // senão, mantém formato antigo
-      return `${empresa}: ${total}`;
+      const { total, intemperie, normais } = info;
+      return `${empresa} (Intemp.: ${intemperie} | Normais: ${normais} | Total: ${total})`;
     });
 
-    return parts.length ? parts.join(" | ") : "—";
+    if (!parts.length) return "—";
+
+    // quebra de linha: \n para tela (React) e <br /> para HTML de impressão
+    return asHtmlBreak ? parts.join("<br />") : parts.join("\n");
   };
 
 
@@ -173,7 +180,9 @@ const Relatorios: React.FC = () => {
   // };
 
   const maquinasResumo = (r: RegistroHoras): string => {
+    console.log(r.intervencao_maquinas_opcoes);
     const o = r.intervencao_maquinas_opcoes;
+    console.log(o);
     if (!r.intervencao_maquinas || !o) return "—";
 
     const showEmp = (emp?: string) => ` (${emp && emp.trim() ? emp : "-"})`;
@@ -193,6 +202,18 @@ const Relatorios: React.FC = () => {
 
     if (o.soPo?.checked)
     parts.push(`Só Pó: ${o.soPo.m2 || "0"} m²${showEmp(o.soPo.empresa)}`);
+    
+    if(o.laserWS940CComManobrador?.checked)
+    parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || "0"} m²${showEmp(o.laserWS940CComManobrador.empresa)}`);
+    
+    if(o.lazerYZ30ComManobrador?.checked)
+    parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || "0"} m²${showEmp(o.lazerYZ30ComManobrador.empresa)}`);
+    
+    if(o.soMaqLaserWS940C?.checked)
+    parts.push(`Só Laser WS940C: ${o.soMaqLaserWS940C.m2 || "0"} m²${showEmp(o.soMaqLaserWS940C.empresa)}`);
+    
+    if(o.soMaqLazerYZ30?.checked)
+    parts.push(`Só Lazer YZ30: ${o.soMaqLazerYZ30.m2 || "0"} m²${showEmp(o.soMaqLazerYZ30.empresa)}`);
 
     return parts.join(", ");
   };
@@ -256,6 +277,10 @@ const Relatorios: React.FC = () => {
             "manobrador",
             "soLaser",
             "soPo",
+            "laserWS940CComManobrador",
+            "lazerYZ30ComManobrador",
+            "soMaqLaserWS940C",
+            "soMaqLazerYZ30",
           ].includes(filtroMaquinas)
         ) {
           const key = filtroMaquinas as keyof IntervencaoMaquinasOpcoes;
@@ -719,6 +744,10 @@ const Relatorios: React.FC = () => {
             <option value="manobrador">Manobrador</option>
             <option value="soLaser">Só Laser</option>
             <option value="soPo">Só Pó</option>
+            <option value="laserWS940CComManobrador">Laser WS 940C c/ manobrador</option>
+            <option value="lazerYZ30ComManobrador">Lazer YZ30 c/ manobrador</option>
+            <option value="soMaqLaserWS940C">Só Laser WS 940C</option>
+            <option value="soMaqLazerYZ30">Só Lazer YZ30</option>
           </select>
         </div>
 

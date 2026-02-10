@@ -29,7 +29,7 @@ const Sidebar = () => {
       label: "Registro de Horas",
       to: "/registro-horas",
       icon: <Clock size={18} />,
-      showFor: ["admin", "operador"],
+      showFor: ["admin", "operador", "motorista"],
     },
     // {
     //   label: "Projetos",

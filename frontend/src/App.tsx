@@ -24,7 +24,7 @@ const App: React.FC = () => {
       <Route
         path="/"
         element={
-          <PrivateRoute allowedProfiles={["admin", "operador"]}>
+          <PrivateRoute allowedProfiles={["admin", "operador","motorista"]}>
             <DefaultLayout />
           </PrivateRoute>
         }
