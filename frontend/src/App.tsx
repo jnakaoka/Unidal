@@ -7,6 +7,7 @@ import OperadorDashboard from "./pages/OperadorDashboard";
 import NotFound from "./pages/NotFound";
 import PrivateRoute from "./routes/PrivateRoute";
 import Relatorio from "./pages/Relatorios";
+import RelatorioMotorista from "./pages/RelatoriosMotorista";
 import GestaoUsuarios from "./pages/GestaoUsuarios";
 import DefaultLayout from "./layouts/DefaultLayout";
 //import Projetos from "./pages/Projetos";
@@ -32,8 +33,8 @@ const App: React.FC = () => {
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="operador-dashboard" element={<OperadorDashboard />} />
         <Route path="relatorios" element={<Relatorio />} />
+        <Route path="relatoriosmotorista" element={<RelatorioMotorista />} />
         <Route path="usuarios" element={<GestaoUsuarios />} />
-        {/* <Route path="Projetos" element={<Projetos />} /> */}
         <Route path="registro-horas" element={<RegistroHoras />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="obras" element={<Obras />} />

@@ -10,6 +10,7 @@ import PrivateRoute from "./PrivateRoute";
 import Projetos from "../pages/Projetos";
 import RegistroHoras from "../pages/RegistroHoras";
 import Relatorios from "../pages/Relatorios";
+import RelatoriosMotorista from "../pages/RelatoriosMotorista";
 import ChangePassword from "@/pages/ChangePassword";
 
 const router = createBrowserRouter([
@@ -21,72 +22,115 @@ const router = createBrowserRouter([
       </PrivateRoute>
     ),
     children: [
-      {
-        path: "/",
-        element: <Dashboard />,
-      },
+      { path: "/", element: <Dashboard /> },
+
+      { path: "/registro-horas", element: (
+        <PrivateRoute allowedProfiles={["operador", "motorista", "admin"]}>
+          <RegistroHoras />
+        </PrivateRoute>
+      )},
+
+      { path: "/relatorios", element: (
+        <PrivateRoute allowedProfiles={["admin"]}>
+          <Relatorios />
+        </PrivateRoute>
+      )},
+
+      // ✅ AQUI: rota do motorista dentro do layout
+      { path: "/RelatoriosMotorista", element: (
+        <PrivateRoute allowedProfiles={["admin"]}>
+          <RelatoriosMotorista />
+        </PrivateRoute>
+      )},
     ],
   },
-  {
-    path: "/dashboard",
-    element: (
-      <PrivateRoute allowedProfiles={["admin"]}>
-        <Dashboard />
-      </PrivateRoute>
-    ),
-  },
-  {
-    path: "/operador-dashboard",
-    element: (
-      <PrivateRoute allowedProfiles={["operador", "motorista"]}>
-        <OperadorDashboard />
-      </PrivateRoute>
-    ),
-  },
-  {
-    path: "/projetos",
-    element: (
-        <PrivateRoute allowedProfiles={["admin"]}>
-        <Projetos />
-        </PrivateRoute>
-    ),
-    },
-    {
-    path: "/registro-horas",
-    element: (
-        <PrivateRoute allowedProfiles={["operador", "motorista"]}>
-        <RegistroHoras />
-        </PrivateRoute>
-    ),
-  },
-  {
-    path: "/relatorios",
-    element: (
-        <PrivateRoute allowedProfiles={['admin', 'operador', 'motorista']}>
-        <Relatorios />
-        </PrivateRoute>
-    ),
-  },
-  {
-    path: "/change-password",
-    element: (
-        <PrivateRoute allowedProfiles={['admin', 'operador', 'motorista']}>
-        <ChangePassword />
-        </PrivateRoute>
-    ),
-  },
-  {
-    path: "/login",
-    element: <Login />,
-  },
-  {
-    path: "/unauthorized",
-    element: <Unauthorized />,
-  },
-  {
-    path: "*",
-    element: <NotFound />,
-  },
+
+  { path: "/login", element: <Login /> },
+  { path: "/unauthorized", element: <Unauthorized /> },
+  { path: "*", element: <NotFound /> },
 ]);
+
+
+// const router = createBrowserRouter([
+//   {
+//     path: "/",
+//     element: (
+//       <PrivateRoute allowedProfiles={["admin", "operador", "motorista"]}>
+//         <DefaultLayout />
+//       </PrivateRoute>
+//     ),
+//     children: [
+//       {
+//         path: "/",
+//         element: <Dashboard />,
+//       },
+//     ],
+//   },
+//   {
+//     path: "/dashboard",
+//     element: (
+//       <PrivateRoute allowedProfiles={["admin"]}>
+//         <Dashboard />
+//       </PrivateRoute>
+//     ),
+//   },
+//   {
+//     path: "/operador-dashboard",
+//     element: (
+//       <PrivateRoute allowedProfiles={["operador", "motorista"]}>
+//         <OperadorDashboard />
+//       </PrivateRoute>
+//     ),
+//   },
+//   {
+//     path: "/projetos",
+//     element: (
+//         <PrivateRoute allowedProfiles={["admin"]}>
+//         <Projetos />
+//         </PrivateRoute>
+//     ),
+//     },
+//     {
+//     path: "/registro-horas",
+//     element: (
+//         <PrivateRoute allowedProfiles={["operador", "motorista"]}>
+//         <RegistroHoras />
+//         </PrivateRoute>
+//     ),
+//   },
+//   {path: "/relatorios",
+//     element: (
+//         <PrivateRoute allowedProfiles={['admin', 'operador', 'motorista']}>
+//         <Relatorios />
+//         </PrivateRoute>
+//     ),
+//   },
+//   { path: "/RelatoriosMotorista", element: (
+//         <PrivateRoute allowedProfiles={["admin"]}>
+//           <RelatoriosMotorista />
+//         </PrivateRoute>
+//       )
+//     },
+//   {
+//     path: "/change-password",
+//     element: (
+//         <PrivateRoute allowedProfiles={['admin', 'operador', 'motorista']}>
+//         <ChangePassword />
+//         </PrivateRoute>
+//     ),
+//   },
+//   {
+//     path: "/login",
+//     element: <Login />,
+//   },
+//   {
+//     path: "/unauthorized",
+//     element: <Unauthorized />,
+//   },
+//   {
+//     path: "*",
+//     element: <NotFound />,
+//   },
+// ]);
 
 export default router;

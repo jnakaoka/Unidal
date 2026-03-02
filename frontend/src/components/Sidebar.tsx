@@ -44,6 +44,12 @@ const Sidebar = () => {
       showFor: ["admin"],
     },
     {
+      label: "Relatório Motoristas",
+      to: "/RelatoriosMotorista",
+      icon: <BarChartBig size={18} />,
+      showFor: ["admin"],
+    },
+    {
       label: "Usuários",
       to: "/usuarios",
       icon: <UserCog size={18} />,

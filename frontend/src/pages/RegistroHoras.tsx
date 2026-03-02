@@ -286,6 +286,7 @@ const RegistroHoras: React.FC = () => {
 
 
   useEffect(() => {
+    console.log('useEffect - RegistroHoras.tsx');
     fetchUsuarios();
     fetchClientes();
 
@@ -298,6 +299,10 @@ const RegistroHoras: React.FC = () => {
     // ✅ Só busca registros quando tiver token e user.id
     console.log('user?.id', user?.id);
     console.log('localStorage.getItem("accessToken")', localStorage.getItem("accessToken"));
+    console.log('accessToken', accessToken);
+    console.log('isOperador', isOperador);
+    console.log('isMotorista', isMotorista);
+    console.log('isOperadorOuMotorista', isOperadorOuMotorista);
     if (user?.id) {
       fetchRegistroHoras();
     }
@@ -1893,7 +1898,7 @@ const RegistroHoras: React.FC = () => {
               </div> */}
             </div>
             
-            {isMotorista || isAdmin && (
+            {(isOperadorOuMotorista || isAdmin) && (
               <div className="sm:col-span-2 mt-2 p-4 rounded-xl border border-gray-200 bg-gray-50">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3" style={{ marginLeft: '1%' }}>Dados de Motorista</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginLeft: '1%' }}>
@@ -2085,80 +2090,97 @@ const RegistroHoras: React.FC = () => {
             )} */}
             {pageItems.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center text-gray-500">Nenhum registo encontrado</td>
+                <td colSpan={11} className="text-center text-gray-500">
+                  Nenhum registo encontrado
+                </td>
               </tr>
             ) : (
-              pageItems.map((reg, index) => (
-                <tr key={reg.id} className={index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
-                  <td className="px-4 py-2">{reg.user?.name}</td>
-                  <td className="px-4 py-2">{reg.data}</td>
-                  <td className="px-4 py-2">{reg.cliente?.nome ?? '-'}</td>
-                  <td className="px-4 py-2">{reg.obra?.nome ?? '-'}</td>
-                  <td className="px-4 py-2">{reg.metros_quadrados}</td>
-                  <td className="px-4 py-2">
-                    {reg.equipa?.map((e, i) => {
-                      const label = e.user
-                        ? `${e.user.name} (${e.user.empresa})`
-                        : `ID ${(e.user as any)?.id ?? 'N/A'}`;
+              pageItems.map((reg, index) => {
+                
+                const isMoto = reg.origem != null && reg.origem != '';
 
-                      return (
-                        <span key={e.user?.id ?? i}>
-                          {i > 0 && ', '}
-                          {label}
-                          {e.intemperie && <strong> [Intempérie]</strong>}
-                        </span>
-                      );
-                    })}
-                  </td>
-                  {/* <td className="px-4 py-2">
-                    {reg.equipa?.map(e =>
-                      e.user
-                        ? `${e.user.name} (${e.user.empresa}) ${e.intemperie ? '[Intempérie]' : ''}`
-                        : `ID ${(e.user as any)?.id ?? 'N/A'}`
-                    ).join(', ')}
-                  </td> */}
-                  <td className="px-4 py-2">
-                    {['preparacao', 'bruto', 'colagem', 'acabamento', 'serragem', 'coli']
-                      .filter((campo) => (reg as any)[campo]) // workaround temporário se quiser
-                      .map((campo) => campo[0].toUpperCase() + campo.slice(1))
-                      .join(', ')
-                    }
-                  </td>
-                  <td className="px-4 py-2 whitespace-pre-wrap">
-                    {renderIntervencoes(reg)}
-                  </td>
-                  <td className="px-4 py-2 text-[11px] leading-snug text-gray-700">
-                    {reg.modificado_por
-                      ? getUserNameById(reg.modificado_por, usuarios)
-                      : <span className="text-gray-400 italic">—</span>
-                    }
-                  </td>
-                  <td className="px-4 py-2 text-[11px] leading-snug text-gray-600">
-                    {reg.modificado_em
-                      ? formatDateTime(reg.modificado_em)
-                      : <span className="text-gray-400 italic">—</span>
-                    }
-                  </td>
-                  <td className="px-4 py-2 space-x-2" style={{ float: 'right' }}>
-                    <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => handleEditClick(reg)}>
-                      Editar
-                    </Button>
-                    {!isOperadorOuMotorista  && (
+                const baseRowClass =
+                  index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100';
+
+                const rowClass = isMoto
+                  ? `${baseRowClass} line-motorista-overlay`
+                  : baseRowClass;
+
+                return (
+                  <tr key={reg.id} className={rowClass}>
+                    <td className="px-4 py-2">{reg.user?.name}</td>
+                    <td className="px-4 py-2">{reg.data}</td>
+                    <td className="px-4 py-2">{reg.cliente?.nome ?? '-'}</td>
+                    <td className="px-4 py-2">{reg.obra?.nome ?? '-'}</td>
+                    <td className="px-4 py-2">{reg.metros_quadrados}</td>
+
+                    <td className="px-4 py-2">
+                      {reg.equipa?.map((e, i) => {
+                        const label = e.user
+                          ? `${e.user.name} (${e.user.empresa})`
+                          : `ID ${(e.user as any)?.id ?? 'N/A'}`;
+
+                        return (
+                          <span key={e.user?.id ?? i}>
+                            {i > 0 && ', '}
+                            {label}
+                            {e.intemperie && <strong> [Intempérie]</strong>}
+                          </span>
+                        );
+                      })}
+                    </td>
+
+                    <td className="px-4 py-2">
+                      {['preparacao', 'bruto', 'colagem', 'acabamento', 'serragem', 'coli']
+                        .filter((campo) => (reg as any)[campo])
+                        .map((campo) => campo[0].toUpperCase() + campo.slice(1))
+                        .join(', ')}
+                    </td>
+
+                    <td className="px-4 py-2 whitespace-pre-wrap">
+                      {renderIntervencoes(reg)}
+                    </td>
+
+                    <td className="px-4 py-2 text-[11px] leading-snug text-gray-700">
+                      {reg.modificado_por ? (
+                        getUserNameById(reg.modificado_por, usuarios)
+                      ) : (
+                        <span className="text-gray-400 italic">—</span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-2 text-[11px] leading-snug text-gray-600">
+                      {reg.modificado_em ? (
+                        formatDateTime(reg.modificado_em)
+                      ) : (
+                        <span className="text-gray-400 italic">—</span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-2 space-x-2" style={{ float: 'right' }}>
                       <Button
-                        className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(reg.id)}
+                        className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm"
+                        variant="outline"
+                        onClick={() => handleEditClick(reg)}
                       >
-                        Excluir
+                        Editar
                       </Button>
-                    )}
-                    {/* <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => handleDelete(reg.id)}>
-                      Excluir
-                    </Button> */}
-                  </td>
-                </tr>
-              ))
+
+                      {!isOperadorOuMotorista && (
+                        <Button
+                          className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm"
+                          variant="destructive"
+                          onClick={() => handleDelete(reg.id)}
+                        >
+                          Excluir
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })
             )}
+
           </tbody>
         </table>
         {/* <div className="flex justify-center mt-4 space-x-2" style={{ margin: '1% 0 1% 0' }}>

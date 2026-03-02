@@ -376,6 +376,12 @@ a {
   /* margin: 0 0 1% 0; */
 }
 
+.line-motorista-overlay {
+  box-shadow: inset 4px 0 0 #f59e0b;
+  background-color: #fdc361;
+  border: 1% solid #fdc361;
+}
+
 .btn-bg-gray-500 {
   background-color: lightgray;
   border: 1% solid gray;
