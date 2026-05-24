@@ -1,12 +1,17 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { authApi } from "../services/api";
 import * as SecureStore from "expo-secure-store";
+import { authApi } from "../services/api";
+
+type Perfil = {
+  id: number;
+  nome: string;
+};
 
 type User = {
   id: number;
   email: string;
   name: string;
-  perfil: any;
+  perfil: Perfil | null;
 };
 
 type AuthState = {
@@ -26,29 +31,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   async function bootstrap() {
-    const access = await SecureStore.getItemAsync(ACCESS_KEY);
-    const refresh = await SecureStore.getItemAsync(REFRESH_KEY);
-
-    if (!access || !refresh) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-
     try {
+      const access = await SecureStore.getItemAsync(ACCESS_KEY);
+      const refresh = await SecureStore.getItemAsync(REFRESH_KEY);
+
+      if (!access || !refresh) {
+        setUser(null);
+        return;
+      }
+
       const me = await authApi.me();
       setUser(me);
-    } catch {
+    } catch (error) {
       setUser(null);
+      await SecureStore.deleteItemAsync(ACCESS_KEY);
+      await SecureStore.deleteItemAsync(REFRESH_KEY);
     } finally {
       setIsLoading(false);
     }
   }
 
   async function signIn(email: string, password: string) {
-    await authApi.login(email, password);
-    const me = await authApi.me();
-    setUser(me);
+    setIsLoading(true);
+    try {
+      await authApi.login(email, password);
+      const me = await authApi.me();
+      setUser(me);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   async function signOut() {
@@ -60,13 +71,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     bootstrap();
   }, []);
 
-  const value = useMemo(() => ({ user, isLoading, signIn, signOut }), [user, isLoading]);
+  const value = useMemo(
+    () => ({
+      user,
+      isLoading,
+      signIn,
+      signOut,
+    }),
+    [user, isLoading]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+
+  return context;
 }
