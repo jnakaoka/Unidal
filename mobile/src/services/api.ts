@@ -156,3 +156,85 @@ export const authApi = {
     await clearTokens();
   },
 };
+
+export const clientesApi = {
+  async listar() {
+    const res = await api.get("/clientes/");
+    return res.data;
+  },
+
+  async criar(payload: {
+    nome: string;
+    is_active?: boolean;
+  }) {
+    const res = await api.post("/clientes/", payload);
+    return res.data;
+  },
+};
+
+export const obrasApi = {
+  async listar() {
+    const res = await api.get("/obras/");
+    return res.data;
+  },
+
+  async listarPorCliente(clienteId: number) {
+    const res = await api.get("/obras/", {
+      params: {
+        cliente_id: clienteId,
+      },
+    });
+
+    return res.data;
+  },
+
+  async criar(payload: {
+    nome: string;
+    descricao?: string | null;
+    cliente_id: number;
+  }) {
+    const res = await api.post("/obras/", payload);
+    return res.data;
+  },
+};
+
+export const usuariosApi = {
+  async listar() {
+    const res = await api.get("/users/");
+    return res.data;
+  },
+};
+
+export const registrosHorasApi = {
+  async listar(usuarioId?: number) {
+    const res = await api.get("/registro-horas/", {
+      params: usuarioId
+        ? {
+            usuario_id: usuarioId,
+          }
+        : undefined,
+    });
+
+    return res.data;
+  },
+
+  async obter(id: number) {
+    const res = await api.get(`/registro-horas/${id}`);
+    return res.data;
+  },
+
+  async criar(payload: any) {
+    const res = await api.post("/registro-horas/", payload);
+    return res.data;
+  },
+
+  async atualizar(id: number, payload: any) {
+    const res = await api.put(`/registro-horas/${id}`, payload);
+    return res.data;
+  },
+
+  async excluir(id: number) {
+    const res = await api.delete(`/registro-horas/${id}`);
+    return res.data;
+  },
+};
