@@ -73,6 +73,7 @@ interface RegistroHoras {
   acabamento: boolean;
   serragem: boolean;
   coli: boolean;
+  optipav: boolean;
   intervencao_maquinas: boolean;
   intervencao_maquinas_opcoes?: IntervencaoMaquinasOpcoes | null;
 
@@ -118,6 +119,7 @@ const RegistroHoras: React.FC = () => {
     acabamento: boolean;
     serragem: boolean;
     coli: boolean;
+    optipav: boolean;
     intervencao_maquinas: boolean;
     intervencao_maquinas_opcoes: IntervencaoMaquinasOpcoes;
     origem?: string;
@@ -199,6 +201,7 @@ const RegistroHoras: React.FC = () => {
     preparacao: false,
     bruto: false,
     colagem: false,
+    optipav: false,
     acabamento: false,
     serragem: false,
     coli: false,
@@ -566,6 +569,7 @@ const RegistroHoras: React.FC = () => {
       acabamento: regHora.acabamento,
       serragem: regHora.serragem,
       coli: regHora.coli,
+      optipav: regHora.optipav,
       intervencao_maquinas: regHora.intervencao_maquinas,
       intervencao_maquinas_opcoes: {
         laserComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserComManobrador?.checked, 
@@ -760,6 +764,7 @@ const RegistroHoras: React.FC = () => {
         acabamento: !!formData.acabamento,
         serragem: !!formData.serragem,
         coli: !!formData.coli,
+        optipav: !!formData.optipav,
         intervencao_maquinas: !!formData.intervencao_maquinas,
         intervencao_maquinas_opcoes: formData.intervencao_maquinas
           ? formData.intervencao_maquinas_opcoes
@@ -839,6 +844,7 @@ const RegistroHoras: React.FC = () => {
       acabamento: false,
       serragem: false,
       coli: false,
+      optipav: false,
       intervencao_maquinas: false,
       intervencao_maquinas_opcoes: {
         laserComManobrador: { checked: false, m2: '', empresa: '' },
@@ -1457,7 +1463,7 @@ const RegistroHoras: React.FC = () => {
               {/* Campos booleanos como checkboxes */}
               <div className="align-float-left" style={{ marginBottom: '1%' }}>
                 <label className="block text-sm font-medium text-gray-700 ff-class-form-registro-hora-elements-100">Descrição de Serviço</label>
-                {["preparacao", "bruto", "colagem", "acabamento", "serragem", "coli", "intervencao_maquinas"].map((field) => (
+                {["preparacao", "bruto", "colagem", "acabamento", "serragem", "optipav", "coli", "intervencao_maquinas"].map((field) => (
                   <div key={field} className="mt-1 grid grid-cols-2 gap-2" style={{ float: 'left' }}>
                     <label key={field} className="flex items-center space-x-2">
                       <input
