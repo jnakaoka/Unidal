@@ -102,6 +102,7 @@ class RegistroHoraCreate(BaseModel):
     acabamento: bool = False
     serragem: bool = False
     coli: bool = False
+    optipav: bool = False
     intervencao_maquinas: bool = False
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
     origem: Optional[str] = None
@@ -137,6 +138,7 @@ class RegistroHoraUpdate(BaseModel):
     acabamento: bool = False
     serragem: bool = False
     coli: bool = False
+    optipav: bool = False
     intervencao_maquinas: bool = False
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
     origem: Optional[str] = None
@@ -199,6 +201,7 @@ class RegistroHoraResponse(BaseModel):
     acabamento: Optional[bool] = None
     serragem: Optional[bool] = None
     coli: Optional[bool] = None
+    optipav: Optional[bool] = False
     intervencao_maquinas: Optional[bool] = None
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
     modificado_por: Optional[int] = None

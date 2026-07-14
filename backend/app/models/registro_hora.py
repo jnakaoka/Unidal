@@ -30,6 +30,7 @@ class RegistroHora(Base):
     acabamento = Column(Boolean, default=False)
     serragem = Column(Boolean, default=False)
     coli = Column(Boolean, default=False)
+    optipav = Column(Boolean, default=False, nullable=False)
     intervencao_maquinas = Column(Boolean, default=False)
     intervencao_maquinas_opcoes = Column(SAJSON, nullable=True)
 
