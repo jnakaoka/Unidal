@@ -20,10 +20,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade():
     op.add_column(
-        "registro_horas",
+        "registros_hora",
         sa.Column("optipav", sa.Boolean(), nullable=False, server_default=sa.false())
     )
 
 
 def downgrade():
-    op.drop_column("registro_horas", "optipav")
+    op.drop_column("registros_hora", "optipav")
