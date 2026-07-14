@@ -1,7 +1,10 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import * as SecureStore from "expo-secure-store";
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "https://api.unidal.pt";
+//const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "https://api.unidal.pt";
+
+const API_BASE_URL =
+  import.meta.env.VITE_PUBLIC_API_URL || "http://localhost:8000";
 
 console.log("API_BASE_URL:", API_BASE_URL);
 

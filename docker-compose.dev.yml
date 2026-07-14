@@ -1,0 +1,11 @@
+services:
+  api:
+    ports:
+      - "8000:8000"
+
+  frontend:
+    ports:
+      - "5173:80"
+    build:
+      args:
+        VITE_PUBLIC_API_URL: http://localhost:8000

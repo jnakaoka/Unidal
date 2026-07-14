@@ -1,10 +1,11 @@
 // api.ts
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 
-const baseURL = process.env.REACT_APP_API_URL || "https://api.unidal.pt";
+console.log("API Base URL:", API_BASE_URL);
 
 const api = axios.create({
-  baseURL,
+  baseURL: API_BASE_URL,
   withCredentials: false,
   headers: {
     "Content-Type": "application/json",
