@@ -18,7 +18,8 @@ type IntervencaoMaquinasOpcoes = {
   soPo?: { checked?: boolean; m2?: string; empresa?: string };
   laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };  
   lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string }; 
-  soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
+  soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string }
+
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string };
 };
 
@@ -114,9 +115,18 @@ const Relatorios: React.FC = () => {
       acabamento: "Acabamento",
       serragem: "Serragem",
       coli: "COLI",
+      optipav: "Optipav",
     };
 
-    const chaves = ["preparacao", "bruto", "colagem", "acabamento", "serragem", "coli"] as const;
+    const chaves = [
+      "preparacao",
+      "bruto",
+      "colagem",
+      "acabamento",
+      "serragem",
+      "coli",
+      "optipav",
+    ] as const;
 
     const ativas = chaves.filter((k) => Boolean((r as any)[k])).map((k) => etiquetas[k]);
     return ativas.length ? ativas.join(", ") : "—";

@@ -12,11 +12,20 @@ services:
   #     - proxy
 
   cloudflared:
-    image: cloudflare/cloudflared:2024.6.0
+    image: cloudflare/cloudflared:2026.7.3
     container_name: cloudflared
     restart: unless-stopped
     entrypoint: ["cloudflared"]
-    command: ["tunnel","--no-autoupdate", "--config", "/etc/cloudflared/config.yml", "run"]
+    command:
+      [
+        "tunnel",
+        "--no-autoupdate",
+        "--protocol",
+        "http2",
+        "--config",
+        "/etc/cloudflared/config.yml",
+        "run"
+      ]
     volumes:
       - ./etc/cloudflared:/etc/cloudflared:ro
     networks:
@@ -67,12 +76,19 @@ services:
   api:
     build: ./backend
     container_name: unidal_api
+    restart: unless-stopped
     expose:
       - "8000"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
-      - DATABASE_URL=mysql+mysqlconnector://unidal:admin_135@db/unidal
+      DB_USER: unidal
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: unidal
+      DB_HOST: db
+      DB_PORT: 3306
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
     volumes:
       - ./backend:/app
       - ./alembic.ini:/app/alembic.ini
@@ -84,23 +100,64 @@ services:
   db:
     image: mysql:8
     container_name: unidal_db
-    restart: always
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: unidal
-      MYSQL_ROOT_PASSWORD: admin_135
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_USER: unidal
-      MYSQL_PASSWORD: admin_135
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - db_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
     networks:
       - internal
+    
+  # api:
+  #   build: ./backend
+  #   container_name: unidal_api
+  #   expose:
+  #     - "8000"
+  #   depends_on:
+  #     - db
+  #   environment:
+  #     - DATABASE_URL=mysql+mysqlconnector://unidal:admin_135@db/unidal
+  #   volumes:
+  #     - ./backend:/app
+  #     - ./alembic.ini:/app/alembic.ini
+  #     - ./backend/app/data:/app/data:rw
+  #   networks:
+  #     - proxy
+  #     - internal
+
+  # db:
+  #   image: mysql:8
+  #   container_name: unidal_db
+  #   restart: always
+  #   environment:
+  #     MYSQL_DATABASE: unidal
+  #     MYSQL_ROOT_PASSWORD: admin_135
+  #     MYSQL_USER: unidal
+  #     MYSQL_PASSWORD: admin_135
+  #   volumes:
+  #     - db_data:/var/lib/mysql
+  #   networks:
+  #     - internal
 
   frontend:
     build:
       context: ./frontend
       args:
         # VITE_PUBLIC_API_URL: https://api.apontamento-unidal.duckdns.org
-        VITE_PUBLIC_API_URL: https://api.unidal.pt
+        VITE_API_URL: https://api.unidal.pt
     container_name: unidal_frontend
     expose:
       - "80"

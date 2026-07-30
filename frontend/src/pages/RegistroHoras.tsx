@@ -2137,9 +2137,29 @@ const RegistroHoras: React.FC = () => {
                     </td>
 
                     <td className="px-4 py-2">
-                      {['preparacao', 'bruto', 'colagem', 'acabamento', 'serragem', 'coli']
+                      {[
+                        'preparacao',
+                        'bruto',
+                        'colagem',
+                        'acabamento',
+                        'serragem',
+                        'coli',
+                        'optipav'
+                      ]
                         .filter((campo) => (reg as any)[campo])
-                        .map((campo) => campo[0].toUpperCase() + campo.slice(1))
+                        .map((campo) => {
+                          const nomes: Record<string, string> = {
+                            preparacao: 'Preparação',
+                            bruto: 'Bruto',
+                            colagem: 'Colagem',
+                            acabamento: 'Acabamento',
+                            serragem: 'Serragem',
+                            coli: 'Coli',
+                            optipav: 'Optipav',
+                          };
+
+                          return nomes[campo];
+                        })
                         .join(', ')}
                     </td>
 
