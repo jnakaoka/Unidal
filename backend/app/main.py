@@ -18,6 +18,8 @@ ALLOWED_ORIGINS = [
     "https://apontamento.unidal.pt",
     "http://localhost:3010",
     "http://127.0.0.1:3010",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
 ]
 
 app.add_middleware(

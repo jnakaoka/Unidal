@@ -1,7 +1,10 @@
 // api.ts
 import axios from "axios";
 
-const baseURL = process.env.REACT_APP_API_URL || "https://api.unidal.pt";
+//const baseURL = process.env.REACT_APP_API_URL || "https://api.unidal.pt";
+
+const baseURL =
+  import.meta.env.VITE_API_URL || "https://api.unidal.pt";
 
 const api = axios.create({
   baseURL,

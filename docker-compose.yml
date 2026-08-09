@@ -13,6 +13,8 @@ services:
 
   cloudflared:
     image: cloudflare/cloudflared:2026.7.3
+    profiles:
+      - production
     container_name: cloudflared
     restart: unless-stopped
     entrypoint: ["cloudflared"]
