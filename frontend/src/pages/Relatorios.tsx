@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "@/services/api";
 import Pagination, { usePagination } from "@/components/pagination-utils";
+import HighlightText from "@/components/ui/HighlightText";
 import { Button } from "@/components/ui/button";
 
 // ==== Tipos ====
@@ -18,8 +19,7 @@ type IntervencaoMaquinasOpcoes = {
   soPo?: { checked?: boolean; m2?: string; empresa?: string };
   laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };  
   lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string }; 
-  soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string }
-
+  soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string };
 };
 
@@ -41,6 +41,7 @@ type RegistroHoras = {
   acabamento?: boolean;
   serragem?: boolean;
   coli?: boolean;
+  optipav?: boolean;
 
   // novos campos usados no relatório
   metros_quadrados?: string | number;
@@ -142,36 +143,115 @@ const Relatorios: React.FC = () => {
   //   return parts.length ? parts.join(" | ") : "—";
   // };
 
-  const resumoEmpresas = (r: RegistroHoras, asHtmlBreak: boolean = false): string => {
-    // mapa: empresa -> { total, intemperie, normais }
-    const map: Record<string, { total: number; intemperie: number; normais: number }> = {};
+  // const resumoEmpresas = (r: RegistroHoras, asHtmlBreak: boolean = false): string => {
+  //   // mapa: empresa -> { total, intemperie, normais }
+  //   const map: Record<string, { total: number; intemperie: number; normais: number }> = {};
 
+  //   (r.equipa || []).forEach((e) => {
+  //     const empRaw = e.user?.empresa?.substring(0, 7) || "Sem Empresa";
+  //     const emp = empRaw.trim() || "Sem Empresa";
+
+  //     if (!map[emp]) {
+  //       map[emp] = { total: 0, intemperie: 0, normais: 0 };
+  //     }
+
+  //     map[emp].total += 1;
+
+  //     if (e.intemperie) {
+  //       map[emp].intemperie += 1;
+  //     } else {
+  //       map[emp].normais += 1;
+  //     }
+  //   });
+
+  //   const parts = Object.entries(map).map(([empresa, info]) => {
+  //     const { total, intemperie, normais } = info;
+  //     return `${empresa} (Intemp.: ${intemperie} | Normais: ${normais} | Total: ${total})`;
+  //   });
+
+  //   if (!parts.length) return "—";
+
+  //   // quebra de linha: \n para tela (React) e <br /> para HTML de impressão
+  //   return asHtmlBreak ? parts.join("<br />") : parts.join("\n");
+  // };
+
+  const getResumoEmpresas = (r: RegistroHoras) => {
+    const map: Record<
+      string,
+      { total: number; intemperie: number; normais: number }
+    > = {};
+  
     (r.equipa || []).forEach((e) => {
       const empRaw = e.user?.empresa?.substring(0, 7) || "Sem Empresa";
-      const emp = empRaw.trim() || "Sem Empresa";
-
-      if (!map[emp]) {
-        map[emp] = { total: 0, intemperie: 0, normais: 0 };
+      const empresa = empRaw.trim() || "Sem Empresa";
+  
+      if (!map[empresa]) {
+        map[empresa] = {
+          total: 0,
+          intemperie: 0,
+          normais: 0,
+        };
       }
-
-      map[emp].total += 1;
-
+  
+      map[empresa].total += 1;
+  
       if (e.intemperie) {
-        map[emp].intemperie += 1;
+        map[empresa].intemperie += 1;
       } else {
-        map[emp].normais += 1;
+        map[empresa].normais += 1;
       }
     });
-
-    const parts = Object.entries(map).map(([empresa, info]) => {
-      const { total, intemperie, normais } = info;
-      return `${empresa} (Intemp.: ${intemperie} | Normais: ${normais} | Total: ${total})`;
-    });
-
-    if (!parts.length) return "—";
-
-    // quebra de linha: \n para tela (React) e <br /> para HTML de impressão
-    return asHtmlBreak ? parts.join("<br />") : parts.join("\n");
+  
+    return Object.entries(map);
+  };
+  
+  const renderResumoEmpresas = (r: RegistroHoras) => {
+    const empresas = getResumoEmpresas(r);
+  
+    if (!empresas.length) return "—";
+  
+    return (
+      <div className="space-y-1">
+        {empresas.map(([empresa, info]) => (
+          <div key={empresa}>
+            {empresa} (
+            {info.intemperie > 0 ? (
+              <HighlightText type="warning">
+                Intemp.: {info.intemperie}
+              </HighlightText>
+            ) : (
+              <>Intemp.: 0</>
+            )}
+            {" | "}Normais: {info.normais}
+            {" | "}Total: {info.total})
+          </div>
+        ))}
+      </div>
+    );
+  };
+  
+  const resumoEmpresasHtml = (r: RegistroHoras): string => {
+    const empresas = getResumoEmpresas(r);
+  
+    if (!empresas.length) return "—";
+  
+    return empresas
+      .map(([empresa, info]) => {
+        const intemperieHtml =
+          info.intemperie > 0
+            ? `<span class="intemperie-alert">Intemp.: ${info.intemperie}</span>`
+            : `Intemp.: 0`;
+  
+        return `
+          <div>
+            ${empresa} (
+            ${intemperieHtml}
+            | Normais: ${info.normais}
+            | Total: ${info.total})
+          </div>
+        `;
+      })
+      .join("");
   };
 
 
@@ -411,7 +491,7 @@ const Relatorios: React.FC = () => {
             <td>${r.cliente?.nome ?? (r.cliente_id ?? "-")}</td>
             <td>${r.obra?.nome ?? (r.obra_id ?? "-")}</td>
             <td style="text-align:center">${totalUsers}</td>
-            <td>${resumoEmpresas(r)}</td>
+            <td>${resumoEmpresasHtml(r)}</td>
             <td>${r.metros_quadrados}</td>
             <td>${etapasResumo(r)}</td>
             <td>${maquinasResumo(r)}</td>
@@ -445,6 +525,11 @@ const Relatorios: React.FC = () => {
             th, td { border: 1px solid #ddd; padding: 6px 8px; font-size: 12px; }
             th { background: #f5f5f5; text-align: left; }
             tfoot td { font-weight: bold; }
+            .intemperie-alert {
+              color: #ea580c;
+              font-weight: 700;
+              font-style: italic;
+            }
             @media print { .no-print { display: none; } th, td { font-size: 11px; } }
           </style>
         </head>
@@ -837,7 +922,7 @@ const Relatorios: React.FC = () => {
                     <td className="px-4 py-2">{r.cliente?.nome ?? (r.cliente_id ?? "-")}</td>
                     <td className="px-4 py-2">{r.obra?.nome ?? (r.obra_id ?? "-")}</td>
                     <td className="px-4 py-2">{totalUsers}</td>
-                    <td className="px-4 py-2 whitespace-pre-wrap">{resumoEmpresas(r)}</td>
+                    <td className="px-4 py-2 whitespace-pre-wrap">{renderResumoEmpresas(r)}</td>
                     {/* <td className="px-4 py-2">{metros}</td> */}
                     <td className="px-4 py-2">{r.metros_quadrados}</td>
                     <td className="px-4 py-2">{etapasResumo(r)}</td>
