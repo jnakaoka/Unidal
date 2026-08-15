@@ -5,7 +5,7 @@ from app.models.obra import Obra
 from app.models.cliente import Cliente
 from app.models.registro_hora import RegistroHora
 from app.schemas.obra import ObraCreate, ObraUpdate
-import re
+from app.utils.text import normalizar_texto_busca
 
 def get_all(db: Session, cliente_id: int | None = None):
     q = db.query(Obra).options(joinedload(Obra.cliente))
@@ -24,7 +24,7 @@ def create(db: Session, data: ObraCreate) -> Obra:
             detail="Cliente inválido"
         )
 
-    nome_normalizado = normalizar_nome(data.nome)
+    nome_normalizado = normalizar_texto_busca(data.nome)
 
     obras_mesmo_cliente = (
         db.query(Obra)
@@ -35,7 +35,7 @@ def create(db: Session, data: ObraCreate) -> Obra:
     duplicada = next(
         (
             obra for obra in obras_mesmo_cliente
-            if normalizar_nome(obra.nome) == nome_normalizado
+            if normalizar_texto_busca(obra.nome) == nome_normalizado
         ),
         None,
     )
@@ -82,7 +82,7 @@ def update(db: Session, obra_id: int, data: ObraUpdate) -> Obra:
     nome_final = payload.get("nome", obj.nome)
 
     if nome_final is not None and cliente_final_id is not None:
-        nome_normalizado = normalizar_nome(nome_final)
+        nome_normalizado = normalizar_texto_busca(nome_final)
 
         obras_mesmo_cliente = (
             db.query(Obra)
@@ -96,7 +96,7 @@ def update(db: Session, obra_id: int, data: ObraUpdate) -> Obra:
         duplicada = next(
             (
                 obra for obra in obras_mesmo_cliente
-                if normalizar_nome(obra.nome) == nome_normalizado
+                if normalizar_texto_busca(obra.nome) == nome_normalizado
             ),
             None,
         )
@@ -146,9 +146,6 @@ def delete(db: Session, obra_id: int) -> Obra:
 
     return obj
 
-def normalizar_nome(nome: str) -> str:
-    return re.sub(r"\s+", " ", nome.strip().lower())
-
 def merge_obras(
     db: Session,
     obra_destino_id: int,
@@ -193,7 +190,7 @@ def merge_obras(
             detail=f"Obras não encontradas: {sorted(ids_faltando)}"
         )
 
-    nome_destino = normalizar_nome(obra_destino.nome)
+    nome_destino = normalizar_texto_busca(obra_destino.nome)
 
     for obra in obras_origem:
 
@@ -206,7 +203,7 @@ def merge_obras(
                 )
             )
 
-        if normalizar_nome(obra.nome) != nome_destino:
+        if normalizar_texto_busca(obra.nome) != nome_destino:
             raise HTTPException(
                 status_code=400,
                 detail=(
