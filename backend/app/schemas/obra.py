@@ -1,12 +1,13 @@
 # schemas/obra.py
 from typing import Optional
+from app.utils.text import limpar_espacos
 
 from pydantic import BaseModel, Field, field_validator
 
 
 def limpar_nome(nome: str) -> str:
-    """Remove espaços externos e reduz espaços repetidos."""
-    nome_limpo = " ".join(nome.split())
+    """Valida e limpa o nome que será guardado no banco."""
+    nome_limpo = limpar_espacos(nome)
 
     if not nome_limpo:
         raise ValueError("O nome da obra não pode estar vazio")
