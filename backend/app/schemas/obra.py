@@ -30,3 +30,7 @@ class ObraOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class ObraMerge(BaseModel):
+    obra_destino_id: int
+    obras_origem_ids: list[int]
