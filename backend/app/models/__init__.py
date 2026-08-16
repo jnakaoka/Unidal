@@ -10,5 +10,8 @@ from .cartao import Cartao
 from .registro_hora import RegistroHora
 #tables
 from .registro_hora import RegistroHoraEquipa
+from app.models.cartao_veiculo_associacao import (
+    CartaoVeiculoAssociacao,
+)
 
 
