@@ -6,6 +6,7 @@ from .projeto import Projeto
 from .cliente import Cliente
 from .obra import Obra
 from .veiculo import Veiculo
+from .cartao import Cartao
 from .registro_hora import RegistroHora
 #tables
 from .registro_hora import RegistroHoraEquipa
