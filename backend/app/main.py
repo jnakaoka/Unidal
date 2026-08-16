@@ -11,6 +11,7 @@ from app.routes.cliente import router as cliente_router
 from app.routes.obra import router as obra_router
 from app.routes import relatorio
 from app.routes.veiculo import router as veiculo_router
+from app.routes.cartao import router as cartao_router
 
 app = FastAPI()
 
@@ -42,6 +43,7 @@ app.include_router(relatorio.router, prefix="/relatorio", tags=["Relatório"])
 app.include_router(cliente_router, prefix="/clientes", tags=["Clientes"])
 app.include_router(obra_router, prefix="/obras", tags=["Obras"])
 app.include_router(veiculo_router, prefix="/veiculos", tags=["Veículos"])
+app.include_router(cartao_router, prefix="/cartoes", tags=["Cartões"])
 
 # from fastapi import FastAPI
 # from app.routes.user import router as user_router
