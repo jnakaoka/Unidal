@@ -18,8 +18,8 @@ type IntervencaoMaquinasOpcoes = {
   manobrador?: { checked?: boolean; qtd?: number; empresa?: string };
   soLaser?: { checked?: boolean; m2?: string; empresa?: string };
   soPo?: { checked?: boolean; m2?: string; empresa?: string };
-  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };  
-  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string }; 
+  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string };
 };
@@ -183,11 +183,11 @@ const Relatorios: React.FC = () => {
       string,
       { total: number; intemperie: number; normais: number }
     > = {};
-  
+
     (r.equipa || []).forEach((e) => {
       const empRaw = e.user?.empresa?.substring(0, 7) || "Sem Empresa";
       const empresa = empRaw.trim() || "Sem Empresa";
-  
+
       if (!map[empresa]) {
         map[empresa] = {
           total: 0,
@@ -195,24 +195,24 @@ const Relatorios: React.FC = () => {
           normais: 0,
         };
       }
-  
+
       map[empresa].total += 1;
-  
+
       if (e.intemperie) {
         map[empresa].intemperie += 1;
       } else {
         map[empresa].normais += 1;
       }
     });
-  
+
     return Object.entries(map);
   };
-  
+
   const renderResumoEmpresas = (r: RegistroHoras) => {
     const empresas = getResumoEmpresas(r);
-  
+
     if (!empresas.length) return "—";
-  
+
     return (
       <div className="space-y-1">
         {empresas.map(([empresa, info]) => (
@@ -232,19 +232,19 @@ const Relatorios: React.FC = () => {
       </div>
     );
   };
-  
+
   const resumoEmpresasHtml = (r: RegistroHoras): string => {
     const empresas = getResumoEmpresas(r);
-  
+
     if (!empresas.length) return "—";
-  
+
     return empresas
       .map(([empresa, info]) => {
         const intemperieHtml =
           info.intemperie > 0
             ? `<span class="intemperie-alert">Intemp.: ${info.intemperie}</span>`
             : `Intemp.: 0`;
-  
+
         return `
           <div>
             ${empresa} (
@@ -295,16 +295,16 @@ const Relatorios: React.FC = () => {
 
     if (o.soPo?.checked)
     parts.push(`Só Pó: ${o.soPo.m2 || "0"} m²${showEmp(o.soPo.empresa)}`);
-    
+
     if(o.laserWS940CComManobrador?.checked)
     parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || "0"} m²${showEmp(o.laserWS940CComManobrador.empresa)}`);
-    
+
     if(o.lazerYZ30ComManobrador?.checked)
     parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || "0"} m²${showEmp(o.lazerYZ30ComManobrador.empresa)}`);
-    
+
     if(o.soMaqLaserWS940C?.checked)
     parts.push(`Só Laser WS940C: ${o.soMaqLaserWS940C.m2 || "0"} m²${showEmp(o.soMaqLaserWS940C.empresa)}`);
-    
+
     if(o.soMaqLazerYZ30?.checked)
     parts.push(`Só Lazer YZ30: ${o.soMaqLazerYZ30.m2 || "0"} m²${showEmp(o.soMaqLazerYZ30.empresa)}`);
 
@@ -517,7 +517,7 @@ const Relatorios: React.FC = () => {
     setRangeFrom("");
     setRangeTo("");
   };
-  
+
 
   // ===== Impressão =====
   const buildPrintableHtml = () => {
