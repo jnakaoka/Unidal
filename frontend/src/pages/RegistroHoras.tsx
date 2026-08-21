@@ -1106,11 +1106,21 @@ const RegistroHoras: React.FC = () => {
 
   // quais empresas estão abertas (por nome)
 
+  // const toggleEmpresa = (empresa: string) => {
+  //   setEmpresasAbertas((prev) => ({
+  //     ...prev,
+  //     [empresa]: !prev[empresa],
+  //   }));
+  // };
+
   const toggleEmpresa = (empresa: string) => {
-    setEmpresasAbertas((prev) => ({
-      ...prev,
-      [empresa]: !prev[empresa],
-    }));
+    setEmpresasAbertas((prev) => {
+      const estavaAberta = Boolean(prev[empresa]);
+
+      return estavaAberta
+        ? {}
+        : { [empresa]: true };
+    });
   };
 
   const setEmpresaOpt = (
@@ -1198,6 +1208,16 @@ const RegistroHoras: React.FC = () => {
   //   }));
   // }, [selectedUsers]);
 
+  const classeInputMotorista = [
+    "w-full rounded-md",
+    "!border !border-gray-300",
+    "!bg-white !text-gray-900",
+    "shadow-sm",
+    "placeholder:!text-gray-400",
+    "focus:!border-blue-500",
+    "focus:!ring-2 focus:!ring-blue-200",
+  ].join(" ");
+
   if (carregandoPagina) {
     return (
       <div className="min-h-[60vh] bg-gray-100 p-6">
@@ -1250,7 +1270,7 @@ const RegistroHoras: React.FC = () => {
               {isEditing ? 'Editar Registro' : 'Novo Registro'}
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 align-float-left" style={{ width: '99%', padding: '1%' }}>
+            <div className="grid w-full grid-cols-1 gap-6 p-1 xl:grid-cols-2">
               <div className="space-y-4 align-float-left" style={{ marginBottom: '1%' }}>
                 <div className="ff-class-form-registro-hora-elements align-float-left" >
                   <Label className="ff-class-form-registro-hora-elements-lbl">Usuário</Label>
@@ -1496,26 +1516,58 @@ const RegistroHoras: React.FC = () => {
                 />
               </div>
               {/* Campos booleanos como checkboxes */}
-              <div className="align-float-left" style={{ marginBottom: '1%' }}>
-                <label className="block text-sm font-medium text-gray-700 ff-class-form-registro-hora-elements-100">Descrição de Serviço</label>
-                {["preparacao", "bruto", "colagem", "acabamento", "serragem", "optipav", "coli", "intervencao_maquinas"].map((field) => (
-                  <div key={field} className="mt-1 grid grid-cols-2 gap-2" style={{ float: 'left' }}>
-                    <label key={field} className="flex items-center space-x-2">
+              {/* Serviço e dados de transporte */}
+
+              <section
+                className={[
+                  "min-w-0 xl:col-span-2",
+                  "rounded-xl border border-gray-200",
+                  "bg-gray-50 p-4",
+                ].join(" ")}
+              >
+                <h3 className="mb-3 text-sm font-semibold text-gray-700">
+                  Descrição do Serviço
+                </h3>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+                  {[
+                    "preparacao",
+                    "bruto",
+                    "colagem",
+                    "acabamento",
+                    "serragem",
+                    "optipav",
+                    "coli",
+                    "intervencao_maquinas",
+                  ].map((field) => (
+                    <label
+                      key={field}
+                      className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
+                    >
                       <input
                         type="checkbox"
-                        checked={formData[field as keyof typeof formData] as boolean}
+                        checked={
+                          formData[
+                            field as keyof typeof formData
+                          ] as boolean
+                        }
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            [field]: e.target.checked
+                            [field]: e.target.checked,
                           })
                         }
+                        className="h-4 w-4 accent-red-600"
                       />
-                      <span className="capitalize">{field.replace('_', ' ')}</span>
+
+                      <span className="capitalize">
+                        {field.replaceAll("_", " ")}
+                      </span>
                     </label>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </section>
+
               {formData.intervencao_maquinas && (
                 <div className="sm:col-span-2 mt-2 p-4 rounded-xl border border-gray-200 bg-gray-50">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">
@@ -1764,7 +1816,7 @@ const RegistroHoras: React.FC = () => {
                   </div>
                 </div>
               )}
-              <div className="mt-1 space-y-3">
+              <div className="min-w-0 space-y-3 xl:col-span-2">
                 {/* 🔎 Adicionar membro por nome */}
                 <div className="mb-2 relative">
                   <Label className="block text-sm font-medium text-gray-700" style={{ fontWeight: 700 }}>
@@ -1827,67 +1879,99 @@ const RegistroHoras: React.FC = () => {
                 )}
 
                 <label className="block text-sm font-medium text-gray-700" style={{ fontWeight: '700' }} >Equipa</label>
-                {Object.entries(usuariosPorEmpresa).map(([empresa, lista]) => {
-                  const opened = !!empresasAbertas[empresa];
+                <div className="space-y-3">
+                  {Object.entries(usuariosPorEmpresa).map(([empresa, lista]) => {
+                    const opened = !!empresasAbertas[empresa];
 
-                  return (
-                    <div
-                      key={empresa}
-                      className={`rounded p-3 ${
-                        empresa === 'UNIDAL' || empresa === 'Unidal' ? 'empresa-bg-red-100' :
-                        empresa === 'HPR'    || empresa === 'Hpr'    ? 'empresa-bg-blue-100' :
-                        empresa === 'HPNC'   || empresa === 'Hpnc'   ? 'empresa-bg-yellow-100' :
-                        empresa === 'ARUNCA' || empresa === 'Arunca' ? 'empresa-bg-orange-100' :
-                        empresa === 'UNISOL' || empresa === 'Unisol' ? 'empresa-bg-orange-100' :
-                        empresa === 'FLORIDAMPLITUDE' || empresa === 'Floridamplitude' ? 'empresa-bg-green-100' :
-                        'bg-gray-100'
-                      }`}
-                    >
-                      {/* Cabeçalho clicável */}
-                      <button
-                        type="button"
-                        onClick={() => toggleEmpresa(empresa)}
-                        aria-expanded={opened}
-                        aria-controls={`lista-${empresa}`}
-                        className="w-full flex items-center justify-between -mx-1 px-1 py-1 rounded cursor-pointer hover:bg-black/5"
-                      >
-                        <h4 className="font-semibold text-gray-700">{empresa}</h4>
-                        <span className={`transition-transform ${opened ? 'rotate-90' : ''}`}>▸</span>
-                      </button>
-
-                      {/* Lista de usuários (expand/collapse) */}
+                    return (
                       <div
-                        id={`lista-${empresa}`}
-                        className={opened ? 'grid grid-cols-2 gap-2 mt-2' : 'hidden'}
+                        key={empresa}
+                        className={`overflow-hidden rounded-lg ${
+                          empresa === 'UNIDAL' || empresa === 'Unidal' ? 'empresa-bg-red-100' :
+                          empresa === 'HPR'    || empresa === 'Hpr'    ? 'empresa-bg-blue-100' :
+                          empresa === 'HPNC'   || empresa === 'Hpnc'   ? 'empresa-bg-yellow-100' :
+                          empresa === 'ARUNCA' || empresa === 'Arunca' ? 'empresa-bg-orange-100' :
+                          empresa === 'UNISOL' || empresa === 'Unisol' ? 'empresa-bg-orange-100' :
+                          empresa === 'FLORIDAMPLITUDE' || empresa === 'Floridamplitude' ? 'empresa-bg-green-100' :
+                          'bg-gray-100'
+                        }`}
                       >
-                        {lista.map((u) => (
-                          <label key={u.id} className="block text-sm text-gray-800">
-                            <input
-                              type="checkbox"
-                              value={u.id}
-                              checked={selectedUsers.includes(u.id)}
-                              onChange={handleEquipaChange}
-                              className="mr-2"
-                            />
-                            {u.name}
-                            {selectedUsers.includes(u.id) && (
-                              <label className="ml-2 inline-flex items-center gap-1 text-xs">
-                                <input
-                                  type="checkbox"
-                                  checked={!!intemperiePorUserId[u.id]}
-                                  onChange={(e) =>
-                                    setIntemperiePorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
-                                  }
-                                />
-                                <span><b>Intempérie</b></span>
-                              </label>
-                            )}
-                          </label>
-                        ))}
+                        {/* Cabeçalho clicável */}
+                        <button
+                          type="button"
+                          onClick={() => toggleEmpresa(empresa)}
+                          aria-expanded={opened}
+                          aria-controls={`lista-${empresa}`}
+                          className={[
+                            "flex w-full items-center justify-between",
+                            "px-4 py-3 text-left",
+                            "transition-colors hover:bg-black/5",
+                            "focus:outline-none focus:ring-2",
+                            "focus:ring-inset focus:ring-black/10",
+                          ].join(" ")}
+                        >
+                          <span className="font-semibold text-gray-700">
+                            {empresa}
+                          </span>
+
+                          <span
+                            aria-hidden="true"
+                            className={[
+                              "shrink-0 transition-transform duration-200",
+                              opened ? "rotate-90" : "",
+                            ].join(" ")}
+                          >
+                            ▸
+                          </span>
+                        </button>
+
+                        {/* Lista de usuários (expand/collapse) */}
+                        <div
+                          id={`lista-${empresa}`}
+                          className={
+                            opened
+                              ? [
+                                  "grid max-h-80",
+                                  "grid-cols-1 gap-x-6 gap-y-3",
+                                  "overflow-y-auto",
+                                  "border-t border-black/5",
+                                  "bg-white/40 px-4 py-4",
+                                  "sm:grid-cols-2",
+                                  "lg:grid-cols-3",
+                                  "2xl:grid-cols-4",
+                                ].join(" ")
+                              : "hidden"
+                          }
+                        >
+                          {lista.map((u) => (
+                            <label key={u.id} className="block text-sm text-gray-800">
+                              <input
+                                type="checkbox"
+                                value={u.id}
+                                checked={selectedUsers.includes(u.id)}
+                                onChange={handleEquipaChange}
+                                className="mr-2"
+                              />
+                              {u.name}
+                              {selectedUsers.includes(u.id) && (
+                                <label className="ml-2 inline-flex items-center gap-1 text-xs">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!intemperiePorUserId[u.id]}
+                                    onChange={(e) =>
+                                      setIntemperiePorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
+                                    }
+                                  />
+                                  <span><b>Intempérie</b></span>
+                                </label>
+                              )}
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
                 {/* {Object.entries(usuariosPorEmpresa).map(([empresa, lista], index) => (
                   <div
                     key={empresa}
@@ -1920,6 +2004,98 @@ const RegistroHoras: React.FC = () => {
                 ))} */}
               </div>
 
+              {(isOperadorOuMotorista || isAdmin) && (
+                <section
+                  className={[
+                    "min-w-0 xl:col-span-2",
+                    "rounded-xl border border-gray-200",
+                    "bg-gray-50 p-4",
+                  ].join(" ")}
+                >
+                  <h3 className="mb-4 text-sm font-semibold text-gray-700">
+                    Dados de Motorista
+                  </h3>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="min-w-0">
+                      <Label className="mb-1 block">Origem</Label>
+                      <Input
+                        value={formData.origem}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            origem: e.target.value,
+                          })
+                        }
+                        className={classeInputMotorista}
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <Label className="mb-1 block">Destino</Label>
+                      <Input
+                        value={formData.destino}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            destino: e.target.value,
+                          })
+                        }
+                        className={classeInputMotorista}
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <Label className="mb-1 block">Matrícula</Label>
+                      <Input
+                        value={formData.matricula}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            matricula: e.target.value,
+                          })
+                        }
+                        className={classeInputMotorista}
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <Label className="mb-1 block">KM Rodados</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={formData.km_rodados}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            km_rodados: e.target.value,
+                          })
+                        }
+                        className={classeInputMotorista}
+                      />
+                    </div>
+
+                    <div className="min-w-0 md:col-span-2">
+                      <Label className="mb-1 block">
+                        Máquinas transportadas
+                      </Label>
+
+                      <Input
+                        placeholder="Ex.: WS940C, YZ30, Pá carregadora..."
+                        value={formData.maquinas_transportadas}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            maquinas_transportadas: e.target.value,
+                          })
+                        }
+                        className={classeInputMotorista}
+                      />
+                    </div>
+                  </div>
+                </section>
+              )}
+
               {/* <div className="" style={{ marginBottom: '1%', float: 'left' }}>
                 <label className="block text-sm font-medium text-gray-700 ff-class-form-registro-hora-elements-100">Equipa</label>
                 <div className="mt-1 grid grid-cols-2 gap-2" style={{ float: 'left'}}>
@@ -1939,7 +2115,7 @@ const RegistroHoras: React.FC = () => {
               </div> */}
             </div>
 
-            {(isOperadorOuMotorista || isAdmin) && (
+            {/* {(isOperadorOuMotorista || isAdmin) && (
               <div className="sm:col-span-2 mt-2 p-4 rounded-xl border border-gray-200 bg-gray-50">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3" style={{ marginLeft: '1%' }}>Dados de Motorista</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginLeft: '1%' }}>
@@ -1973,7 +2149,7 @@ const RegistroHoras: React.FC = () => {
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
 
 
             <div className="flex justify-end gap-2 div-form-btn">
