@@ -26,6 +26,7 @@ import {
     EstadoCartao,
     TipoCartao,
   } from "@/types/cartao";
+  import LoadingState from "@/components/LoadingState";
 
   interface CartaoForm {
     nome: string;
@@ -688,9 +689,10 @@ import {
           </table>
 
           {carregando && (
-            <div className="p-8 text-center text-sm text-gray-500">
-              A carregar cartões...
-            </div>
+            <LoadingState
+                message="A carregar cartões..."
+                compact
+            />
           )}
         </div>
       </section>

@@ -30,6 +30,7 @@ import {
     CartaoVeiculoAssociacao,
     Veiculo,
   } from "@/types/cartao";
+  import LoadingState from "@/components/LoadingState";
 
   type TipoOperacao = "associar" | "transferir";
 
@@ -588,22 +589,23 @@ import {
               {!carregando
                 && cartoesFiltrados.length === 0
                 && (
-                  <tr>
+                    <tr>
                     <td
-                      colSpan={5}
-                      className="px-4 py-8 text-center text-gray-500"
+                        colSpan={5}
+                        className="px-4 py-8 text-center text-gray-500"
                     >
-                      Nenhum cartão encontrado.
+                        Nenhum cartão encontrado.
                     </td>
-                  </tr>
-                )}
+                    </tr>
+               )}
             </tbody>
           </table>
 
           {carregando && (
-            <div className="p-8 text-center text-sm text-gray-500">
-              A carregar associações...
-            </div>
+            <LoadingState
+                message="A carregar associações..."
+                compact
+            />
           )}
         </div>
 

@@ -23,7 +23,7 @@ import {
     TipoVeiculo,
     Veiculo,
   } from "@/types/cartao";
-
+  import LoadingState from "@/components/LoadingState";
 
   interface VeiculoForm {
     matricula: string;
@@ -479,10 +479,11 @@ import {
           </table>
 
           {carregando && (
-            <div className="p-8 text-center text-sm text-gray-500">
-              A carregar veículos...
-            </div>
-          )}
+            <LoadingState
+                message="A carregar veículos..."
+                compact
+            />
+           )}
         </div>
       </section>
     );

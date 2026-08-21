@@ -15,6 +15,7 @@ import RegistroHoras from "./pages/RegistroHoras";
 import Clientes from "./pages/Clientes";
 import Obras from "./pages/Obras";
 import ChangePassword from "./pages/ChangePassword";
+import ControleCartoes from "./pages/ControleCartoes";
 
 const App: React.FC = () => {
   return (
@@ -39,6 +40,7 @@ const App: React.FC = () => {
         <Route path="clientes" element={<Clientes />} />
         <Route path="obras" element={<Obras />} />
         <Route path="change-password" element={<ChangePassword />} />
+        <Route path="controle-cartoes" element={<PrivateRoute allowedProfiles={["admin"]}><ControleCartoes /></PrivateRoute>}/>
       </Route>
 
       <Route path="*" element={<NotFound />} />
