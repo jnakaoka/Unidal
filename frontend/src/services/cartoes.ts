@@ -13,6 +13,11 @@ import type {
   Veiculo,
   VeiculoCreate,
   VeiculoUpdate,
+  Condutor,
+  CondutorAssociacaoCreate,
+  CondutorAssociacaoFiltros,
+  CondutorTransferenciaCreate,
+  VeiculoCondutorAssociacao,
 } from "@/types/cartao";
 
 
@@ -189,6 +194,115 @@ export async function desassociarCartao(
     (
       "/cartao-veiculo-associacoes/"
       + `cartoes/${cartaoId}/desassociar`
+    ),
+  );
+
+  return response.data;
+}
+
+export async function listarCondutores(): Promise<
+  Condutor[]
+> {
+  const response = await api.get<Condutor[]>("/users/");
+
+  return response.data.filter(
+    (utilizador) => (
+      utilizador.is_active
+      && utilizador.e_condutor
+    ),
+  );
+}
+
+
+export async function listarAssociacoesCondutores(
+  filtros: CondutorAssociacaoFiltros = {},
+): Promise<VeiculoCondutorAssociacao[]> {
+  const response = await api.get<
+    VeiculoCondutorAssociacao[]
+  >(
+    "/veiculo-condutor-associacoes/",
+    {
+      params: filtros,
+    },
+  );
+
+  return response.data;
+}
+
+
+export async function associarCondutor(
+  payload: CondutorAssociacaoCreate,
+): Promise<VeiculoCondutorAssociacao> {
+  const response = await api.post<
+    VeiculoCondutorAssociacao
+  >(
+    "/veiculo-condutor-associacoes/",
+    payload,
+  );
+
+  return response.data;
+}
+
+
+export async function transferirCondutor(
+  condutorId: number,
+  payload: CondutorTransferenciaCreate,
+): Promise<VeiculoCondutorAssociacao> {
+  const response = await api.post<
+    VeiculoCondutorAssociacao
+  >(
+    (
+      "/veiculo-condutor-associacoes/"
+      + `condutores/${condutorId}/transferir`
+    ),
+    payload,
+  );
+
+  return response.data;
+}
+
+
+export async function desassociarCondutor(
+  veiculoId: number,
+): Promise<VeiculoCondutorAssociacao> {
+  const response = await api.post<
+    VeiculoCondutorAssociacao
+  >(
+    (
+      "/veiculo-condutor-associacoes/"
+      + `veiculos/${veiculoId}/desassociar`
+    ),
+  );
+
+  return response.data;
+}
+
+
+export async function obterHistoricoCondutoresVeiculo(
+  veiculoId: number,
+): Promise<VeiculoCondutorAssociacao[]> {
+  const response = await api.get<
+    VeiculoCondutorAssociacao[]
+  >(
+    (
+      "/veiculo-condutor-associacoes/"
+      + `veiculos/${veiculoId}/historico`
+    ),
+  );
+
+  return response.data;
+}
+
+
+export async function obterHistoricoVeiculosCondutor(
+  condutorId: number,
+): Promise<VeiculoCondutorAssociacao[]> {
+  const response = await api.get<
+    VeiculoCondutorAssociacao[]
+  >(
+    (
+      "/veiculo-condutor-associacoes/"
+      + `condutores/${condutorId}/historico`
     ),
   );
 

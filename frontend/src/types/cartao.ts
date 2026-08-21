@@ -136,3 +136,61 @@ export interface AssociacaoFiltros {
   veiculo_id?: number;
   ativa?: boolean;
 }
+
+export interface Condutor {
+  id: number;
+  name: string;
+  email: string;
+  empresa: string;
+  is_active: boolean;
+  e_condutor: boolean;
+}
+
+
+export interface CondutorResumo {
+  id: number;
+  name: string;
+  email: string;
+  empresa: string;
+  is_active: boolean;
+  e_condutor: boolean;
+}
+
+
+export interface VeiculoCondutorAssociacao {
+  id: number;
+  veiculo_id: number;
+  condutor_id: number;
+  associado_em: string;
+  desassociado_em: string | null;
+  associado_por_id: number;
+  desassociado_por_id: number | null;
+  observacoes: string | null;
+  ativa: boolean;
+  criado_em: string;
+  atualizado_em: string;
+  veiculo: VeiculoResumo;
+  condutor: CondutorResumo;
+  associado_por: UsuarioResumo;
+  desassociado_por: UsuarioResumo | null;
+}
+
+
+export interface CondutorAssociacaoCreate {
+  veiculo_id: number;
+  condutor_id: number;
+  observacoes?: string | null;
+}
+
+
+export interface CondutorTransferenciaCreate {
+  veiculo_destino_id: number;
+  observacoes?: string | null;
+}
+
+
+export interface CondutorAssociacaoFiltros {
+  veiculo_id?: number;
+  condutor_id?: number;
+  ativa?: boolean;
+}

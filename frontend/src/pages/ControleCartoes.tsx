@@ -3,13 +3,19 @@ import {
   ArrowRightLeft,
   Car,
   CreditCard,
+  UserRound,
 } from "lucide-react";
 
 import AssociacoesPanel from "@/components/cartoes/AssociacoesPanel";
 import CartoesPanel from "@/components/cartoes/CartoesPanel";
 import VeiculosPanel from "@/components/cartoes/VeiculosPanel";
+import CondutoresPanel from "@/components/cartoes/CondutoresPanel";
 
-type Aba = "associacoes" | "cartoes" | "veiculos";
+type Aba =
+  | "associacoes"
+  | "cartoes"
+  | "veiculos"
+  | "condutores";
 
 const abas = [
   {
@@ -30,6 +36,12 @@ const abas = [
     descricao: "Carrinhas e viaturas",
     icon: Car,
   },
+  {
+    id: "condutores" as const,
+    nome: "Condutores",
+    descricao: "Veículo atual e histórico",
+    icon: UserRound,
+  },
 ];
 
 export default function ControleCartoes() {
@@ -44,13 +56,13 @@ export default function ControleCartoes() {
         </h1>
 
         <p className="mt-1 text-sm text-gray-600">
-          Gerencie cartões, veículos e o histórico
-          de movimentações.
+        Gerencie cartões, veículos, condutores e
+        o histórico de movimentações.
         </p>
       </header>
 
       <nav
-        className="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3"
+        className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4"
         aria-label="Áreas do controle de cartões"
       >
         {abas.map((aba) => {
@@ -110,6 +122,10 @@ export default function ControleCartoes() {
 
         {abaAtiva === "veiculos" && (
           <VeiculosPanel />
+        )}
+
+        {abaAtiva === "condutores" && (
+          <CondutoresPanel />
         )}
       </main>
     </div>
