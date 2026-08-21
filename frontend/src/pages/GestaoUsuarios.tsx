@@ -20,6 +20,7 @@ interface User {
   empresa: string;
   password: string;
   is_active: boolean;
+  e_condutor: boolean;
   perfil: Perfil;
 }
 
@@ -39,7 +40,7 @@ const GestaoUsuarios: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
-  const [formData, setFormData] = useState({ id: 0, name: '', email: '', empresa: '', password: "", perfil_id: 0 });
+  const [formData, setFormData] = useState({ id: 0, name: '', email: '', empresa: '', password: "", perfil_id: 0, e_condutor: false });
   const [perfis, setPerfis] = useState<Perfil[]>([]);
   const [carregandoInicial, setCarregandoInicial] = useState(true);
   const [carregandoLista, setCarregandoLista] = useState(false);
@@ -114,6 +115,7 @@ const GestaoUsuarios: React.FC = () => {
     password: string;
     perfil_id: number;
     is_active: boolean;
+    e_condutor: boolean,
   }>) {
     const base = {
       id: u.id,
@@ -121,6 +123,7 @@ const GestaoUsuarios: React.FC = () => {
       email: u.email,
       empresa: u.empresa,
       perfil_id: typeof u.perfil === 'object' ? u.perfil.id : (u as any).perfil, // garante ID
+      e_condutor: u.e_condutor,
       // password intencionalmente omitida (só passa se for trocar a senha)
     };
     return { ...base, ...overrides };
@@ -301,7 +304,7 @@ const GestaoUsuarios: React.FC = () => {
 
   const handleNovoUsuario = () => {
     const perfilInicial = perfis[0]?.id || 0;
-    setFormData({id: 0, name: "", email: "", empresa: "", password: "", perfil_id: perfilInicial });
+    setFormData({id: 0, name: "", email: "", empresa: "", password: "", perfil_id: perfilInicial, e_condutor: false });
     setModalAberto(true);
     setEditingUser(null);
   };
@@ -327,6 +330,7 @@ const GestaoUsuarios: React.FC = () => {
       empresa: user.empresa,
       password: "",
       perfil_id: typeof user.perfil === 'object' ? user.perfil.id : user.perfil,
+      e_condutor: user.e_condutor,
     });
     console.log('formData.perfil_id:', formData.perfil_id, typeof formData.perfil_id);
     setIsEditing(true);
@@ -348,6 +352,7 @@ const GestaoUsuarios: React.FC = () => {
           email: formData.email,
           empresa: formData.empresa,
           perfil_id: formData.perfil_id,
+          e_condutor: formData.e_condutor,
         });
       } else {
         await api.post('/users/', {
@@ -356,6 +361,7 @@ const GestaoUsuarios: React.FC = () => {
           empresa: formData.empresa,
           password: formData.password,
           perfil_id: formData.perfil_id,
+          e_condutor: formData.e_condutor,
         });
       }
 
@@ -373,7 +379,7 @@ const GestaoUsuarios: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({ id: 0, name: '', email: '', empresa: '', password: '', perfil_id: perfis[0]?.id || 0 });
+    setFormData({ id: 0, name: '', email: '', empresa: '', password: '', perfil_id: perfis[0]?.id || 0 , e_condutor: false});
     setEditingUser(null);
     setIsEditing(false);
     setModalAberto(false);
@@ -516,9 +522,21 @@ const GestaoUsuarios: React.FC = () => {
         </div>
       )} */}
       {modalAberto && (
-        <div className="relative inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50
-                          bg-black/50" style={{ zIndex: 10000, width: '100%' }}>
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div
+          className={[
+            "fixed inset-0 z-[10000]",
+            "flex items-center justify-center",
+            "bg-black/50 p-4",
+          ].join(" ")}
+        >
+          <div
+            className={[
+              "w-full max-w-2xl",
+              "max-h-[85vh] overflow-y-auto",
+              "space-y-4 rounded-xl bg-white p-6",
+              "shadow-2xl",
+            ].join(" ")}
+          >
             <h3 className="text-xl font-semibold text-gray-700">
               {isEditing ? "Editar Usuário" : "Novo Usuário"}
             </h3>
@@ -591,23 +609,71 @@ const GestaoUsuarios: React.FC = () => {
                   ))}
                 </select>
               </div>
+              <div className="md:col-span-2">
+                <label
+                  className={[
+                    "flex cursor-pointer items-start gap-3",
+                    "rounded-lg border border-gray-200",
+                    "bg-gray-50 p-4",
+                  ].join(" ")}
+                >
+                  <input
+                    type="checkbox"
+                    checked={formData.e_condutor}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        e_condutor: e.target.checked,
+                      })
+                    }
+                    className="mt-1 h-4 w-4 accent-red-600"
+                  />
+
+                  <span>
+                    <span className="block font-medium text-gray-800">
+                      Condutor
+                    </span>
+
+                    <span className="block text-sm text-gray-500">
+                      Este usuário pode conduzir carrinhas e viaturas.
+                      Esta opção não altera o perfil de acesso.
+                    </span>
+                  </span>
+                </label>
+              </div>
             </div>
 
-            <div className="flex justify-end gap-2">
-              <Button className="btn-bg-blue-500" onClick={handleSalvarUsuario}>
+            <div className="mt-6 flex w-full justify-end gap-3 border-t border-gray-200 pt-4">
+              <button
+                type="button"
+                onClick={handleSalvarUsuario}
+                className={[
+                  "inline-flex min-w-24 items-center justify-center",
+                  "rounded-lg bg-blue-600 px-5 py-2.5",
+                  "text-sm font-medium text-white shadow-sm",
+                  "transition-colors hover:bg-blue-700",
+                  "focus:outline-none focus:ring-2",
+                  "focus:ring-blue-500 focus:ring-offset-2",
+                ].join(" ")}
+              >
                 {isEditing ? "Atualizar" : "Criar"}
-              </Button>
-              <Button
-                className="generic-btn"
-                variant="secondary"
-                onClick={() => {
-                  setModalAberto(false);
-                  setEditingUser(null);
-                  setFormData({id: 0, name: "", email: "", empresa: "", password: "", perfil_id: perfis[0]?.id || 0 });
-                }}
+              </button>
+
+              <button
+                type="button"
+                onClick={resetForm}
+                className={[
+                  "inline-flex min-w-24 items-center justify-center",
+                  "rounded-lg border border-gray-300",
+                  "bg-white px-5 py-2.5",
+                  "text-sm font-medium text-gray-700 shadow-sm",
+                  "transition-colors hover:bg-gray-50",
+                  "focus:outline-none focus:ring-2",
+                  "focus:ring-gray-400 focus:ring-offset-2",
+                ].join(" ")}
               >
                 Cancelar
-              </Button>
+              </button>
             </div>
           </div>
         </div>
@@ -643,6 +709,7 @@ const GestaoUsuarios: React.FC = () => {
                   <th className="px-4 py-2">Email</th>
                   <th className="px-4 py-2">Empresa</th>
                   <th className="px-4 py-2">Perfil</th>
+                  <th className="px-4 py-2 text-left">Condutor</th>
                   <th className="px-4 py-2">Status</th>
                   <th colSpan={2} className="px-4 py-2">Ações</th>
                 </tr>
@@ -684,7 +751,7 @@ const GestaoUsuarios: React.FC = () => {
                 )} */}
                 {pageItems.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center text-gray-500">Nenhum usuário encontrado</td>
+                    <td colSpan={8} className="text-center text-gray-500">Nenhum usuário encontrado</td>
                   </tr>
                 ) : (
                   pageItems.map((user, index) => (
@@ -694,6 +761,17 @@ const GestaoUsuarios: React.FC = () => {
                       <td className="px-4 py-2">{user.email}</td>
                       <td className="px-4 py-2">{user.empresa}</td>
                       <td className="px-4 py-2">{user.perfil?.nome || 'Sem perfil'}</td>
+                      <td className="px-4 py-2"><span className={[
+                            "inline-flex rounded-full px-2.5 py-1",
+                            "text-xs font-medium",
+                            user.e_condutor
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-600",
+                          ].join(" ")}
+                        >
+                          {user.e_condutor ? "Sim" : "Não"}
+                        </span>
+                      </td>
                       <td className="px-4 py-2">
                         <span
                           className={`px-2 py-1 text-xs font-semibold rounded-full ${
