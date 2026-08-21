@@ -1,5 +1,9 @@
-// LayoutContext.tsx
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
 
 interface LayoutContextType {
   isSidebarOpen: boolean;
@@ -7,29 +11,51 @@ interface LayoutContextType {
   closeSidebar: () => void;
 }
 
-const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
+const LayoutContext = createContext<
+  LayoutContextType | undefined
+>(undefined);
 
-export const LayoutProvider = ({ children }: { children: ReactNode }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+export function LayoutProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(
+    () => (
+      typeof window !== "undefined"
+      && window.innerWidth >= 768
+    ),
+  );
 
-  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
-  //const closeSidebar = () => setIsSidebarOpen(false);
-  const closeSidebar = () => {
-    //console.log('closeSidebar');
+  function toggleSidebar() {
+    setIsSidebarOpen((anterior) => !anterior);
+  }
+
+  function closeSidebar() {
     setIsSidebarOpen(false);
   }
 
   return (
-    <LayoutContext.Provider value={{ isSidebarOpen, toggleSidebar, closeSidebar }}>
+    <LayoutContext.Provider
+      value={{
+        isSidebarOpen,
+        toggleSidebar,
+        closeSidebar,
+      }}
+    >
       {children}
     </LayoutContext.Provider>
   );
-};
+}
 
-export const useLayout = (): LayoutContextType => {
+export function useLayout(): LayoutContextType {
   const context = useContext(LayoutContext);
+
   if (!context) {
-    throw new Error("useLayout must be used within a LayoutProvider");
+    throw new Error(
+      "useLayout deve ser usado dentro de LayoutProvider",
+    );
   }
+
   return context;
-};
+}

@@ -1,13 +1,17 @@
 //gestaoUsuarios.tsx
-import React, { useEffect, useState, useMemo } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import api from '../services/api';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Perfil } from "../types/perfil";
-import axios from 'axios';
 import { FiltroUsuarios } from "@/components/FiltroUsuarios";
 import Pagination, { usePagination } from "@/components/pagination-utils";
+import LoadingState from "@/components/LoadingState";
 
 interface User {
   id: number;
@@ -37,6 +41,10 @@ const GestaoUsuarios: React.FC = () => {
   const [modalAberto, setModalAberto] = useState(false);
   const [formData, setFormData] = useState({ id: 0, name: '', email: '', empresa: '', password: "", perfil_id: 0 });
   const [perfis, setPerfis] = useState<Perfil[]>([]);
+  const [carregandoInicial, setCarregandoInicial] = useState(true);
+  const [carregandoLista, setCarregandoLista] = useState(false);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
+  const carregamentoInicialConcluido = useRef(false);
   const registrosPorPagina = 10;
   const {
     currentPage,
@@ -52,11 +60,51 @@ const GestaoUsuarios: React.FC = () => {
   const indexUltimoRegistro = currentPage * registrosPorPagina;
   const indexPrimeiroRegistro = indexUltimoRegistro - registrosPorPagina;
   const registrosPaginados = usuarios.slice(indexPrimeiroRegistro, indexUltimoRegistro);
-  
+
 
   useEffect(() => {
-    fetchUsuarios();
-    fetchPerfis();
+    let montado = true;
+
+    async function carregarDados() {
+      const cargaInicial = !carregamentoInicialConcluido.current;
+
+      try {
+        setErroCarregamento(null);
+
+        if (cargaInicial) {
+          setCarregandoInicial(true);
+        } else {
+          setCarregandoLista(true);
+        }
+
+        await Promise.all([
+          fetchUsuarios(),
+          cargaInicial
+            ? fetchPerfis()
+            : Promise.resolve(),
+        ]);
+      } catch {
+        if (montado) {
+          setErroCarregamento(
+            "Não foi possível carregar os utilizadores."
+          );
+        }
+      } finally {
+        if (montado) {
+          setCarregandoInicial(false);
+          setCarregandoLista(false);
+          carregamentoInicialConcluido.current = true;
+        }
+      }
+    }
+
+    void carregarDados();
+
+    return () => {
+      montado = false;
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mostrarInativos]);
 
   function toUpdatePayload(u: User, overrides: Partial<{
@@ -106,7 +154,7 @@ const GestaoUsuarios: React.FC = () => {
   //     console.error(e);
   //   }
   // };
-  
+
 
   // const DOTS = '…' as const;
   // const range = (start: number, end: number) =>
@@ -153,11 +201,11 @@ const GestaoUsuarios: React.FC = () => {
       //   `${import.meta.env.VITE_API_URL}/perfis/perfis`
       // );
       const { data: perfisData } = await api.get<Perfil[]>('/perfis/');
-      
+
       //console.log("VITE_API_URL:", import.meta.env.VITE_API_URL);
 
       //console.log('response')
-      //console.log(response.data); 
+      //console.log(response.data);
       //const perfisData = response.data;
       console.log('perfisData');
       console.log(perfisData);
@@ -172,6 +220,7 @@ const GestaoUsuarios: React.FC = () => {
       }
     } catch (error) {
       console.error("Erro ao buscar perfis:", error);
+      throw error;
     }
   };
 
@@ -181,7 +230,7 @@ const GestaoUsuarios: React.FC = () => {
   //     params.set("is_active", mostrarInativos ? "false" : "true");
   //     const response = await api.get<User[]>('/users/?${params.toString()}');
   //     setUsuarios(response.data);
-  //     setUsuariosFullList(response.data); 
+  //     setUsuariosFullList(response.data);
   //     console.log(response.data);
   //     //console.log('usuarios', usuarios);
   //   } catch (error) {
@@ -202,16 +251,16 @@ const GestaoUsuarios: React.FC = () => {
   };
 
   const handleFiltro = ({ nome, email, empresa, perfil }: FiltrosUsuarios) => {
-    
+
     if (!nome && !email && !empresa && !perfil) {
       console.log('Sem filtros: resetando lista');
       setUsuariosFiltrados([]);
       setUsuarios(usuariosFullList);
       return;
     }
-    
+
     let filtrados = [...usuariosFullList];
-    console.log('usuarios:', usuariosFullList);  
+    console.log('usuarios:', usuariosFullList);
     console.log('Filtro recebido:', { nome, email, empresa, perfil });
     if (nome) {
       filtrados = filtrados.filter((u) =>
@@ -248,7 +297,7 @@ const GestaoUsuarios: React.FC = () => {
   //   }
   // };
 
-  
+
 
   const handleNovoUsuario = () => {
     const perfilInicial = perfis[0]?.id || 0;
@@ -256,12 +305,12 @@ const GestaoUsuarios: React.FC = () => {
     setModalAberto(true);
     setEditingUser(null);
   };
-  
+
   const handleDelete = async (id: number) => {
     if (!confirm('Tem certeza que deseja excluir este usuário?')) return;
     try {
       await api.delete(`/users/${id}`);
-      fetchUsuarios();
+      await fetchUsuarios();
     } catch (error) {
       console.error('Erro ao excluir usuário:', error);
     }
@@ -286,7 +335,7 @@ const GestaoUsuarios: React.FC = () => {
   };
 
   const handleSalvarUsuario = async () => {
-    
+
     if(!formData.name || !formData.email || !formData.empresa) {
       alert('Por favor, preencha todos os campos obrigatórios. Nome, Email, Empresa.');
       return
@@ -311,8 +360,8 @@ const GestaoUsuarios: React.FC = () => {
       }
 
       resetForm();
-      fetchUsuarios();
-    } 
+      await fetchUsuarios();
+    }
     catch (error: any) {
       if (error.response) {
         console.error("Erro na resposta:", error.response.data);
@@ -340,6 +389,18 @@ const GestaoUsuarios: React.FC = () => {
     }
   }
 
+  if (carregandoInicial) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-6">
+        <h1 className="mb-6 text-3xl font-bold text-gray-800">
+          Gestão de Utilizadores
+        </h1>
+
+        <LoadingState message="A carregar utilizadores..." />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
       <div className="flex justify-between items-center">
@@ -353,8 +414,19 @@ const GestaoUsuarios: React.FC = () => {
         >
           + Novo Usuário
         </Button>
-        
+
       </div>
+      {erroCarregamento && (
+        <div
+          role="alert"
+          className={[
+            "rounded-lg border border-red-200",
+            "bg-red-50 p-4 text-sm text-red-700",
+          ].join(" ")}
+        >
+          {erroCarregamento}
+        </div>
+      )}
       {/* {modalAberto && (
         <div className="bg-white rounded-xl shadow-lg w-full max-w-2xl p-6 space-y-4">
           <h3 className="text-xl font-semibold text-gray-700 mb-2">
@@ -492,7 +564,7 @@ const GestaoUsuarios: React.FC = () => {
                 <Label className="mb-1 block">Senha</Label>
                 <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => definirSenhaTemporaria(formData.id)}>
                   Gerar nova senha
-                </Button>  
+                </Button>
               </div> */}
               <div className="ff-class-form-registro-hora-elements mb-1 block align-float-left">
                 <Label className="mb-1 block">Senha</Label>
@@ -553,96 +625,105 @@ const GestaoUsuarios: React.FC = () => {
           </label>
         </div>
       </div>
-      
-      <div className="rounded-xl shadow overflow-x-auto bg-white">
-        <table cellSpacing="0" cellPadding="20" className="w-full table-auto text-sm divide-y divide-gray-200 table-spacing-0">
-          <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide text-left">
-            <tr className="head-lista">
-              <th className="px-4 py-2">Id</th>
-              <th className="px-4 py-2">Nome</th>
-              <th className="px-4 py-2">Email</th>
-              <th className="px-4 py-2">Empresa</th>
-              <th className="px-4 py-2">Perfil</th>
-              <th className="px-4 py-2">Status</th>
-              <th colSpan={2} className="px-4 py-2">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="bg-gray-50 text-xs text-gray-500 tracking-wide text-left">
-            {/* {usuarios.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center text-gray-500">Nenhum usuário encontrado</td>
-              </tr>
-            ) : (
-              usuarios
-              .slice((currentPage - 1) * registrosPorPagina, currentPage * registrosPorPagina)
-              .map((user, index) => (
-                <tr key={user.id} className={index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
-                  <td className="px-4 py-2">{user.id}</td>
-                  <td className="px-4 py-2">{user.name}</td>
-                  <td className="px-4 py-2">{user.email}</td>
-                  <td className="px-4 py-2">{user.empresa}</td>
-                  <td className="px-4 py-2">{user.perfil?.nome || 'Sem perfil'}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.is_active ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
-                      }`}
-                    >
-                      {user.is_active ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 space-x-2" style={{ float: 'right' }}>
-                    <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => handleEditClick(user)}>
-                      Editar
-                    </Button>
-                    <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => handleDelete(user.id)}>
-                      Excluir
-                    </Button>
-                  </td>
+
+      <div className="overflow-hidden rounded-xl bg-white shadow">
+        {carregandoLista ? (
+          <LoadingState
+            compact
+            message="A atualizar a lista de utilizadores..."
+          />
+        ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table cellSpacing="0" cellPadding="20" className="w-full table-auto text-sm divide-y divide-gray-200 table-spacing-0">
+              <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide text-left">
+                <tr className="head-lista">
+                  <th className="px-4 py-2">Id</th>
+                  <th className="px-4 py-2">Nome</th>
+                  <th className="px-4 py-2">Email</th>
+                  <th className="px-4 py-2">Empresa</th>
+                  <th className="px-4 py-2">Perfil</th>
+                  <th className="px-4 py-2">Status</th>
+                  <th colSpan={2} className="px-4 py-2">Ações</th>
                 </tr>
-              ))
-            )} */}
-            {pageItems.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="text-center text-gray-500">Nenhum usuário encontrado</td>
-              </tr>
-            ) : (
-              pageItems.map((user, index) => (
-                <tr key={user.id} className={index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
-                  <td className="px-4 py-2">{user.id}</td>
-                  <td className="px-4 py-2">{user.name}</td>
-                  <td className="px-4 py-2">{user.email}</td>
-                  <td className="px-4 py-2">{user.empresa}</td>
-                  <td className="px-4 py-2">{user.perfil?.nome || 'Sem perfil'}</td>
-                  <td className="px-4 py-2">
-                    <span
-                      className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                        user.is_active ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
-                      }`}
-                    >
-                      {user.is_active ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2 space-x-2" style={{ float: 'right' }}>
-                    <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => handleEditClick(user)}>
-                      Editar
-                    </Button>
-                    <Button
-                      className="px-3 py-1 btn-bg-gray-500 text-white rounded text-sm"
-                      variant="outline"
-                      onClick={() => handleToggleAtivo(user)}
-                    >
-                      {user.is_active === false ? "Ativar" : "Inativar"}
-                    </Button>
-                    <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => handleDelete(user.id)}>
-                      Excluir
-                    </Button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody className="bg-gray-50 text-xs text-gray-500 tracking-wide text-left">
+                {/* {usuarios.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-gray-500">Nenhum usuário encontrado</td>
+                  </tr>
+                ) : (
+                  usuarios
+                  .slice((currentPage - 1) * registrosPorPagina, currentPage * registrosPorPagina)
+                  .map((user, index) => (
+                    <tr key={user.id} className={index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
+                      <td className="px-4 py-2">{user.id}</td>
+                      <td className="px-4 py-2">{user.name}</td>
+                      <td className="px-4 py-2">{user.email}</td>
+                      <td className="px-4 py-2">{user.empresa}</td>
+                      <td className="px-4 py-2">{user.perfil?.nome || 'Sem perfil'}</td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            user.is_active ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
+                          }`}
+                        >
+                          {user.is_active ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 space-x-2" style={{ float: 'right' }}>
+                        <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => handleEditClick(user)}>
+                          Editar
+                        </Button>
+                        <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => handleDelete(user.id)}>
+                          Excluir
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )} */}
+                {pageItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="text-center text-gray-500">Nenhum usuário encontrado</td>
+                  </tr>
+                ) : (
+                  pageItems.map((user, index) => (
+                    <tr key={user.id} className={index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
+                      <td className="px-4 py-2">{user.id}</td>
+                      <td className="px-4 py-2">{user.name}</td>
+                      <td className="px-4 py-2">{user.email}</td>
+                      <td className="px-4 py-2">{user.empresa}</td>
+                      <td className="px-4 py-2">{user.perfil?.nome || 'Sem perfil'}</td>
+                      <td className="px-4 py-2">
+                        <span
+                          className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            user.is_active ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
+                          }`}
+                        >
+                          {user.is_active ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 space-x-2" style={{ float: 'right' }}>
+                        <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => handleEditClick(user)}>
+                          Editar
+                        </Button>
+                        <Button
+                          className="px-3 py-1 btn-bg-gray-500 text-white rounded text-sm"
+                          variant="outline"
+                          onClick={() => handleToggleAtivo(user)}
+                        >
+                          {user.is_active === false ? "Ativar" : "Inativar"}
+                        </Button>
+                        <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => handleDelete(user.id)}>
+                          Excluir
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         {/* <div className="flex justify-center mt-4 space-x-2" style={{ margin: '1% 0 1% 0' }}>
           <button
             onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
@@ -674,16 +755,18 @@ const GestaoUsuarios: React.FC = () => {
             Próxima
           </button>
         </div> */}
-        {/* Paginação */}
-        <div className="mt-4">
-          <Pagination
-            totalPages={totalPages}       // << do hook usePagination
-            currentPage={currentPage}
-            onPageChange={setCurrentPage}
-            siblingCount={1}
-            boundaryCount={1}
-          />
-        </div>
+            {/* Paginação */}
+            <div className="mt-4">
+              <Pagination
+                totalPages={totalPages}       // << do hook usePagination
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+                siblingCount={1}
+                boundaryCount={1}
+              />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

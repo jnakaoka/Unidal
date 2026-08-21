@@ -35,11 +35,14 @@ export function FiltroRegistros({ clientes, obras, onChangeCliente, onFilter }: 
   return (
     <form
       onSubmit={handleSubmit}
-      style={{ width: "100%" }}
-      className="flex flex-wrap items-end gap-4 mb-6"
+      className={[
+        "mb-6 grid w-full grid-cols-1 gap-4",
+        "sm:grid-cols-2",
+        "xl:grid-cols-5",
+      ].join(" ")}
     >
       {/* Cliente */}
-      <div className="dv-bloco-filtros">
+      <div className="min-w-0">
         <label className="block text-sm font-medium lbl-filtros">Cliente</label>
         <select
           value={clienteId ?? ""}
@@ -49,7 +52,12 @@ export function FiltroRegistros({ clientes, obras, onChangeCliente, onFilter }: 
             setObraId(null);           // limpa obra
             onChangeCliente(v);        // pai carrega obras do cliente
           }}
-          className="mt-1 block border border-gray-300 rounded-md px-2 py-1"
+          className={[
+            "mt-1 h-10 w-full min-w-0 rounded-lg",
+            "border border-gray-300 bg-white px-3",
+            "text-sm text-gray-800",
+            "disabled:cursor-not-allowed disabled:bg-gray-100",
+          ].join(" ")}
         >
           <option value="">Todos</option>
           {clientes.map((c) => (
@@ -61,13 +69,18 @@ export function FiltroRegistros({ clientes, obras, onChangeCliente, onFilter }: 
       </div>
 
       {/* Obra (depende do cliente) */}
-      <div className="dv-bloco-filtros">
+      <div className="min-w-0">
         <label className="block text-sm font-medium lbl-filtros">Obra</label>
         <select
           value={obraId ?? ""}
           onChange={(e) => setObraId(e.target.value ? Number(e.target.value) : null)}
           disabled={!clienteId}
-          className="mt-1 block border border-gray-300 rounded-md px-2 py-1"
+          className={[
+            "mt-1 h-10 w-full min-w-0 rounded-lg",
+            "border border-gray-300 bg-white px-3",
+            "text-sm text-gray-800",
+            "disabled:cursor-not-allowed disabled:bg-gray-100",
+          ].join(" ")}
         >
           <option value="">
             {clienteId ? "Todas" : "Selecione um cliente"}
@@ -81,33 +94,47 @@ export function FiltroRegistros({ clientes, obras, onChangeCliente, onFilter }: 
       </div>
 
       {/* Líder equipa */}
-      <div className="dv-bloco-filtros">
+      <div className="min-w-0">
         <label className="block text-sm font-medium lbl-filtros">Líder equipa</label>
         <input
           type="text"
           value={usuario}
           onChange={(e) => setUsuario(e.target.value)}
           placeholder="Nome ou e-mail do usuário"
-          className="mt-1 block border border-gray-300 rounded-md px-2 py-1"
+          className={[
+            "mt-1 h-10 w-full min-w-0 rounded-lg",
+            "border border-gray-300 bg-white px-3",
+            "text-sm text-gray-800",
+          ].join(" ")}
         />
       </div>
 
       {/* Funcionario */}
-      <div className="dv-bloco-filtros">
+      <div className="min-w-0">
         <label className="block text-sm font-medium lbl-filtros">Funcionario</label>
         <input
           type="text"
           value={funcionario}
           onChange={(e) => setFuncionario(e.target.value)}
           placeholder="Nome do funcionário"
-          className="mt-1 block border border-gray-300 rounded-md px-2 py-1"
+          className={[
+            "mt-1 h-10 w-full min-w-0 rounded-lg",
+            "border border-gray-300 bg-white px-3",
+            "text-sm text-gray-800",
+          ].join(" ")}
         />
       </div>
 
       <button
         type="submit"
-        style={{ padding: "0.3%" }}
-        className="btn-bg-blue-500 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition dv-bloco-filtros"
+        className={[
+          "h-10 w-full self-end rounded-lg",
+          "bg-blue-600 px-4 py-2",
+          "text-sm font-semibold text-white",
+          "transition-colors hover:bg-blue-700",
+          "focus:outline-none focus:ring-2",
+          "focus:ring-blue-500 focus:ring-offset-2",
+        ].join(" ")}
       >
         Filtrar
       </button>

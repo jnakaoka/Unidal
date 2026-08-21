@@ -4,6 +4,7 @@ import api from "@/services/api";
 import Pagination, { usePagination } from "@/components/pagination-utils";
 import HighlightText from "@/components/ui/HighlightText";
 import { Button } from "@/components/ui/button";
+import LoadingState from "@/components/LoadingState";
 
 // ==== Tipos ====
 type User = { id: number; name: string; empresa?: string };
@@ -83,6 +84,8 @@ const Relatorios: React.FC = () => {
   const [rangeTo, setRangeTo] = useState<string>(""); // YYYY-MM-DD
   const [clienteId, setClienteId] = useState<number | "">("");
   const [obraId, setObraId] = useState<number | "">("");
+  const [carregando, setCarregando] = useState(true);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
 
   // ordenação por data
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -310,19 +313,59 @@ const Relatorios: React.FC = () => {
 
   // carga inicial
   useEffect(() => {
-    (async () => {
-      const [reg, cls, usr] = await Promise.all([
-        api.get<RegistroHoras[]>("/registro-horas/"),
-        api.get<Cliente[]>("/clientes/"),
-        api.get<User[]>("/users/"),
-      ]);
-      setRegistrosAll(reg.data);
-      setClientes(cls.data);
+    let componenteAtivo = true;
 
-      // ordena usuários por nome para o select
-      const sortedUsers = [...usr.data].sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt"));
-      setLeaders(sortedUsers);
-    })();
+    async function carregarDados() {
+      try {
+        setCarregando(true);
+        setErroCarregamento(null);
+
+        const [reg, cls, usr] = await Promise.all([
+          api.get<RegistroHoras[]>("/registro-horas/"),
+          api.get<Cliente[]>("/clientes/"),
+          api.get<User[]>("/users/"),
+        ]);
+
+        if (!componenteAtivo) {
+          return;
+        }
+
+        setRegistrosAll(reg.data);
+        setClientes(cls.data);
+
+        const utilizadoresOrdenados = [...usr.data].sort(
+          (a, b) => (
+            (a.name || "").localeCompare(
+              b.name || "",
+              "pt",
+            )
+          ),
+        );
+
+        setLeaders(utilizadoresOrdenados);
+      } catch (error) {
+        console.error(
+          "Erro ao carregar relatório:",
+          error,
+        );
+
+        if (componenteAtivo) {
+          setErroCarregamento(
+            "Não foi possível carregar os dados do relatório.",
+          );
+        }
+      } finally {
+        if (componenteAtivo) {
+          setCarregando(false);
+        }
+      }
+    }
+
+    void carregarDados();
+
+    return () => {
+      componenteAtivo = false;
+    };
   }, []);
 
   // quando trocar cliente, carregar obras do cliente
@@ -754,6 +797,35 @@ const Relatorios: React.FC = () => {
     }
   };
 
+  if (carregando) {
+    return (
+      <div className="mx-auto w-full max-w-7xl p-6">
+        <h1 className="mb-6 text-2xl font-bold text-gray-800">
+          Relatórios
+        </h1>
+        <div className="rounded-2xl bg-white shadow-sm">
+          <LoadingState message="A carregar relatório..." />
+        </div>
+      </div>
+    );
+  }
+  if (erroCarregamento) {
+    return (
+      <div className="mx-auto w-full max-w-7xl p-6">
+        <h1 className="mb-6 text-2xl font-bold text-gray-800">
+          Relatórios
+        </h1>
+        <div role="alert"
+          className={[
+            "rounded-xl border border-red-200",
+            "bg-red-50 px-5 py-4 text-red-700",
+          ].join(" ")}
+        >
+          {erroCarregamento}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold text-gray-800">Relatórios</h1>

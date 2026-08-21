@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Pagination, { usePagination } from "@/components/pagination-utils";
+import LoadingState from "@/components/LoadingState";
 
 const Clientes: React.FC = () => {
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -13,6 +14,8 @@ const Clientes: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<{ nome: string; is_active: boolean }>({ nome: '', is_active: true });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [carregando, setCarregando] = useState(true);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
 
   // paginação (mesmo hook do RegistroHoras)
   const { pageItems, currentPage, setCurrentPage, totalPages } =
@@ -28,7 +31,47 @@ const Clientes: React.FC = () => {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, []);
+  useEffect(() => {
+    let montado = true;
+
+    async function carregarInicial() {
+      try {
+        setCarregando(true);
+        setErroCarregamento(null);
+
+        const { data } = await api.get<Cliente[]>("/clientes/");
+
+        if (!montado) return;
+
+        setClientes(data);
+
+        if (
+          currentPage
+          > Math.max(1, Math.ceil(data.length / 20))
+        ) {
+          setCurrentPage(1);
+        }
+      } catch {
+        if (montado) {
+          setErroCarregamento(
+            "Não foi possível carregar os clientes."
+          );
+        }
+      } finally {
+        if (montado) {
+          setCarregando(false);
+        }
+      }
+    }
+
+    void carregarInicial();
+
+    return () => {
+      montado = false;
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const abrirNovo = () => {
     setIsEditing(false);
@@ -74,6 +117,38 @@ const Clientes: React.FC = () => {
     await api.delete(`/clientes/${id}`);
     load();
   };
+
+  if (carregando) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-6">
+        <h1 className="mb-6 text-3xl font-bold text-gray-800">
+          Clientes
+        </h1>
+
+        <LoadingState message="A carregar clientes..." />
+      </div>
+    );
+  }
+
+  if (erroCarregamento) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-6">
+        <h1 className="mb-6 text-3xl font-bold text-gray-800">
+          Clientes
+        </h1>
+
+        <div
+          role="alert"
+          className={[
+            "rounded-lg border border-red-200",
+            "bg-red-50 p-4 text-sm text-red-700",
+          ].join(" ")}
+        >
+          {erroCarregamento}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
