@@ -1,7 +1,7 @@
 # Unidal
 
 escopo do projeto
-a ideia desse projeto e criar uma plataforma que vai funcionar em dois pontos, 
+a ideia desse projeto e criar uma plataforma que vai funcionar em dois pontos,
 sendo que um dele estara distribuido no nos dispositivos de funcionarios, possivelmente nos telefones portateis de cada um, o outro ponto sera o escritorio da empresa,
 a solucao sera on-premises, ou seja as informacoes ficam armazenadas diretamente na empresa, entao as alteracoes feitas tanto no acesso pela empresa quanto no acesso dos dispositivos
 deve ser atualizado no lado oposto em tempo real.
@@ -34,7 +34,7 @@ Dashboard de produtividade
 {
   "name": "user1",
   "email": "user1@example.com",
-  "password": "tst_123",
+  "password": "a senha generica",
   "perfil_id": 1
 }
 
@@ -48,7 +48,7 @@ source venv/Scripts/activate
 
 
 para rodar o projeto sem docker
-$ uvicorn app.main:app --reload 
+$ uvicorn app.main:app --reload
 
 
 permissao do script
@@ -61,7 +61,7 @@ alembic version
 alembic --version
 
 
-para rodar os scripts do alambic dentro do docker foi necessario add o - ./alembic.ini:/app/alembic.ini no 
+para rodar os scripts do alambic dentro do docker foi necessario add o - ./alembic.ini:/app/alembic.ini no
 
 services:
   api:
@@ -120,7 +120,7 @@ docker-compose exec api python create_tables.py
 
 acesso ao db
 
-verifica os dbs 
+verifica os dbs
 docker ps
 
 acesso ao db
@@ -129,7 +129,7 @@ winpty docker exec -it unidal_db mysql -u root -p
 selecao do db
 USE unidal
 
-query de select 
+query de select
 SELECT * FROM users WHERE perfil_id IS NOT NULL;
 
 SELECT * FROM projeto;
@@ -181,12 +181,18 @@ def get_me(current_user: User = Depends(get_current_user)):
         "email": current_user.email,
         "perfil": current_user.perfil
     }
-	
-	
-	
+
+
+
  Bônus: Caso queira que um campo(perfil_id) seja opcional, ajuste assim:
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str
     perfil_id: Optional[int] = None
+
+
+
+
+para rodar prod
+docker compose --profile production up -d
