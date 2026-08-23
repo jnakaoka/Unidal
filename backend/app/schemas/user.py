@@ -13,6 +13,7 @@ class UserCreate(BaseModel):
     password: str
     perfil_id: int 
     empresa: str
+    e_condutor: bool = False
      
 
 class UserUpdate(BaseModel):
@@ -22,6 +23,7 @@ class UserUpdate(BaseModel):
     empresa: Optional[str] = None
     is_active: Optional[bool] = None
     password: Optional[str] = None
+    e_condutor: Optional[bool] = None
 
 
 class PerfilOut(BaseModel):
@@ -29,7 +31,7 @@ class PerfilOut(BaseModel):
     nome: str
 
     class Config:
-        orm_mode = True
+        from_attributes = True
         
 class UserOut(BaseModel):
     id: int
@@ -39,6 +41,7 @@ class UserOut(BaseModel):
     is_active: bool
     perfil_id: Optional[int]
     perfil: Optional[PerfilOut] = None
+    e_condutor: bool
 
     # class Config:
     #     orm_mode = True

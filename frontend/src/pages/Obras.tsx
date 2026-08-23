@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import api from '@/services/api';
 import { Obra } from '@/types/obras';
 import { Cliente } from '@/types/cliente';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import Pagination, { usePagination } from "@/components/pagination-utils";
+import LoadingState from '@/components/LoadingState';
 
 const Obras: React.FC = () => {
   const [obras, setObras] = useState<Obra[]>([]);
@@ -16,6 +17,11 @@ const Obras: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [carregandoInicial, setCarregandoInicial] = useState(true);
+  const [carregandoLista, setCarregandoLista] = useState(false);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
+
+  const primeiraCarga = useRef(true);
 
   const [form, setForm] = useState<{ nome: string; descricao: string; cliente_id: number | '' }>({
     nome: '',
@@ -32,17 +38,83 @@ const Obras: React.FC = () => {
     setClientes(data);
   };
 
-  const loadObras = async () => {
-    const url = filtroCliente ? `/obras/?cliente_id=${filtroCliente}` : '/obras/';
-    const { data } = await api.get<Obra[]>(url);
-    setObras(data);
-    if (currentPage > Math.max(1, Math.ceil(data.length / 20))) {
-      setCurrentPage(1);
+  const loadObras = async (mostrarLoader = false) => {
+    try {
+      if (mostrarLoader) {
+        setCarregandoLista(true);
+      }
+
+      setErroCarregamento(null);
+
+      const url = filtroCliente
+        ? `/obras/?cliente_id=${filtroCliente}`
+        : '/obras/';
+
+      const { data } = await api.get<Obra[]>(url);
+
+      setObras(data);
+
+      if (
+        currentPage
+        > Math.max(1, Math.ceil(data.length / 20))
+      ) {
+        setCurrentPage(1);
+      }
+    } catch {
+      setErroCarregamento(
+        'Não foi possível carregar as obras.'
+      );
+    } finally {
+      if (mostrarLoader) {
+        setCarregandoLista(false);
+      }
     }
   };
 
-  useEffect(() => { loadClientes(); /* eslint-disable-next-line */ }, []);
-  useEffect(() => { loadObras(); /* eslint-disable-next-line */ }, [filtroCliente]);
+  useEffect(() => {
+    let montado = true;
+
+    async function carregarInicial() {
+      try {
+        setCarregandoInicial(true);
+        setErroCarregamento(null);
+
+        await Promise.all([
+          loadClientes(),
+          loadObras(),
+        ]);
+      } catch {
+        if (montado) {
+          setErroCarregamento(
+            'Não foi possível carregar os dados das obras.'
+          );
+        }
+      } finally {
+        if (montado) {
+          setCarregandoInicial(false);
+        }
+      }
+    }
+
+    void carregarInicial();
+
+    return () => {
+      montado = false;
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (primeiraCarga.current) {
+      primeiraCarga.current = false;
+      return;
+    }
+
+    void loadObras(true);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroCliente]);
 
   const abrirNova = () => {
     setIsEditing(false);
@@ -97,6 +169,18 @@ const Obras: React.FC = () => {
     loadObras();
   };
 
+  if (carregandoInicial) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-6">
+        <h1 className="mb-6 text-3xl font-bold text-gray-800">
+          Obras
+        </h1>
+
+        <LoadingState message="A carregar obras..." />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
       <div className="flex justify-between items-center">
@@ -116,6 +200,18 @@ const Obras: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {erroCarregamento && (
+        <div
+          role="alert"
+          className={[
+            "rounded-lg border border-red-200",
+            "bg-red-50 p-4 text-sm text-red-700",
+          ].join(" ")}
+        >
+          {erroCarregamento}
+        </div>
+      )}
 
       {showForm && (
         <section className="bg-white rounded-xl shadow-xl border p-6 space-y-4 mb-4">
@@ -167,38 +263,46 @@ const Obras: React.FC = () => {
         </section>
       )}
 
-      <div className="rounded-xl shadow overflow-x-auto bg-white">
-        <table cellSpacing="0" cellPadding="20" className="w-full table-auto text-sm divide-y divide-gray-200 table-spacing-0">
-          <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide text-left">
-            <tr className="head-lista">
-              <th className="px-4 py-2 text-left">ID</th>
-              <th className="px-4 py-2 text-left">Nome</th>
-              <th className="px-4 py-2 text-left">Cliente</th>
-              <th className="px-4 py-2 text-left">Descrição</th>
-              <th className="px-4 py-2 text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="bg-gray-50 text-xs text-gray-500 tracking-wide text-left">
-            {pageItems.map((o, index) => (
-              <tr key={o.id} className={index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
-                <td className="px-4 py-2">{o.id}</td>
-                <td className="px-4 py-2">{o.nome}</td>
-                <td className="px-4 py-2">{o.cliente?.nome || `#${o.cliente_id}`}</td>
-                <td className="px-4 py-2">{o.descricao}</td>
-                <td className="px-4 py-2 text-right space-x-2">
-                  <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => editar(o)}>Editar</Button>
-                  <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => excluir(o.id)}>Excluir</Button>
-                </td>
+    <div className="overflow-hidden rounded-xl bg-white shadow">
+      {carregandoLista ? (
+        <LoadingState
+          compact
+          message="A atualizar a lista de obras..."
+        />
+      ) : (
+        <>
+        <div className="overflow-x-auto">
+          <table cellSpacing="0" cellPadding="20" className="w-full table-auto text-sm divide-y divide-gray-200 table-spacing-0">
+            <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide text-left">
+              <tr className="head-lista">
+                <th className="px-4 py-2 text-left">ID</th>
+                <th className="px-4 py-2 text-left">Nome</th>
+                <th className="px-4 py-2 text-left">Cliente</th>
+                <th className="px-4 py-2 text-left">Descrição</th>
+                <th className="px-4 py-2 text-right">Ações</th>
               </tr>
-            ))}
-            {pageItems.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-6 text-center text-gray-500">Nenhuma obra</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-
+            </thead>
+            <tbody className="bg-gray-50 text-xs text-gray-500 tracking-wide text-left">
+              {pageItems.map((o, index) => (
+                <tr key={o.id} className={index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
+                  <td className="px-4 py-2">{o.id}</td>
+                  <td className="px-4 py-2">{o.nome}</td>
+                  <td className="px-4 py-2">{o.cliente?.nome || `#${o.cliente_id}`}</td>
+                  <td className="px-4 py-2">{o.descricao}</td>
+                  <td className="px-4 py-2 text-right space-x-2">
+                    <Button className="px-3 py-1 btn-bg-blue-500 text-white rounded hover:bg-yellow-600 text-sm" variant="outline" onClick={() => editar(o)}>Editar</Button>
+                    <Button className="px-3 py-1 btn-bg-red-500 text-white rounded hover:bg-yellow-600 text-sm" variant="destructive" onClick={() => excluir(o.id)}>Excluir</Button>
+                  </td>
+                </tr>
+              ))}
+              {pageItems.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-gray-500">Nenhuma obra</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
         {/* controles de paginação */}
         <div className="mt-4">
           <Pagination
@@ -209,6 +313,8 @@ const Obras: React.FC = () => {
             boundaryCount={1}
           />
         </div>
+        </>
+      )}
       </div>
     </div>
   );

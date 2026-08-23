@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from app.models.user import User  # ou o caminho correto do modelo
 from app.utils.security import hash_password, verify_password
 from app.utils.passwords import generate_temp_password, check_strength
+from app.models.perfil import Perfil
 
 def get_users(db: Session, is_active: Optional[bool] = None):
     print("flag active",is_active)
@@ -25,6 +26,18 @@ def get_user_by_email(db: Session, email: str) -> User | None:
 def get_by_id(db: Session, user_id: int):
     return db.query(User).filter(User.id == user_id).first()
 
+def _perfil_e_motorista(db: Session, perfil_id: int) -> bool:
+    perfil = (
+        db.query(Perfil)
+        .filter(Perfil.id == perfil_id)
+        .first()
+    )
+
+    return bool(
+        perfil
+        and (perfil.nome or "").strip().lower() == "motorista"
+    )
+
 def create_user(db: Session, user: UserCreate):
     db_user = models.User(
         name=user.name,
@@ -32,7 +45,11 @@ def create_user(db: Session, user: UserCreate):
         empresa=user.empresa,
         hashed_password = hash_password(user.password),
         perfil_id=user.perfil_id,
-        is_active=True
+        is_active=True,
+        e_condutor=(
+            user.e_condutor
+            or _perfil_e_motorista(db, user.perfil_id)
+        ),
     )
     db.add(db_user)
     try:
@@ -71,6 +88,15 @@ def update(db: Session, user_id: int, user_in) -> Optional[User]:
             raise HTTPException(status_code=400, detail=f"Senha fraca: {reason}")
         db_user.hashed_password = hash_password(pwd)
         db_user.must_change_password = False  # ao atualizar explicitamente, não obriga troca
+
+        perfil_final_id = data.get(
+        "perfil_id",
+        db_user.perfil_id,
+    )
+
+    # Quem possui perfil motorista obrigatoriamente é condutor.
+    if _perfil_e_motorista(db, perfil_final_id):
+        data["e_condutor"] = True
 
     # demais campos
     for k, v in data.items():

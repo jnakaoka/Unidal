@@ -10,6 +10,14 @@ from app.routes.registro_hora import router as registro_hora
 from app.routes.cliente import router as cliente_router
 from app.routes.obra import router as obra_router
 from app.routes import relatorio
+from app.routes.veiculo import router as veiculo_router
+from app.routes.cartao import router as cartao_router
+from app.routes.cartao_veiculo_associacao import (
+    router as cartao_veiculo_associacao_router,
+)
+from app.routes.veiculo_condutor_associacao import (
+    router as veiculo_condutor_associacao_router,
+)
 
 app = FastAPI()
 
@@ -18,6 +26,8 @@ ALLOWED_ORIGINS = [
     "https://apontamento.unidal.pt",
     "http://localhost:3010",
     "http://127.0.0.1:3010",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
 ]
 
 app.add_middleware(
@@ -38,6 +48,10 @@ app.include_router(registro_hora, prefix="/registro-horas", tags=["Registro de H
 app.include_router(relatorio.router, prefix="/relatorio", tags=["Relatório"])
 app.include_router(cliente_router, prefix="/clientes", tags=["Clientes"])
 app.include_router(obra_router, prefix="/obras", tags=["Obras"])
+app.include_router(veiculo_router, prefix="/veiculos", tags=["Veículos"])
+app.include_router(cartao_router, prefix="/cartoes", tags=["Cartões"])
+app.include_router(cartao_veiculo_associacao_router, prefix="/cartao-veiculo-associacoes", tags=["Cartões por Veículo"])
+app.include_router(veiculo_condutor_associacao_router, prefix="/veiculo-condutor-associacoes", tags=["Condutores por Veículo"])
 
 # from fastapi import FastAPI
 # from app.routes.user import router as user_router

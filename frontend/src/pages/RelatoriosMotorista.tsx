@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import api from "@/services/api";
 import Pagination, { usePagination } from "@/components/pagination-utils";
 import { Button } from "@/components/ui/button";
+import LoadingState from "@/components/LoadingState";
 
 // ==== Tipos ====
 type Perfil = {
@@ -39,6 +40,8 @@ const RelatoriosMotorista: React.FC = () => {
   // dados
   const [registrosAll, setRegistrosAll] = useState<RegistroHorasMotorista[]>([]);
   const [drivers, setDrivers] = useState<User[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
 
   // filtros
   const [filtroDriverId, setFiltroDriverId] = useState<number | "">("");
@@ -105,31 +108,68 @@ const RelatoriosMotorista: React.FC = () => {
 
   // carga inicial
   useEffect(() => {
-    (async () => {
-      const [reg, usr] = await Promise.all([
-        api.get<RegistroHorasMotorista[]>("/registro-horas/"),
-        api.get<User[]>("/users/"),
-      ]);
+    let componenteAtivo = true;
 
-      setRegistrosAll(reg.data);
+    async function carregarDados() {
+      try {
+        setCarregando(true);
+        setErroCarregamento(null);
 
-      // para o select de motoristas (ordenado por nome)
-      // const sortedUsers = [...usr.data].sort((a, b) =>
-      //   (a.name || "").localeCompare(b.name || "", "pt")
-      // );
-      // setDrivers(sortedUsers);
+        const [reg, usr] = await Promise.all([
+          api.get<RegistroHorasMotorista[]>(
+            "/registro-horas/",
+          ),
+          api.get<User[]>("/users/"),
+        ]);
 
-      console.log("usr.data", usr.data);
-      const onlyDrivers = (usr.data || []).filter(
-        (u) => u.perfil?.nome === "motorista"
-      );
-      console.log("onlyDrivers", onlyDrivers);
-      const sortedDrivers = [...onlyDrivers].sort((a, b) =>
-        (a.name || "").localeCompare(b.name || "", "pt")
-      );
+        if (!componenteAtivo) {
+          return;
+        }
 
-      setDrivers(sortedDrivers);
-    })();
+        setRegistrosAll(reg.data);
+
+        const motoristasOrdenados = (usr.data || [])
+          .filter(
+            (utilizador) => (
+              utilizador.perfil?.nome
+                ?.trim()
+                .toLocaleLowerCase()
+              === "motorista"
+            ),
+          )
+          .sort(
+            (a, b) => (
+              (a.name || "").localeCompare(
+                b.name || "",
+                "pt",
+              )
+            ),
+          );
+
+        setDrivers(motoristasOrdenados);
+      } catch (error) {
+        console.error(
+          "Erro ao carregar relatório de motoristas:",
+          error,
+        );
+
+        if (componenteAtivo) {
+          setErroCarregamento(
+            "Não foi possível carregar o relatório de motoristas.",
+          );
+        }
+      } finally {
+        if (componenteAtivo) {
+          setCarregando(false);
+        }
+      }
+    }
+
+    void carregarDados();
+
+    return () => {
+      componenteAtivo = false;
+    };
   }, []);
 
   // aplica filtros (inclui filtro “só motorista”)
@@ -379,6 +419,37 @@ const RelatoriosMotorista: React.FC = () => {
     }
   };
 
+  if (carregando) {
+    return (
+      <div className="mx-auto w-full max-w-7xl p-6">
+        <h1 className="mb-6 text-2xl font-bold text-gray-800">
+          Relatório Motoristas
+        </h1>
+
+        <div className="rounded-2xl bg-white shadow-sm">
+          <LoadingState message="A carregar relatório de motoristas..." />
+        </div>
+      </div>
+    );
+  }
+
+  if (erroCarregamento) {
+    return (
+      <div className="mx-auto w-full max-w-7xl p-6">
+        <h1 className="mb-6 text-2xl font-bold text-gray-800">
+          Relatório Motoristas
+        </h1>
+
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-red-700"
+        >
+          {erroCarregamento}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold text-gray-800">Relatório Motoristas</h1>
@@ -476,13 +547,13 @@ const RelatoriosMotorista: React.FC = () => {
         >
           {/* Data | Motorista | Matrícula | Origem | Destino | Km | Máquinas */}
           <colgroup>
-            <col style={{ width: "10%" }} /> 
-            <col style={{ width: "16%" }} /> 
-            <col style={{ width: "12%" }} /> 
-            <col style={{ width: "16%" }} /> 
-            <col style={{ width: "16%" }} /> 
-            <col style={{ width: "8%" }} /> 
-            <col style={{ width: "22%" }} /> 
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "12%" }} />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "16%" }} />
+            <col style={{ width: "8%" }} />
+            <col style={{ width: "22%" }} />
           </colgroup>
 
           <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide text-left">

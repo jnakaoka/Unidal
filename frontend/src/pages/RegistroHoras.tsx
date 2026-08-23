@@ -10,6 +10,7 @@ import { Select, SelectItem } from '../components/ui/select';
 import axios from 'axios';
 import { FiltroRegistros } from "../components/FiltroRegistros";
 import Pagination, { usePagination } from "@/components/pagination-utils";
+import LoadingState from "@/components/LoadingState";
 
 interface User {
   id: number;
@@ -48,8 +49,8 @@ type IntervencaoMaquinasOpcoes = {
   manobrador?:         { checked?: boolean; qtd?: number; empresa?: string }; // 1 ou 2
   soLaser?:            { checked?: boolean; m2?: string; empresa?: string };
   soPo?:               { checked?: boolean; m2?: string; empresa?: string };
-  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };  
-  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string }; 
+  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string }; //Só  Maq Lazer YZ30
 };
@@ -138,6 +139,7 @@ const RegistroHoras: React.FC = () => {
   //const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
+  const [carregandoPagina, setCarregandoPagina] = useState(true);
   // --- NOVOS clientes antigo ---
   // const [showPopup, setShowPopup] = useState(false);
   // const [modalClienteObraAberto, setModalClienteObraAberto] = useState(false);
@@ -183,7 +185,7 @@ const RegistroHoras: React.FC = () => {
       setObrasFiltro([]);
     }
   };
-  
+
   //const totalPaginas = Math.max(1, Math.ceil(registroHoras.length / registrosPorPagina));
   // const indexUltimoRegistro = currentPage * registrosPorPagina;
   // const indexPrimeiroRegistro = indexUltimoRegistro - registrosPorPagina;
@@ -212,8 +214,8 @@ const RegistroHoras: React.FC = () => {
       manobrador:         { checked: false, qtd: 1, empresa: '' },
       soLaser:            { checked: false, m2: '', empresa: '' },
       soPo:               { checked: false,  m2: '', empresa: '' },
-      laserWS940CComManobrador: { checked: false,  m2: '', empresa: '' },  
-      lazerYZ30ComManobrador: { checked: false,  m2: '', empresa: '' }, 
+      laserWS940CComManobrador: { checked: false,  m2: '', empresa: '' },
+      lazerYZ30ComManobrador: { checked: false,  m2: '', empresa: '' },
       soMaqLaserWS940C: { checked: false,  m2: '', empresa: '' },
       soMaqLazerYZ30: { checked: false,  m2: '', empresa: '' }, //Só  Maq Lazer YZ30
     },
@@ -223,7 +225,7 @@ const RegistroHoras: React.FC = () => {
     km_rodados: "",
     maquinas_transportadas: "",
     equipa: [],
-  
+
     // id: 0, usuario_id: 0,
   // projeto_id: 1,
   // data: '',
@@ -277,7 +279,7 @@ const RegistroHoras: React.FC = () => {
   //   //   const data = await response.json();
   //   //   setRegistrosFiltrados(data);
   //   // }
-    
+
   //   fetchRegistroHoras();
   //   // const anyOpen = modalAberto || showClientePopup || showObraPopup;
   //   // document.body.style.overflow = anyOpen ? 'hidden' : '';
@@ -289,33 +291,52 @@ const RegistroHoras: React.FC = () => {
 
 
   useEffect(() => {
-    console.log('useEffect - RegistroHoras.tsx');
-    fetchUsuarios();
-    fetchClientes();
+    let componenteAtivo = true;
 
-    if (formData.cliente_id) {
-      fetchObrasByCliente(formData.cliente_id);
-    } else {
-      setObras([]);
+    async function carregarDadosIniciais() {
+      if (!user?.id) {
+        return;
+      }
+
+      try {
+        setCarregandoPagina(true);
+
+        await Promise.all([
+          fetchUsuarios(),
+          fetchClientes(),
+          fetchRegistroHoras(),
+        ]);
+      } catch (error) {
+        console.error(
+          "Erro ao carregar registos:",
+          error,
+        );
+      } finally {
+        if (componenteAtivo) {
+          setCarregandoPagina(false);
+        }
+      }
     }
 
-    // ✅ Só busca registros quando tiver token e user.id
-    console.log('user?.id', user?.id);
-    console.log('localStorage.getItem("accessToken")', localStorage.getItem("accessToken"));
-    console.log('accessToken', accessToken);
-    console.log('isOperador', isOperador);
-    console.log('isMotorista', isMotorista);
-    console.log('isOperadorOuMotorista', isOperadorOuMotorista);
-    if (user?.id) {
-      fetchRegistroHoras();
-    }
+    void carregarDadosIniciais();
 
-    const anyPopup = showClientePopup || showObraPopup;
-    document.body.style.overflow = anyPopup ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      componenteAtivo = false;
+    };
+  }, [user?.id]);
 
-  }, [modalAberto, showClientePopup, showObraPopup, user?.id]);
-  
+  useEffect(() => {
+    const algumPopupAberto =
+      showClientePopup || showObraPopup;
+
+    document.body.style.overflow =
+      algumPopupAberto ? "hidden" : "";
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showClientePopup, showObraPopup]);
+
   const fetchUsuarios = async () => {
     try {
       const response = await api.get<User[]>('/users/');
@@ -363,7 +384,7 @@ const RegistroHoras: React.FC = () => {
   //     const response = await axios.get<Projeto[]>(
   //       `${import.meta.env.VITE_API_URL}/projetos/projetos`
   //     );
-      
+
   //     const projetosData = response.data;
   //     if (Array.isArray(projetosData)) {
   //       setProjetos(projetosData);
@@ -517,7 +538,7 @@ const RegistroHoras: React.FC = () => {
       })
       .filter(Boolean); // remove nulls se algum id não for encontrado
     };
-  
+
   // const handleDelete = async (id: number) => {
   //   if (!confirm('Tem certeza que deseja excluir este registo?')) return;
   //   try {
@@ -572,40 +593,40 @@ const RegistroHoras: React.FC = () => {
       optipav: regHora.optipav,
       intervencao_maquinas: regHora.intervencao_maquinas,
       intervencao_maquinas_opcoes: {
-        laserComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserComManobrador?.checked, 
+        laserComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserComManobrador?.checked,
                               m2: regHora?.intervencao_maquinas_opcoes?.laserComManobrador?.m2 ?? '',
                               empresa: regHora.intervencao_maquinas_opcoes?.laserComManobrador?.empresa ?? ''
                             },
-        poComManobrador:    { checked: !!regHora.intervencao_maquinas_opcoes?.poComManobrador?.checked, 
+        poComManobrador:    { checked: !!regHora.intervencao_maquinas_opcoes?.poComManobrador?.checked,
                               m2: regHora?.intervencao_maquinas_opcoes?.poComManobrador?.m2 ?? '',
                               empresa: regHora.intervencao_maquinas_opcoes?.poComManobrador?.empresa ?? ''
                             },
-        manobrador:         { checked: !!regHora.intervencao_maquinas_opcoes?.manobrador?.checked, 
+        manobrador:         { checked: !!regHora.intervencao_maquinas_opcoes?.manobrador?.checked,
                               qtd: regHora?.intervencao_maquinas_opcoes?.manobrador?.qtd ?? 1,
                               empresa: regHora.intervencao_maquinas_opcoes?.manobrador?.empresa ?? ''
                             },
-        soLaser:            { checked: !!regHora.intervencao_maquinas_opcoes?.soLaser?.checked, 
-                              m2: regHora?.intervencao_maquinas_opcoes?.soLaser?.m2 ?? '', 
+        soLaser:            { checked: !!regHora.intervencao_maquinas_opcoes?.soLaser?.checked,
+                              m2: regHora?.intervencao_maquinas_opcoes?.soLaser?.m2 ?? '',
                               empresa: regHora.intervencao_maquinas_opcoes?.soLaser?.empresa ?? ''
                             },
-        soPo:               { checked: !!regHora.intervencao_maquinas_opcoes?.soPo?.checked, 
-                              m2: regHora?.intervencao_maquinas_opcoes?.soPo?.m2 ?? '', 
+        soPo:               { checked: !!regHora.intervencao_maquinas_opcoes?.soPo?.checked,
+                              m2: regHora?.intervencao_maquinas_opcoes?.soPo?.m2 ?? '',
                               empresa: regHora.intervencao_maquinas_opcoes?.soPo?.empresa ?? ''
                             },
-        laserWS940CComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.checked, 
-                                    m2: regHora?.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.m2 ?? '', 
+        laserWS940CComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.checked,
+                                    m2: regHora?.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.m2 ?? '',
                                     empresa: regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.empresa ?? ''
                                   },
-        lazerYZ30ComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.checked, 
-                                  m2: regHora?.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.m2 ?? '', 
+        lazerYZ30ComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.checked,
+                                  m2: regHora?.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.m2 ?? '',
                                   empresa: regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.empresa ?? ''
                                 },
-        soMaqLaserWS940C: { checked: !!regHora.intervencao_maquinas_opcoes?.soMaqLaserWS940C?.checked, 
-                            m2: regHora?.intervencao_maquinas_opcoes?.soMaqLaserWS940C?.m2 ?? '', 
+        soMaqLaserWS940C: { checked: !!regHora.intervencao_maquinas_opcoes?.soMaqLaserWS940C?.checked,
+                            m2: regHora?.intervencao_maquinas_opcoes?.soMaqLaserWS940C?.m2 ?? '',
                             empresa: regHora.intervencao_maquinas_opcoes?.soMaqLaserWS940C?.empresa ?? ''
                           },
-        soMaqLazerYZ30: { checked: !!regHora.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.checked, 
-                          m2: regHora?.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.m2 ?? '', 
+        soMaqLazerYZ30: { checked: !!regHora.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.checked,
+                          m2: regHora?.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.m2 ?? '',
                           empresa: regHora.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.empresa ?? ''
                         },
       },
@@ -680,7 +701,7 @@ const RegistroHoras: React.FC = () => {
       setIsSubmitting(true);
 
     try {
-      
+
       const equipa_user = selectedUsers
       .map((id) => {
         const user = usuarios.find((u) => u.id === id);
@@ -693,7 +714,7 @@ const RegistroHoras: React.FC = () => {
         };
       })
       .filter(Boolean); // remove nulls se algum id não for encontrado
-      
+
       const cid = formData.cliente_id && formData.cliente_id > 0 ? formData.cliente_id : null;
       const oid = formData.obra_id && formData.obra_id > 0 ? formData.obra_id : null;
 
@@ -718,7 +739,7 @@ const RegistroHoras: React.FC = () => {
 
       //     cliente_id: cid,
       //     obra_id: oid,
-          
+
       //     metros_quadrados: formData.metros_quadrados,
 
       //     preparacao: !!formData.preparacao,
@@ -816,7 +837,7 @@ const RegistroHoras: React.FC = () => {
       showNotice('error', msg, 6000);
     } finally {
       setIsSubmitting(false);
-    } 
+    }
     // catch (error: any) {
     //   if (error.response) {
     //     console.error("Erro na resposta:", error.response.data);
@@ -988,7 +1009,7 @@ const RegistroHoras: React.FC = () => {
       // adiciona e ordena a lista
       setClientes(prev => [...prev, clienteCriado].sort((a,b) => a.nome.localeCompare(b.nome)));
       setObraClienteId(clienteCriado.id);
-      
+
       // seleciona o novo cliente no form e limpa a obra (para forçar a escolha)
       setFormData(prev => ({ ...prev, cliente_id: clienteCriado.id, obra_id: null }));
 
@@ -1084,12 +1105,22 @@ const RegistroHoras: React.FC = () => {
   }, {} as Record<string, User[]>);
 
   // quais empresas estão abertas (por nome)
-  
+
+  // const toggleEmpresa = (empresa: string) => {
+  //   setEmpresasAbertas((prev) => ({
+  //     ...prev,
+  //     [empresa]: !prev[empresa],
+  //   }));
+  // };
+
   const toggleEmpresa = (empresa: string) => {
-    setEmpresasAbertas((prev) => ({
-      ...prev,
-      [empresa]: !prev[empresa],
-    }));
+    setEmpresasAbertas((prev) => {
+      const estavaAberta = Boolean(prev[empresa]);
+
+      return estavaAberta
+        ? {}
+        : { [empresa]: true };
+    });
   };
 
   const setEmpresaOpt = (
@@ -1177,11 +1208,35 @@ const RegistroHoras: React.FC = () => {
   //   }));
   // }, [selectedUsers]);
 
+  const classeInputMotorista = [
+    "w-full rounded-md",
+    "!border !border-gray-300",
+    "!bg-white !text-gray-900",
+    "shadow-sm",
+    "placeholder:!text-gray-400",
+    "focus:!border-blue-500",
+    "focus:!ring-2 focus:!ring-blue-200",
+  ].join(" ");
+
+  if (carregandoPagina) {
+    return (
+      <div className="min-h-[60vh] bg-gray-100 p-6">
+        <h2 className="mb-6 text-3xl font-bold text-gray-800">
+          Registo de Trabalho
+        </h2>
+
+        <div className="rounded-2xl bg-white shadow-sm">
+          <LoadingState message="A carregar registos..." />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 bg-gray-100 min-h-screen">
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold border-b pb-2 mb-6">Registo de Trabalho</h2>
-        
+
         <Button
           onClick={() => {
             resetForm();
@@ -1210,12 +1265,12 @@ const RegistroHoras: React.FC = () => {
         // <div className="fixed inset-0 z-[10000] bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 10000, width: '100%' }}>
         //   <div className="bg-white w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl shadow-xl">
         <section className="bg-white rounded-xl shadow-xl border p-6 space-y-4 mb-8
-                      after:content-[''] after:block after:clear-both" style={{ margin: '0 0 2% 0', borderStyle: 'hidden' }}>    
+                      after:content-[''] after:block after:clear-both" style={{ margin: '0 0 2% 0', borderStyle: 'hidden' }}>
             <h2 className="text-xl font-semibold text-gray-700 mb-2">
               {isEditing ? 'Editar Registro' : 'Novo Registro'}
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 align-float-left" style={{ width: '99%', padding: '1%' }}>
+            <div className="grid w-full grid-cols-1 gap-6 p-1 xl:grid-cols-2">
               <div className="space-y-4 align-float-left" style={{ marginBottom: '1%' }}>
                 <div className="ff-class-form-registro-hora-elements align-float-left" >
                   <Label className="ff-class-form-registro-hora-elements-lbl">Usuário</Label>
@@ -1344,8 +1399,8 @@ const RegistroHoras: React.FC = () => {
                         </div>
                       </div>
                     )}
-                    
-                  </div>  
+
+                  </div>
                   {/* <Button type="button" className="btn-bg-blue-500" onClick={abrirModalClienteObra}>
                     + Cliente & Obra
                   </Button> */}
@@ -1450,8 +1505,8 @@ const RegistroHoras: React.FC = () => {
                   <option value="">Selecione</option>
                   {obras.map(o => <option key={o.id} value={o.id}>{o.nome}</option>)}
                 </select> */}
-              
-                
+
+
               </div>
               <div className="ff-class-form-registro-hora-elements align-float-left" >
                 <Label className="ff-class-form-registro-hora-elements-lbl">Metros Quadrados</Label>
@@ -1461,26 +1516,58 @@ const RegistroHoras: React.FC = () => {
                 />
               </div>
               {/* Campos booleanos como checkboxes */}
-              <div className="align-float-left" style={{ marginBottom: '1%' }}>
-                <label className="block text-sm font-medium text-gray-700 ff-class-form-registro-hora-elements-100">Descrição de Serviço</label>
-                {["preparacao", "bruto", "colagem", "acabamento", "serragem", "optipav", "coli", "intervencao_maquinas"].map((field) => (
-                  <div key={field} className="mt-1 grid grid-cols-2 gap-2" style={{ float: 'left' }}>
-                    <label key={field} className="flex items-center space-x-2">
+              {/* Serviço e dados de transporte */}
+
+              <section
+                className={[
+                  "min-w-0 xl:col-span-2",
+                  "rounded-xl border border-gray-200",
+                  "bg-gray-50 p-4",
+                ].join(" ")}
+              >
+                <h3 className="mb-3 text-sm font-semibold text-gray-700">
+                  Descrição do Serviço
+                </h3>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
+                  {[
+                    "preparacao",
+                    "bruto",
+                    "colagem",
+                    "acabamento",
+                    "serragem",
+                    "optipav",
+                    "coli",
+                    "intervencao_maquinas",
+                  ].map((field) => (
+                    <label
+                      key={field}
+                      className="flex cursor-pointer items-center gap-2 text-sm text-gray-700"
+                    >
                       <input
                         type="checkbox"
-                        checked={formData[field as keyof typeof formData] as boolean}
+                        checked={
+                          formData[
+                            field as keyof typeof formData
+                          ] as boolean
+                        }
                         onChange={(e) =>
                           setFormData({
                             ...formData,
-                            [field]: e.target.checked
+                            [field]: e.target.checked,
                           })
                         }
+                        className="h-4 w-4 accent-red-600"
                       />
-                      <span className="capitalize">{field.replace('_', ' ')}</span>
+
+                      <span className="capitalize">
+                        {field.replaceAll("_", " ")}
+                      </span>
                     </label>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </section>
+
               {formData.intervencao_maquinas && (
                 <div className="sm:col-span-2 mt-2 p-4 rounded-xl border border-gray-200 bg-gray-50">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3">
@@ -1669,7 +1756,7 @@ const RegistroHoras: React.FC = () => {
                         disabled={!formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.checked}
                         value={formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.empresa || ""}
                         onChange={(e) => setEmpresaOpt('lazerYZ30ComManobrador', e.target.value)}
-                      > 
+                      >
                         <option value="">Empresa</option>
                         {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
                       </select>
@@ -1685,7 +1772,7 @@ const RegistroHoras: React.FC = () => {
                       <Input
                         type="number"
                         placeholder="m²"
-                        className="w-32"                        
+                        className="w-32"
                         disabled={!formData.intervencao_maquinas_opcoes.soMaqLaserWS940C?.checked}
                         value={formData.intervencao_maquinas_opcoes.soMaqLaserWS940C?.m2}
                         onChange={(e) => setValorM2('soMaqLaserWS940C', e.target.value)}
@@ -1695,7 +1782,7 @@ const RegistroHoras: React.FC = () => {
                         disabled={!formData.intervencao_maquinas_opcoes.soMaqLaserWS940C?.checked}
                         value={formData.intervencao_maquinas_opcoes.soMaqLaserWS940C?.empresa || ""}
                         onChange={(e) => setEmpresaOpt('soMaqLaserWS940C', e.target.value)}
-                      > 
+                      >
                         <option value="">Empresa</option>
                         {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
                       </select>
@@ -1711,7 +1798,7 @@ const RegistroHoras: React.FC = () => {
                       <Input
                         type="number"
                         placeholder="m²"
-                        className="w-32"                        
+                        className="w-32"
                         disabled={!formData.intervencao_maquinas_opcoes.soMaqLazerYZ30?.checked}
                         value={formData.intervencao_maquinas_opcoes.soMaqLazerYZ30?.m2}
                         onChange={(e) => setValorM2('soMaqLazerYZ30', e.target.value)}
@@ -1721,7 +1808,7 @@ const RegistroHoras: React.FC = () => {
                         disabled={!formData.intervencao_maquinas_opcoes.soMaqLazerYZ30?.checked}
                         value={formData.intervencao_maquinas_opcoes.soMaqLazerYZ30?.empresa || ""}
                         onChange={(e) => setEmpresaOpt('soMaqLazerYZ30', e.target.value)}
-                      > 
+                      >
                         <option value="">Empresa</option>
                         {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
                       </select>
@@ -1729,7 +1816,7 @@ const RegistroHoras: React.FC = () => {
                   </div>
                 </div>
               )}
-              <div className="mt-1 space-y-3">
+              <div className="min-w-0 space-y-3 xl:col-span-2">
                 {/* 🔎 Adicionar membro por nome */}
                 <div className="mb-2 relative">
                   <Label className="block text-sm font-medium text-gray-700" style={{ fontWeight: 700 }}>
@@ -1768,7 +1855,7 @@ const RegistroHoras: React.FC = () => {
                     </div>
                   )}
                 </div>
-                
+
                 {selectedUsers.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {selectedUsers.map(id => {
@@ -1792,67 +1879,99 @@ const RegistroHoras: React.FC = () => {
                 )}
 
                 <label className="block text-sm font-medium text-gray-700" style={{ fontWeight: '700' }} >Equipa</label>
-                {Object.entries(usuariosPorEmpresa).map(([empresa, lista]) => {
-                  const opened = !!empresasAbertas[empresa];
+                <div className="space-y-3">
+                  {Object.entries(usuariosPorEmpresa).map(([empresa, lista]) => {
+                    const opened = !!empresasAbertas[empresa];
 
-                  return (
-                    <div
-                      key={empresa}
-                      className={`rounded p-3 ${
-                        empresa === 'UNIDAL' || empresa === 'Unidal' ? 'empresa-bg-red-100' :
-                        empresa === 'HPR'    || empresa === 'Hpr'    ? 'empresa-bg-blue-100' :
-                        empresa === 'HPNC'   || empresa === 'Hpnc'   ? 'empresa-bg-yellow-100' :
-                        empresa === 'ARUNCA' || empresa === 'Arunca' ? 'empresa-bg-orange-100' :
-                        empresa === 'UNISOL' || empresa === 'Unisol' ? 'empresa-bg-orange-100' :
-                        empresa === 'FLORIDAMPLITUDE' || empresa === 'Floridamplitude' ? 'empresa-bg-green-100' :
-                        'bg-gray-100'
-                      }`}
-                    >
-                      {/* Cabeçalho clicável */}
-                      <button
-                        type="button"
-                        onClick={() => toggleEmpresa(empresa)}
-                        aria-expanded={opened}
-                        aria-controls={`lista-${empresa}`}
-                        className="w-full flex items-center justify-between -mx-1 px-1 py-1 rounded cursor-pointer hover:bg-black/5"
-                      >
-                        <h4 className="font-semibold text-gray-700">{empresa}</h4>
-                        <span className={`transition-transform ${opened ? 'rotate-90' : ''}`}>▸</span>
-                      </button>
-
-                      {/* Lista de usuários (expand/collapse) */}
+                    return (
                       <div
-                        id={`lista-${empresa}`}
-                        className={opened ? 'grid grid-cols-2 gap-2 mt-2' : 'hidden'}
+                        key={empresa}
+                        className={`overflow-hidden rounded-lg ${
+                          empresa === 'UNIDAL' || empresa === 'Unidal' ? 'empresa-bg-red-100' :
+                          empresa === 'HPR'    || empresa === 'Hpr'    ? 'empresa-bg-blue-100' :
+                          empresa === 'HPNC'   || empresa === 'Hpnc'   ? 'empresa-bg-yellow-100' :
+                          empresa === 'ARUNCA' || empresa === 'Arunca' ? 'empresa-bg-orange-100' :
+                          empresa === 'UNISOL' || empresa === 'Unisol' ? 'empresa-bg-orange-100' :
+                          empresa === 'FLORIDAMPLITUDE' || empresa === 'Floridamplitude' ? 'empresa-bg-green-100' :
+                          'bg-gray-100'
+                        }`}
                       >
-                        {lista.map((u) => (
-                          <label key={u.id} className="block text-sm text-gray-800">
-                            <input
-                              type="checkbox"
-                              value={u.id}
-                              checked={selectedUsers.includes(u.id)}
-                              onChange={handleEquipaChange}
-                              className="mr-2"
-                            />
-                            {u.name}
-                            {selectedUsers.includes(u.id) && (
-                              <label className="ml-2 inline-flex items-center gap-1 text-xs">
-                                <input
-                                  type="checkbox"
-                                  checked={!!intemperiePorUserId[u.id]}
-                                  onChange={(e) =>
-                                    setIntemperiePorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
-                                  }
-                                />
-                                <span><b>Intempérie</b></span>
-                              </label>
-                            )}
-                          </label>
-                        ))}
+                        {/* Cabeçalho clicável */}
+                        <button
+                          type="button"
+                          onClick={() => toggleEmpresa(empresa)}
+                          aria-expanded={opened}
+                          aria-controls={`lista-${empresa}`}
+                          className={[
+                            "flex w-full items-center justify-between",
+                            "px-4 py-3 text-left",
+                            "transition-colors hover:bg-black/5",
+                            "focus:outline-none focus:ring-2",
+                            "focus:ring-inset focus:ring-black/10",
+                          ].join(" ")}
+                        >
+                          <span className="font-semibold text-gray-700">
+                            {empresa}
+                          </span>
+
+                          <span
+                            aria-hidden="true"
+                            className={[
+                              "shrink-0 transition-transform duration-200",
+                              opened ? "rotate-90" : "",
+                            ].join(" ")}
+                          >
+                            ▸
+                          </span>
+                        </button>
+
+                        {/* Lista de usuários (expand/collapse) */}
+                        <div
+                          id={`lista-${empresa}`}
+                          className={
+                            opened
+                              ? [
+                                  "grid max-h-80",
+                                  "grid-cols-1 gap-x-6 gap-y-3",
+                                  "overflow-y-auto",
+                                  "border-t border-black/5",
+                                  "bg-white/40 px-4 py-4",
+                                  "sm:grid-cols-2",
+                                  "lg:grid-cols-3",
+                                  "2xl:grid-cols-4",
+                                ].join(" ")
+                              : "hidden"
+                          }
+                        >
+                          {lista.map((u) => (
+                            <label key={u.id} className="block text-sm text-gray-800">
+                              <input
+                                type="checkbox"
+                                value={u.id}
+                                checked={selectedUsers.includes(u.id)}
+                                onChange={handleEquipaChange}
+                                className="mr-2"
+                              />
+                              {u.name}
+                              {selectedUsers.includes(u.id) && (
+                                <label className="ml-2 inline-flex items-center gap-1 text-xs">
+                                  <input
+                                    type="checkbox"
+                                    checked={!!intemperiePorUserId[u.id]}
+                                    onChange={(e) =>
+                                      setIntemperiePorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
+                                    }
+                                  />
+                                  <span><b>Intempérie</b></span>
+                                </label>
+                              )}
+                            </label>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
                 {/* {Object.entries(usuariosPorEmpresa).map(([empresa, lista], index) => (
                   <div
                     key={empresa}
@@ -1885,6 +2004,98 @@ const RegistroHoras: React.FC = () => {
                 ))} */}
               </div>
 
+              {(isOperadorOuMotorista || isAdmin) && (
+                <section
+                  className={[
+                    "min-w-0 xl:col-span-2",
+                    "rounded-xl border border-gray-200",
+                    "bg-gray-50 p-4",
+                  ].join(" ")}
+                >
+                  <h3 className="mb-4 text-sm font-semibold text-gray-700">
+                    Dados de Motorista
+                  </h3>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="min-w-0">
+                      <Label className="mb-1 block">Origem</Label>
+                      <Input
+                        value={formData.origem}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            origem: e.target.value,
+                          })
+                        }
+                        className={classeInputMotorista}
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <Label className="mb-1 block">Destino</Label>
+                      <Input
+                        value={formData.destino}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            destino: e.target.value,
+                          })
+                        }
+                        className={classeInputMotorista}
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <Label className="mb-1 block">Matrícula</Label>
+                      <Input
+                        value={formData.matricula}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            matricula: e.target.value,
+                          })
+                        }
+                        className={classeInputMotorista}
+                      />
+                    </div>
+
+                    <div className="min-w-0">
+                      <Label className="mb-1 block">KM Rodados</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={formData.km_rodados}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            km_rodados: e.target.value,
+                          })
+                        }
+                        className={classeInputMotorista}
+                      />
+                    </div>
+
+                    <div className="min-w-0 md:col-span-2">
+                      <Label className="mb-1 block">
+                        Máquinas transportadas
+                      </Label>
+
+                      <Input
+                        placeholder="Ex.: WS940C, YZ30, Pá carregadora..."
+                        value={formData.maquinas_transportadas}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            maquinas_transportadas: e.target.value,
+                          })
+                        }
+                        className={classeInputMotorista}
+                      />
+                    </div>
+                  </div>
+                </section>
+              )}
+
               {/* <div className="" style={{ marginBottom: '1%', float: 'left' }}>
                 <label className="block text-sm font-medium text-gray-700 ff-class-form-registro-hora-elements-100">Equipa</label>
                 <div className="mt-1 grid grid-cols-2 gap-2" style={{ float: 'left'}}>
@@ -1903,8 +2114,8 @@ const RegistroHoras: React.FC = () => {
                 </div>
               </div> */}
             </div>
-            
-            {(isOperadorOuMotorista || isAdmin) && (
+
+            {/* {(isOperadorOuMotorista || isAdmin) && (
               <div className="sm:col-span-2 mt-2 p-4 rounded-xl border border-gray-200 bg-gray-50">
                 <h3 className="text-sm font-semibold text-gray-700 mb-3" style={{ marginLeft: '1%' }}>Dados de Motorista</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4" style={{ marginLeft: '1%' }}>
@@ -1938,7 +2149,7 @@ const RegistroHoras: React.FC = () => {
                   </div>
                 </div>
               </div>
-            )}
+            )} */}
 
 
             <div className="flex justify-end gap-2 div-form-btn">
@@ -1963,7 +2174,7 @@ const RegistroHoras: React.FC = () => {
             {/* <div className="flex justify-end gap-2 div-form-btn">
               <Button className='btn-bg-blue-500' onClick={handleSalvarRegistroHoras}>
                 {isEditing ? 'Atualizar' : 'Salvar'}
-              </Button>  
+              </Button>
               <Button className='generic-btn' variant="outline" onClick={resetForm}>Cancelar</Button>
             </div> */}
           {/* </div>
@@ -2102,7 +2313,7 @@ const RegistroHoras: React.FC = () => {
               </tr>
             ) : (
               pageItems.map((reg, index) => {
-                
+
                 const isMoto = reg.origem != null && reg.origem != '';
 
                 const baseRowClass =

@@ -1,22 +1,12 @@
 // Footer.tsx
-import { Menu } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
-import { useLayout } from "@/context/LayoutContext";
-
 export default function Footer() {
   return (
-    <footer className="footer-bg-red-600 mt-12">
-      <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row justify-between items-center">
-          <div style={{ color: 'white' }} className="text-center md:text-left mb-4 md:mb-0">
-            <p className="text-sm text-gray-600">&copy; {new Date().getFullYear()} <strong>Unidal</strong>. Todos os direitos reservados.</p>
-          </div>
-          {/* <div className="flex space-x-4">
-            <a href="/sobre" className="text-sm text-gray-600 hover:text-red-600">Sobre</a>
-            <a href="/contato" className="text-sm text-gray-600 hover:text-red-600">Contato</a>
-            <a href="/privacidade" className="text-sm text-gray-600 hover:text-red-600">Privacidade</a>
-          </div> */}
-        </div>
+    <footer className="border-t border-red-700 bg-[#e60000]">
+      <div className="mx-auto w-full px-6 py-5">
+        <p className="text-center text-sm text-white md:text-left">
+          &copy; {new Date().getFullYear()}{" "}
+          <strong>Unidal</strong>. Todos os direitos reservados.
+        </p>
       </div>
     </footer>
   );
@@ -48,7 +38,7 @@ export default function Footer() {
 
 //       {/* Direita: Saudação + botão Sair */}
 //       <div className="flex items-center gap-4">
-//         <span className="text-sm text-gray-600 hidden sm:block">        
+//         <span className="text-sm text-gray-600 hidden sm:block">
 //           Olá, {user?.name || "Usuário"}
 //         </span>
 //         <button

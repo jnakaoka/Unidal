@@ -2,7 +2,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import api from "@/services/api";
 import Pagination, { usePagination } from "@/components/pagination-utils";
+import HighlightText from "@/components/ui/HighlightText";
 import { Button } from "@/components/ui/button";
+import LoadingState from "@/components/LoadingState";
 
 // ==== Tipos ====
 type User = { id: number; name: string; empresa?: string };
@@ -16,10 +18,9 @@ type IntervencaoMaquinasOpcoes = {
   manobrador?: { checked?: boolean; qtd?: number; empresa?: string };
   soLaser?: { checked?: boolean; m2?: string; empresa?: string };
   soPo?: { checked?: boolean; m2?: string; empresa?: string };
-  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };  
-  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string }; 
-  soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string }
-
+  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string };
 };
 
@@ -41,6 +42,7 @@ type RegistroHoras = {
   acabamento?: boolean;
   serragem?: boolean;
   coli?: boolean;
+  optipav?: boolean;
 
   // novos campos usados no relatório
   metros_quadrados?: string | number;
@@ -82,6 +84,8 @@ const Relatorios: React.FC = () => {
   const [rangeTo, setRangeTo] = useState<string>(""); // YYYY-MM-DD
   const [clienteId, setClienteId] = useState<number | "">("");
   const [obraId, setObraId] = useState<number | "">("");
+  const [carregando, setCarregando] = useState(true);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
 
   // ordenação por data
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -142,36 +146,115 @@ const Relatorios: React.FC = () => {
   //   return parts.length ? parts.join(" | ") : "—";
   // };
 
-  const resumoEmpresas = (r: RegistroHoras, asHtmlBreak: boolean = false): string => {
-    // mapa: empresa -> { total, intemperie, normais }
-    const map: Record<string, { total: number; intemperie: number; normais: number }> = {};
+  // const resumoEmpresas = (r: RegistroHoras, asHtmlBreak: boolean = false): string => {
+  //   // mapa: empresa -> { total, intemperie, normais }
+  //   const map: Record<string, { total: number; intemperie: number; normais: number }> = {};
+
+  //   (r.equipa || []).forEach((e) => {
+  //     const empRaw = e.user?.empresa?.substring(0, 7) || "Sem Empresa";
+  //     const emp = empRaw.trim() || "Sem Empresa";
+
+  //     if (!map[emp]) {
+  //       map[emp] = { total: 0, intemperie: 0, normais: 0 };
+  //     }
+
+  //     map[emp].total += 1;
+
+  //     if (e.intemperie) {
+  //       map[emp].intemperie += 1;
+  //     } else {
+  //       map[emp].normais += 1;
+  //     }
+  //   });
+
+  //   const parts = Object.entries(map).map(([empresa, info]) => {
+  //     const { total, intemperie, normais } = info;
+  //     return `${empresa} (Intemp.: ${intemperie} | Normais: ${normais} | Total: ${total})`;
+  //   });
+
+  //   if (!parts.length) return "—";
+
+  //   // quebra de linha: \n para tela (React) e <br /> para HTML de impressão
+  //   return asHtmlBreak ? parts.join("<br />") : parts.join("\n");
+  // };
+
+  const getResumoEmpresas = (r: RegistroHoras) => {
+    const map: Record<
+      string,
+      { total: number; intemperie: number; normais: number }
+    > = {};
 
     (r.equipa || []).forEach((e) => {
       const empRaw = e.user?.empresa?.substring(0, 7) || "Sem Empresa";
-      const emp = empRaw.trim() || "Sem Empresa";
+      const empresa = empRaw.trim() || "Sem Empresa";
 
-      if (!map[emp]) {
-        map[emp] = { total: 0, intemperie: 0, normais: 0 };
+      if (!map[empresa]) {
+        map[empresa] = {
+          total: 0,
+          intemperie: 0,
+          normais: 0,
+        };
       }
 
-      map[emp].total += 1;
+      map[empresa].total += 1;
 
       if (e.intemperie) {
-        map[emp].intemperie += 1;
+        map[empresa].intemperie += 1;
       } else {
-        map[emp].normais += 1;
+        map[empresa].normais += 1;
       }
     });
 
-    const parts = Object.entries(map).map(([empresa, info]) => {
-      const { total, intemperie, normais } = info;
-      return `${empresa} (Intemp.: ${intemperie} | Normais: ${normais} | Total: ${total})`;
-    });
+    return Object.entries(map);
+  };
 
-    if (!parts.length) return "—";
+  const renderResumoEmpresas = (r: RegistroHoras) => {
+    const empresas = getResumoEmpresas(r);
 
-    // quebra de linha: \n para tela (React) e <br /> para HTML de impressão
-    return asHtmlBreak ? parts.join("<br />") : parts.join("\n");
+    if (!empresas.length) return "—";
+
+    return (
+      <div className="space-y-1">
+        {empresas.map(([empresa, info]) => (
+          <div key={empresa}>
+            {empresa} (
+            {info.intemperie > 0 ? (
+              <HighlightText type="warning">
+                Intemp.: {info.intemperie}
+              </HighlightText>
+            ) : (
+              <>Intemp.: 0</>
+            )}
+            {" | "}Normais: {info.normais}
+            {" | "}Total: {info.total})
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const resumoEmpresasHtml = (r: RegistroHoras): string => {
+    const empresas = getResumoEmpresas(r);
+
+    if (!empresas.length) return "—";
+
+    return empresas
+      .map(([empresa, info]) => {
+        const intemperieHtml =
+          info.intemperie > 0
+            ? `<span class="intemperie-alert">Intemp.: ${info.intemperie}</span>`
+            : `Intemp.: 0`;
+
+        return `
+          <div>
+            ${empresa} (
+            ${intemperieHtml}
+            | Normais: ${info.normais}
+            | Total: ${info.total})
+          </div>
+        `;
+      })
+      .join("");
   };
 
 
@@ -212,16 +295,16 @@ const Relatorios: React.FC = () => {
 
     if (o.soPo?.checked)
     parts.push(`Só Pó: ${o.soPo.m2 || "0"} m²${showEmp(o.soPo.empresa)}`);
-    
+
     if(o.laserWS940CComManobrador?.checked)
     parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || "0"} m²${showEmp(o.laserWS940CComManobrador.empresa)}`);
-    
+
     if(o.lazerYZ30ComManobrador?.checked)
     parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || "0"} m²${showEmp(o.lazerYZ30ComManobrador.empresa)}`);
-    
+
     if(o.soMaqLaserWS940C?.checked)
     parts.push(`Só Laser WS940C: ${o.soMaqLaserWS940C.m2 || "0"} m²${showEmp(o.soMaqLaserWS940C.empresa)}`);
-    
+
     if(o.soMaqLazerYZ30?.checked)
     parts.push(`Só Lazer YZ30: ${o.soMaqLazerYZ30.m2 || "0"} m²${showEmp(o.soMaqLazerYZ30.empresa)}`);
 
@@ -230,19 +313,59 @@ const Relatorios: React.FC = () => {
 
   // carga inicial
   useEffect(() => {
-    (async () => {
-      const [reg, cls, usr] = await Promise.all([
-        api.get<RegistroHoras[]>("/registro-horas/"),
-        api.get<Cliente[]>("/clientes/"),
-        api.get<User[]>("/users/"),
-      ]);
-      setRegistrosAll(reg.data);
-      setClientes(cls.data);
+    let componenteAtivo = true;
 
-      // ordena usuários por nome para o select
-      const sortedUsers = [...usr.data].sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt"));
-      setLeaders(sortedUsers);
-    })();
+    async function carregarDados() {
+      try {
+        setCarregando(true);
+        setErroCarregamento(null);
+
+        const [reg, cls, usr] = await Promise.all([
+          api.get<RegistroHoras[]>("/registro-horas/"),
+          api.get<Cliente[]>("/clientes/"),
+          api.get<User[]>("/users/"),
+        ]);
+
+        if (!componenteAtivo) {
+          return;
+        }
+
+        setRegistrosAll(reg.data);
+        setClientes(cls.data);
+
+        const utilizadoresOrdenados = [...usr.data].sort(
+          (a, b) => (
+            (a.name || "").localeCompare(
+              b.name || "",
+              "pt",
+            )
+          ),
+        );
+
+        setLeaders(utilizadoresOrdenados);
+      } catch (error) {
+        console.error(
+          "Erro ao carregar relatório:",
+          error,
+        );
+
+        if (componenteAtivo) {
+          setErroCarregamento(
+            "Não foi possível carregar os dados do relatório.",
+          );
+        }
+      } finally {
+        if (componenteAtivo) {
+          setCarregando(false);
+        }
+      }
+    }
+
+    void carregarDados();
+
+    return () => {
+      componenteAtivo = false;
+    };
   }, []);
 
   // quando trocar cliente, carregar obras do cliente
@@ -394,7 +517,7 @@ const Relatorios: React.FC = () => {
     setRangeFrom("");
     setRangeTo("");
   };
-  
+
 
   // ===== Impressão =====
   const buildPrintableHtml = () => {
@@ -411,7 +534,7 @@ const Relatorios: React.FC = () => {
             <td>${r.cliente?.nome ?? (r.cliente_id ?? "-")}</td>
             <td>${r.obra?.nome ?? (r.obra_id ?? "-")}</td>
             <td style="text-align:center">${totalUsers}</td>
-            <td>${resumoEmpresas(r)}</td>
+            <td>${resumoEmpresasHtml(r)}</td>
             <td>${r.metros_quadrados}</td>
             <td>${etapasResumo(r)}</td>
             <td>${maquinasResumo(r)}</td>
@@ -445,6 +568,11 @@ const Relatorios: React.FC = () => {
             th, td { border: 1px solid #ddd; padding: 6px 8px; font-size: 12px; }
             th { background: #f5f5f5; text-align: left; }
             tfoot td { font-weight: bold; }
+            .intemperie-alert {
+              color: #ea580c;
+              font-weight: 700;
+              font-style: italic;
+            }
             @media print { .no-print { display: none; } th, td { font-size: 11px; } }
           </style>
         </head>
@@ -669,6 +797,35 @@ const Relatorios: React.FC = () => {
     }
   };
 
+  if (carregando) {
+    return (
+      <div className="mx-auto w-full max-w-7xl p-6">
+        <h1 className="mb-6 text-2xl font-bold text-gray-800">
+          Relatórios
+        </h1>
+        <div className="rounded-2xl bg-white shadow-sm">
+          <LoadingState message="A carregar relatório..." />
+        </div>
+      </div>
+    );
+  }
+  if (erroCarregamento) {
+    return (
+      <div className="mx-auto w-full max-w-7xl p-6">
+        <h1 className="mb-6 text-2xl font-bold text-gray-800">
+          Relatórios
+        </h1>
+        <div role="alert"
+          className={[
+            "rounded-xl border border-red-200",
+            "bg-red-50 px-5 py-4 text-red-700",
+          ].join(" ")}
+        >
+          {erroCarregamento}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold text-gray-800">Relatórios</h1>
@@ -837,7 +994,7 @@ const Relatorios: React.FC = () => {
                     <td className="px-4 py-2">{r.cliente?.nome ?? (r.cliente_id ?? "-")}</td>
                     <td className="px-4 py-2">{r.obra?.nome ?? (r.obra_id ?? "-")}</td>
                     <td className="px-4 py-2">{totalUsers}</td>
-                    <td className="px-4 py-2 whitespace-pre-wrap">{resumoEmpresas(r)}</td>
+                    <td className="px-4 py-2 whitespace-pre-wrap">{renderResumoEmpresas(r)}</td>
                     {/* <td className="px-4 py-2">{metros}</td> */}
                     <td className="px-4 py-2">{r.metros_quadrados}</td>
                     <td className="px-4 py-2">{etapasResumo(r)}</td>

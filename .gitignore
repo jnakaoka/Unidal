@@ -6,3 +6,5 @@ __pycache__/
 # Database backups
 backups/
 *.sql
+
+docker-compose.override.yml

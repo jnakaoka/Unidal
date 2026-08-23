@@ -1,9 +1,10 @@
 // Sidebar.tsx
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, Clock, FolderKanban, BarChartBig, UserCog, LogOut } from "lucide-react";
+import { LayoutDashboard, Clock, FolderKanban, BarChartBig, UserCog, LogOut, CreditCard } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLayout } from "@/context/LayoutContext";
 import clsx from "clsx";
+
 
 const Sidebar = () => {
   const { isSidebarOpen, closeSidebar } = useLayout();
@@ -11,11 +12,9 @@ const Sidebar = () => {
   const { user, logout } = useAuth();
 
   const handleLinkClick = () => {
-    // console.log('window.innerWidth', window.innerWidth);
-    // console.log('window.innerWidth < 768', window.innerWidth < 768);
-    // console.log('isSidebarOpen', isSidebarOpen);
-    //if (window.innerWidth < 768) 
-    closeSidebar();
+    if (window.innerWidth < 768) {
+      closeSidebar();
+    }
   };
 
   const menuItems = [
@@ -67,6 +66,12 @@ const Sidebar = () => {
       icon: <UserCog size={18} />,
       showFor: ["admin"],
     },
+    {
+      label: "Controle de cartões",
+      to: "/controle-cartoes",
+      icon: <CreditCard size={18} />,
+      showFor: ["admin"],
+    },
     // {
     //   label: "Trocar Password",
     //   to: "/change-password",
@@ -85,17 +90,23 @@ const Sidebar = () => {
           onClick={closeSidebar}
         />
       )} */}
-      <aside style={{ maxWidth: '30%', backgroundColor: 'white', borderEndEndRadius: '3px', borderColor: 'lightgray', marginRight: '1%', float: 'left',marginTop: '-0.4%' }}
-        className={clsx(
-          "fixed md:static top-0 left-0 z-40 bg-white h-full shadow-md transition-transform duration-300 ease-in-out",
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full",
-          "w-48 md:w-64 md:translate-x-0"
+      <aside className={clsx(
+          "fixed inset-y-0 left-0 z-40",
+          "h-screen w-64 overflow-y-auto",
+          "bg-white shadow-md",
+          "transition-transform duration-300 ease-in-out",
+          isSidebarOpen
+            ? "translate-x-0"
+            : "-translate-x-full",
         )}
       >
-        <div className="flex flex-col h-full p-4">
-          <div className="flex mb-6">
-            <img style={{ width: '30%' }} src="/logo_unidal_editado.png" alt="Unidal Logo" className="h-12" />
-            {/* <img style={{ width: '10%' }} src="/logo_unidal_editado.png" alt="Unidal Logo" className="h-8 w-auto" /> */}
+        <div className="flex min-h-full flex-col p-4">
+          <div className="mb-6 flex justify-center">
+            <img
+              src="/logo_unidal_editado.png"
+              alt="Unidal"
+              className="h-20 w-20 object-contain"
+            />
           </div>
           <nav className="flex-1">
             <ul className="space-y-3" style={{ listStyle: 'none', margin: '5% 0 0 4%', padding: '0' }}>
@@ -165,7 +176,7 @@ export default Sidebar;
 //   const { closeSidebar } = useLayout();
 //   const location = useLocation();
 //   const { user, logout } = useAuth();
-  
+
 //   const handleLinkClick = () => {
 //     // Fecha o menu se estiver em mobile (largura < md)
 //     //if (window.innerWidth < 768) {
@@ -232,8 +243,8 @@ export default Sidebar;
 //           isOpen ? "translate-x-0" : "-translate-x-full",
 //           "w-64 md:translate-x-0 md:static md:block"
 //       )}
-//     >      
-//       <div 
+//     >
+//       <div
 //         // className="sidebar-header mb-6 text-lg font-bold"
 //         className="text-3xl font-bold text-gray-800"
 //         >

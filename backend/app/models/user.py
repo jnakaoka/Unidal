@@ -14,6 +14,7 @@ class User(Base):
     hashed_password = Column(String(255), nullable=False)
     must_change_password = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True)
+    e_condutor = Column(Boolean, default=False, nullable=False)
     
     perfil_id = Column(Integer, ForeignKey("perfis.id"), nullable=False)
     perfil = relationship("Perfil", back_populates="usuarios")
