@@ -25,6 +25,7 @@ import {
     listarCondutores,
     listarVeiculos,
     obterHistoricoCondutoresVeiculo,
+    obterHistoricoVeiculosCondutor,
     transferirCondutor,
   } from "@/services/cartoes";
   import type {
@@ -103,11 +104,14 @@ import {
     >([]);
     const [veiculoHistorico, setVeiculoHistorico] =
       useState<Veiculo | null>(null);
+    const [condutorHistorico, setCondutorHistorico] =
+      useState<Condutor | null>(null);
     const [carregando, setCarregando] = useState(true);
     const [carregandoHistorico, setCarregandoHistorico] =
       useState(false);
     const [salvando, setSalvando] = useState(false);
     const [erro, setErro] = useState<string | null>(null);
+
 
 
     async function carregar() {
@@ -336,6 +340,14 @@ import {
             veiculoHistorico,
           );
         }
+        if (
+            condutorHistorico?.id
+            === associacao.condutor_id
+        ) {
+            await abrirHistoricoCondutor(
+                condutorHistorico,
+            );
+        }
       } catch (error) {
         setErro(obterMensagemErro(error));
       }
@@ -347,6 +359,7 @@ import {
         setCarregandoHistorico(true);
         setErro(null);
         setVeiculoHistorico(veiculo);
+        setCondutorHistorico(null);
 
         const dados =
           await obterHistoricoCondutoresVeiculo(
@@ -361,6 +374,29 @@ import {
         setCarregandoHistorico(false);
       }
     }
+
+    async function abrirHistoricoCondutor(
+        condutor: Condutor,
+      ) {
+        try {
+          setCarregandoHistorico(true);
+          setErro(null);
+          setCondutorHistorico(condutor);
+          setVeiculoHistorico(null);
+
+          const dados =
+            await obterHistoricoVeiculosCondutor(
+              condutor.id,
+            );
+
+          setHistorico(dados);
+        } catch (error) {
+          setErro(obterMensagemErro(error));
+          setHistorico([]);
+        } finally {
+          setCarregandoHistorico(false);
+        }
+      }
 
 
     if (carregando) {
@@ -671,6 +707,19 @@ import {
                                 <Unlink className="mr-1 h-4 w-4" />
                                 Desassociar
                               </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                className="h-9 px-3 text-sm"
+                                onClick={() => {
+                                    void abrirHistoricoCondutor(
+                                    associacao.condutor,
+                                    );
+                                }}
+                                >
+                                <UserRound className="mr-1 h-4 w-4" />
+                                Histórico condutor
+                                </Button>
                             </>
                           ) : (
                             <Button
@@ -695,7 +744,7 @@ import {
                             }}
                           >
                             <History className="mr-1 h-4 w-4" />
-                            Histórico
+                            Histórico veículo
                           </Button>
                         </div>
                       </td>
@@ -719,17 +768,20 @@ import {
         </div>
 
 
-        {veiculoHistorico && (
+        {(veiculoHistorico || condutorHistorico) && (
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <h3 className="font-semibold text-gray-900">
-                  Histórico de{" "}
-                  {veiculoHistorico.matricula}
+                {veiculoHistorico
+                    ? `Histórico de ${veiculoHistorico.matricula}`
+                    : `Histórico de ${condutorHistorico?.name}`}
                 </h3>
 
                 <p className="text-sm text-gray-500">
-                  Condutores associados ao veículo.
+                {veiculoHistorico
+                    ? "Condutores associados ao veículo."
+                    : "Veículos utilizados pelo condutor."}
                 </p>
               </div>
 
@@ -737,8 +789,9 @@ import {
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setVeiculoHistorico(null);
-                  setHistorico([]);
+                    setVeiculoHistorico(null);
+                    setCondutorHistorico(null);
+                    setHistorico([]);
                 }}
               >
                 Fechar
@@ -756,7 +809,9 @@ import {
                   <thead className="text-left text-xs uppercase text-gray-500">
                     <tr>
                       <th className="px-3 py-2">
-                        Condutor
+                        {veiculoHistorico
+                            ? "Condutor"
+                            : "Veículo"}
                       </th>
 
                       <th className="px-3 py-2">
@@ -785,7 +840,9 @@ import {
                     {historico.map((item) => (
                       <tr key={item.id}>
                         <td className="px-3 py-2">
-                          {item.condutor.name}
+                            {veiculoHistorico
+                            ? item.condutor.name
+                            : item.veiculo.matricula}
                         </td>
 
                         <td className="px-3 py-2">
