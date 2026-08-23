@@ -81,7 +81,20 @@ def update(db: Session, obra_id: int, data: ObraUpdate) -> Obra:
     cliente_final_id = payload.get("cliente_id", obj.cliente_id)
     nome_final = payload.get("nome", obj.nome)
 
-    if nome_final is not None and cliente_final_id is not None:
+    identidade_alterada = (
+        cliente_final_id != obj.cliente_id
+        or (
+            nome_final is not None
+            and normalizar_texto_busca(nome_final)
+            != normalizar_texto_busca(obj.nome)
+        )
+    )
+
+    if (
+        identidade_alterada
+        and nome_final is not None
+        and cliente_final_id is not None
+    ):
         nome_normalizado = normalizar_texto_busca(nome_final)
 
         obras_mesmo_cliente = (
@@ -137,7 +150,7 @@ def delete(db: Session, obra_id: int) -> Obra:
             status_code=400,
             detail=(
                 f"Esta obra possui {qtd_registros} apontamento(s) "
-                "e não pode ser excluída. Mescle-a com outra obra primeiro."
+                "e não pode ser excluída."
             )
         )
 
@@ -145,113 +158,3 @@ def delete(db: Session, obra_id: int) -> Obra:
     db.commit()
 
     return obj
-
-def merge_obras(
-    db: Session,
-    obra_destino_id: int,
-    obras_origem_ids: list[int],
-):
-    origem_ids = list(set(obras_origem_ids))
-    origem_ids = [
-        id for id in origem_ids
-        if id != obra_destino_id
-    ]
-
-    if not origem_ids:
-        raise HTTPException(
-            status_code=400,
-            detail="Nenhuma obra de origem válida foi informada"
-        )
-
-    obra_destino = (
-        db.query(Obra)
-        .filter(Obra.id == obra_destino_id)
-        .first()
-    )
-
-    if not obra_destino:
-        raise HTTPException(
-            status_code=404,
-            detail="Obra de destino não encontrada"
-        )
-
-    obras_origem = (
-        db.query(Obra)
-        .filter(Obra.id.in_(origem_ids))
-        .all()
-    )
-
-    ids_encontrados = {o.id for o in obras_origem}
-    ids_faltando = set(origem_ids) - ids_encontrados
-
-    if ids_faltando:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Obras não encontradas: {sorted(ids_faltando)}"
-        )
-
-    nome_destino = normalizar_texto_busca(obra_destino.nome)
-
-    for obra in obras_origem:
-
-        if obra.cliente_id != obra_destino.cliente_id:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"A obra {obra.id} pertence a outro cliente "
-                    "e não pode ser mesclada."
-                )
-            )
-
-        if normalizar_texto_busca(obra.nome) != nome_destino:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"A obra {obra.id} possui nome diferente "
-                    "da obra de destino."
-                )
-            )
-
-    try:
-        registros_movidos = (
-            db.query(RegistroHora)
-            .filter(
-                RegistroHora.obra_id.in_(origem_ids)
-            )
-            .count()
-        )
-
-        (
-            db.query(RegistroHora)
-            .filter(
-                RegistroHora.obra_id.in_(origem_ids)
-            )
-            .update(
-                {
-                    RegistroHora.obra_id: obra_destino_id,
-                    RegistroHora.cliente_id:
-                        obra_destino.cliente_id,
-                },
-                synchronize_session=False,
-            )
-        )
-
-        (
-            db.query(Obra)
-            .filter(Obra.id.in_(origem_ids))
-            .delete(synchronize_session=False)
-        )
-
-        db.commit()
-
-        return {
-            "obra_destino_id": obra_destino_id,
-            "obras_removidas": sorted(origem_ids),
-            "registros_movidos": registros_movidos,
-            "cliente_id": obra_destino.cliente_id,
-            "nome": obra_destino.nome,
-        }
-
-    except Exception:
-        db.rollback()
-        raise

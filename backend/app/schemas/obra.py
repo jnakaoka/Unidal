@@ -69,16 +69,3 @@ class ObraOut(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class ObraMerge(BaseModel):
-    obra_destino_id: int = Field(gt=0)
-    obras_origem_ids: list[int] = Field(min_length=1)
-
-    @field_validator("obras_origem_ids")
-    @classmethod
-    def validar_obras_origem(cls, valores: list[int]) -> list[int]:
-        if any(valor <= 0 for valor in valores):
-            raise ValueError("Todos os IDs das obras devem ser positivos")
-
-        return valores

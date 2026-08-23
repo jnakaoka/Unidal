@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
-from app.schemas.obra import ObraOut, ObraCreate, ObraUpdate, ObraMerge
+from app.schemas.obra import ObraOut, ObraCreate, ObraUpdate
 from app.services import obra as service
 
 router = APIRouter()
@@ -11,14 +11,6 @@ router = APIRouter()
 @router.get("/", response_model=List[ObraOut])
 def listar(db: Session = Depends(get_db), cliente_id: Optional[int] = Query(default=None)):
     return service.get_all(db, cliente_id=cliente_id)
-
-@router.post("/merge")
-def mesclar(payload: ObraMerge, db: Session = Depends(get_db)):
-    return service.merge_obras(
-        db,
-        obra_destino_id=payload.obra_destino_id,
-        obras_origem_ids=payload.obras_origem_ids,
-    )
 
 @router.get("/{id}", response_model=ObraOut)
 def obter(id: int, db: Session = Depends(get_db)):
