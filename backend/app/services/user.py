@@ -89,7 +89,7 @@ def update(db: Session, user_id: int, user_in) -> Optional[User]:
         db_user.hashed_password = hash_password(pwd)
         db_user.must_change_password = False  # ao atualizar explicitamente, não obriga troca
 
-        perfil_final_id = data.get(
+    perfil_final_id = data.get(
         "perfil_id",
         db_user.perfil_id,
     )
