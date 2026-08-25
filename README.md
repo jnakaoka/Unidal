@@ -196,3 +196,19 @@ class UserCreate(BaseModel):
 
 para rodar prod
 docker compose --profile production up -d
+
+## Testes automatizados do controle de cartões
+
+Os testes utilizam um banco MySQL temporário e isolado chamado
+`unidal_test`. O banco é criado em memória, recebe a baseline e todas
+as migrations e é descartado ao final da execução.
+
+Para executar:
+
+```bash
+docker compose \
+  -p unidal-test \
+  -f docker-compose.test.yml \
+  up --build \
+  --abort-on-container-exit \
+  --exit-code-from api-test
