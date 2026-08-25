@@ -125,9 +125,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser({ id, email: emailReal, name, perfil });
 
       // redireciona conforme perfil (normalizado)
-      if (perfil === "admin") navigate("/dashboard");
-      else if (perfil === "operador" || perfil === "motorista") navigate("/operador-dashboard");
-      else navigate("/unauthorized");
+      const parametros = new URLSearchParams(
+        window.location.search,
+      );
+      const proximaPagina = parametros.get("next");
+      const proximaPaginaSegura = (
+        proximaPagina
+        && proximaPagina.startsWith("/")
+        && !proximaPagina.startsWith("//")
+        && !proximaPagina.startsWith("/login")
+      );
+
+      if (proximaPaginaSegura) {
+        navigate(proximaPagina, { replace: true });
+      } else if (perfil === "admin") {
+        navigate("/dashboard", { replace: true });
+      } else if (
+        perfil === "operador"
+        || perfil === "motorista"
+      ) {
+        navigate(
+          "/operador-dashboard",
+          { replace: true },
+        );
+      } else {
+        navigate("/unauthorized", { replace: true });
+      }
 
       return true;
     } catch (err: any) {

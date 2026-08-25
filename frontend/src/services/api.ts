@@ -1,10 +1,23 @@
 // api.ts
-import axios from "axios";
+import axios, {
+  AxiosError,
+  InternalAxiosRequestConfig,
+} from "axios";
 
-//const baseURL = process.env.REACT_APP_API_URL || "https://api.unidal.pt";
+interface TokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  token_type?: string;
+}
+
+interface RetryableRequest
+  extends InternalAxiosRequestConfig {
+  _retry?: boolean;
+}
 
 const baseURL =
-  import.meta.env.VITE_API_URL || "https://api.unidal.pt";
+  import.meta.env.VITE_API_URL
+  || "https://api.unidal.pt";
 
 const api = axios.create({
   baseURL,
@@ -15,35 +28,205 @@ const api = axios.create({
   },
 });
 
-// Helper: pega o token de onde quer que esteja (compatível com chaves antigas)
-function getAccessToken(): string | null {
+let refreshEmCurso: Promise<string> | null = null;
+
+function obterAccessToken(): string | null {
   return (
-    localStorage.getItem("accessToken") || // ✅ padrão recomendado
-    localStorage.getItem("access_token") || // legados
-    sessionStorage.getItem("accessToken") ||
-    sessionStorage.getItem("access_token")
+    localStorage.getItem("access_token")
+    || sessionStorage.getItem("access_token")
+    || localStorage.getItem("accessToken")
+    || sessionStorage.getItem("accessToken")
   );
 }
 
-// Interceptor para anexar Authorization (pula apenas login/refresh)
+function obterRefreshToken(): string | null {
+  return (
+    localStorage.getItem("refresh_token")
+    || sessionStorage.getItem("refresh_token")
+    || localStorage.getItem("refreshToken")
+    || sessionStorage.getItem("refreshToken")
+  );
+}
+
+function guardarAccessToken(token: string): void {
+  localStorage.setItem("access_token", token);
+
+  if (localStorage.getItem("accessToken") !== null) {
+    localStorage.setItem("accessToken", token);
+  }
+
+  if (sessionStorage.getItem("access_token") !== null) {
+    sessionStorage.setItem("access_token", token);
+  }
+
+  if (sessionStorage.getItem("accessToken") !== null) {
+    sessionStorage.setItem("accessToken", token);
+  }
+}
+
+function limparAutenticacao(): void {
+  const chaves = [
+    "access_token",
+    "refresh_token",
+    "accessToken",
+    "refreshToken",
+    "userEmail",
+    "userName",
+    "userPerfil",
+    "userId",
+  ];
+
+  chaves.forEach((chave) => {
+    localStorage.removeItem(chave);
+    sessionStorage.removeItem(chave);
+  });
+}
+
+function redirecionarParaLogin(): void {
+  if (window.location.pathname === "/login") {
+    return;
+  }
+
+  const paginaAtual = (
+    window.location.pathname
+    + window.location.search
+    + window.location.hash
+  );
+
+  const parametros = new URLSearchParams({
+    next: paginaAtual,
+    reason: "session_expired",
+  });
+
+  window.location.assign(
+    `/login?${parametros.toString()}`,
+  );
+}
+
+function urlDeAutenticacao(url?: string): boolean {
+  const caminho = (url || "").toLowerCase();
+
+  return (
+    caminho.includes("/auth/login")
+    || caminho.includes("/auth/refresh")
+  );
+}
+
+async function renovarAccessToken(): Promise<string> {
+  const refreshToken = obterRefreshToken();
+
+  if (!refreshToken) {
+    throw new Error("Refresh token ausente.");
+  }
+
+  const formulario = new URLSearchParams();
+  formulario.set("refresh_token", refreshToken);
+
+  const urlRefresh = (
+    `${baseURL.replace(/\/$/, "")}/auth/refresh`
+  );
+
+  const response = await axios.post<TokenResponse>(
+    urlRefresh,
+    formulario,
+    {
+      headers: {
+        "Content-Type":
+          "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+    },
+  );
+
+  const novoAccessToken = response.data.access_token;
+
+  if (!novoAccessToken) {
+    throw new Error(
+      "A renovação não devolveu um access token.",
+    );
+  }
+
+  guardarAccessToken(novoAccessToken);
+
+  if (response.data.refresh_token) {
+    localStorage.setItem(
+      "refresh_token",
+      response.data.refresh_token,
+    );
+  }
+
+  api.defaults.headers.common.Authorization =
+    `Bearer ${novoAccessToken}`;
+
+  return novoAccessToken;
+}
+
+function obterRenovacaoEmCurso(): Promise<string> {
+  if (!refreshEmCurso) {
+    refreshEmCurso = renovarAccessToken()
+      .finally(() => {
+        refreshEmCurso = null;
+      });
+  }
+
+  return refreshEmCurso;
+}
+
 api.interceptors.request.use(
   (config) => {
-    const url = (config.url || "").toLowerCase();
-    const isLogin =
-      url.endsWith("/auth/login") || url.endsWith("/auth/login/");
-    const isRefresh =
-      url.endsWith("/auth/refresh") || url.endsWith("/auth/refresh/");
+    const token = obterAccessToken();
 
-    const token = getAccessToken();
-
-    if (!isLogin && !isRefresh && token) {
-      config.headers = config.headers || {};
-      (config.headers as any).Authorization = `Bearer ${token}`;
+    if (
+      token
+      && !urlDeAutenticacao(config.url)
+    ) {
+      config.headers.Authorization =
+        `Bearer ${token}`;
     }
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
+);
+
+api.interceptors.response.use(
+  (response) => response,
+  async (
+    error: AxiosError,
+  ) => {
+    const requisicao =
+      error.config as RetryableRequest | undefined;
+
+    if (
+      error.response?.status !== 401
+      || !requisicao
+      || urlDeAutenticacao(requisicao.url)
+    ) {
+      return Promise.reject(error);
+    }
+
+    if (requisicao._retry) {
+      limparAutenticacao();
+      redirecionarParaLogin();
+      return Promise.reject(error);
+    }
+
+    requisicao._retry = true;
+
+    try {
+      const novoToken =
+        await obterRenovacaoEmCurso();
+
+      requisicao.headers.Authorization =
+        `Bearer ${novoToken}`;
+
+      return api(requisicao);
+    } catch (erroRefresh) {
+      limparAutenticacao();
+      redirecionarParaLogin();
+      return Promise.reject(erroRefresh);
+    }
+  },
 );
 
 export default api;
