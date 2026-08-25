@@ -1,0 +1,52 @@
+services:
+  db-test:
+    image: mysql:8
+    environment:
+      MYSQL_DATABASE: unidal_test
+      MYSQL_ROOT_PASSWORD: test_root_password
+      MYSQL_USER: unidal_test
+      MYSQL_PASSWORD: test_password
+    tmpfs:
+      - /var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -u root -ptest_root_password --silent"
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 15s
+    networks:
+      - test-internal
+
+  api-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    depends_on:
+      db-test:
+        condition: service_healthy
+    environment:
+      DB_USER: unidal_test
+      DB_PASSWORD: test_password
+      DB_NAME: unidal_test
+      DB_HOST: db-test
+      DB_PORT: 3306
+      JWT_SECRET_KEY: test-secret-not-for-production
+      PYTHONPATH: /app
+    volumes:
+      - ./backend:/app
+      - ./alembic.ini:/app/alembic.ini:ro
+    command:
+      [
+        "sh",
+        "/app/run-tests.sh"
+      ]
+    networks:
+      - test-internal
+
+networks:
+  test-internal:
+    driver: bridge
