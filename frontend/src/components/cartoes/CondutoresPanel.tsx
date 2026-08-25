@@ -599,16 +599,18 @@ import {
         )}
 
 
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <div className="relative w-full">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400"
+          />
 
           <Input
             value={pesquisa}
+            className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-3 text-sm"
             onChange={(event) => {
               setPesquisa(event.target.value);
             }}
             placeholder="Pesquisar matrícula, veículo ou condutor"
-            className="pl-9"
           />
         </div>
 

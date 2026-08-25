@@ -560,17 +560,19 @@ import {
         )}
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_220px]">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <div className="relative w-full">
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400"
+            />
 
             <Input
               value={pesquisa}
-              className="pl-9"
-              placeholder="Pesquisar cartão"
-              onChange={(event) => {
-                setPesquisa(event.target.value);
-              }}
-            />
+              className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-3 text-sm"
+                placeholder="Pesquisar cartão"
+                onChange={(event) => {
+                  setPesquisa(event.target.value);
+                }}
+              />
           </div>
 
           <select

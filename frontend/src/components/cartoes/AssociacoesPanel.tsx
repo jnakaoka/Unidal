@@ -22,6 +22,7 @@ import {
     listarAssociacoes,
     listarCartoes,
     listarVeiculos,
+    listarAssociacoesCondutores,
     obterHistoricoCartao,
     transferirCartao,
   } from "@/services/cartoes";
@@ -29,6 +30,7 @@ import {
     Cartao,
     CartaoVeiculoAssociacao,
     Veiculo,
+    VeiculoCondutorAssociacao,
   } from "@/types/cartao";
   import LoadingState from "@/components/LoadingState";
 
@@ -74,6 +76,11 @@ import {
     const [associacoes, setAssociacoes] = useState<
       CartaoVeiculoAssociacao[]
     >([]);
+    const [
+      associacoesCondutores,
+      setAssociacoesCondutores,
+    ] = useState<VeiculoCondutorAssociacao[]>([]);
+
     const [pesquisa, setPesquisa] = useState("");
     const [operacao, setOperacao] =
       useState<Operacao | null>(null);
@@ -98,17 +105,24 @@ import {
           dadosCartoes,
           dadosVeiculos,
           dadosAssociacoes,
+          dadosAssociacoesCondutores,
         ] = await Promise.all([
           listarCartoes(),
           listarVeiculos(true),
           listarAssociacoes({
             ativa: true,
           }),
+          listarAssociacoesCondutores({
+            ativa: true,
+          }).catch(() => []),
         ]);
 
         setCartoes(dadosCartoes);
         setVeiculos(dadosVeiculos);
         setAssociacoes(dadosAssociacoes);
+        setAssociacoesCondutores(
+          dadosAssociacoesCondutores,
+        );
       } catch (error) {
         setErro(obterMensagemErro(error));
       } finally {
@@ -129,6 +143,15 @@ import {
       );
     }, [associacoes]);
 
+    const condutorPorVeiculo = useMemo(() => {
+      return new Map(
+        associacoesCondutores.map((associacao) => [
+          associacao.veiculo_id,
+          associacao,
+        ]),
+      );
+    }, [associacoesCondutores]);
+
     const cartoesFiltrados = useMemo(() => {
       const termo = pesquisa.trim().toLocaleLowerCase();
 
@@ -141,12 +164,16 @@ import {
           cartao.id,
         );
 
+        const associacaoCondutor = associacao ? condutorPorVeiculo.get(associacao.veiculo_id,) : undefined;
+
         const texto = [
           cartao.nome,
           cartao.identificador,
           cartao.tipo,
           cartao.estado,
           associacao?.veiculo.matricula ?? "",
+          associacaoCondutor?.condutor.name ?? "",
+          associacaoCondutor?.condutor.empresa ?? "",
         ]
           .join(" ")
           .toLocaleLowerCase();
@@ -156,6 +183,7 @@ import {
     }, [
       associacaoPorCartao,
       cartoes,
+      condutorPorVeiculo,
       pesquisa,
     ]);
 
@@ -419,13 +447,15 @@ import {
           </div>
         )}
 
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+        <div className="relative w-full">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-gray-400"
+          />
 
           <Input
             value={pesquisa}
-            className="pl-9"
-            placeholder="Pesquisar cartão ou matrícula"
+            className="h-10 w-full rounded-md border border-gray-300 bg-white pl-10 pr-3 text-sm"
+            placeholder="Pesquisar cartão, matrícula ou condutor"
             onChange={(event) => {
               setPesquisa(event.target.value);
             }}
@@ -446,6 +476,9 @@ import {
                   Veículo atual
                 </th>
                 <th className="px-4 py-3">
+                  Condutor atual
+                </th>
+                <th className="px-4 py-3">
                   Associado em
                 </th>
                 <th className="px-4 py-3 text-right">
@@ -455,12 +488,18 @@ import {
             </thead>
 
             <tbody className="divide-y divide-gray-100">
-              {cartoesFiltrados.map((cartao) => {
-                const associacao =
-                  associacaoPorCartao.get(cartao.id)
-                  ?? null;
+            {cartoesFiltrados.map((cartao) => {
+              const associacao =
+                associacaoPorCartao.get(cartao.id)
+                ?? null;
 
-                return (
+              const associacaoCondutor = associacao
+                ? condutorPorVeiculo.get(
+                  associacao.veiculo_id,
+                )
+                : undefined;
+
+              return (
                   <tr key={cartao.id}>
                     <td className="px-4 py-3">
                       <div className="font-semibold text-gray-900">
@@ -504,6 +543,24 @@ import {
                       ) : (
                         <span className="text-gray-500">
                           Sem veículo
+                        </span>
+                      )}
+                    </td>
+
+                    <td className="px-4 py-3">
+                      {associacaoCondutor ? (
+                        <>
+                          <div className="font-semibold text-gray-900">
+                            {associacaoCondutor.condutor.name}
+                          </div>
+
+                          <div className="text-xs text-gray-500">
+                            {associacaoCondutor.condutor.empresa}
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-gray-500">
+                          Sem condutor
                         </span>
                       )}
                     </td>
@@ -591,7 +648,7 @@ import {
                 && (
                     <tr>
                     <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-4 py-8 text-center text-gray-500"
                     >
                         Nenhum cartão encontrado.
