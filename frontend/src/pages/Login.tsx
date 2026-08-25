@@ -1,8 +1,14 @@
 import React, { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const Login: React.FC = () => {
   const { login } = useAuth();
+  const [searchParams] = useSearchParams();
+  const sessaoExpirada = (
+    searchParams.get("reason")
+    === "session_expired"
+  );
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -19,6 +25,16 @@ const Login: React.FC = () => {
 
         {/* Título */}
         <h2 className="text-2xl font-bold text-gray-800 mb-8">Login</h2>
+
+        {sessaoExpirada && (
+          <div
+            className="mb-5 w-full max-w-[40%] min-w-[300px] rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+            role="alert"
+          >
+            A sua sessão expirou. Inicie sessão
+            novamente para continuar.
+          </div>
+        )}
 
         {/* Formulário */}
         <form onSubmit={handleSubmit} className="w-full max-w-[40%] min-w-[300px] space-y-4">
