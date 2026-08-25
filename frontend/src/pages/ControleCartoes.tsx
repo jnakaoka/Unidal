@@ -5,6 +5,7 @@ import {
   CreditCard,
   UserRound,
   History,
+  LayoutDashboard,
 } from "lucide-react";
 
 import AssociacoesPanel from "@/components/cartoes/AssociacoesPanel";
@@ -12,8 +13,10 @@ import CartoesPanel from "@/components/cartoes/CartoesPanel";
 import VeiculosPanel from "@/components/cartoes/VeiculosPanel";
 import CondutoresPanel from "@/components/cartoes/CondutoresPanel";
 import HistoricoPanel from "@/components/cartoes/HistoricoPanel";
+import ResumoPanel from "@/components/cartoes/ResumoPanel";
 
 type Aba =
+  | "resumo"
   | "associacoes"
   | "cartoes"
   | "veiculos"
@@ -21,6 +24,12 @@ type Aba =
   | "historico";
 
 const abas = [
+  {
+    id: "resumo" as const,
+    nome: "Resumo",
+    descricao: "Situação operacional",
+    icon: LayoutDashboard,
+  },
   {
     id: "associacoes" as const,
     nome: "Associações",
@@ -55,7 +64,7 @@ const abas = [
 
 export default function ControleCartoes() {
   const [abaAtiva, setAbaAtiva] =
-    useState<Aba>("associacoes");
+    useState<Aba>("resumo");
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-6">
@@ -71,7 +80,7 @@ export default function ControleCartoes() {
       </header>
 
       <nav
-        className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5"
+        className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
         aria-label="Áreas do controle de cartões"
       >
         {abas.map((aba) => {
@@ -121,6 +130,10 @@ export default function ControleCartoes() {
       </nav>
 
       <main className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:p-6">
+        {abaAtiva === "resumo" && (
+          <ResumoPanel />
+        )}
+
         {abaAtiva === "associacoes" && (
           <AssociacoesPanel />
         )}
