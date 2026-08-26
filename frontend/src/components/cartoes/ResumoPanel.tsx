@@ -28,6 +28,17 @@ import {
     VeiculoCondutorAssociacao,
   } from "@/types/cartao";
 
+  type AbaDestino =
+    | "associacoes"
+    | "cartoes"
+    | "veiculos"
+    | "condutores";
+
+    interface ResumoPanelProps {
+        onNavegar: (aba: AbaDestino) => void;
+    }
+
+
   function obterMensagemErro(erro: unknown): string {
     if (axios.isAxiosError(erro)) {
       const detalhe = erro.response?.data?.detail;
@@ -40,7 +51,9 @@ import {
     return "Não foi possível carregar o resumo.";
   }
 
-  export default function ResumoPanel() {
+  export default function ResumoPanel({
+        onNavegar,
+    }: ResumoPanelProps) {
     const [cartoes, setCartoes] = useState<Cartao[]>([]);
     const [veiculos, setVeiculos] = useState<Veiculo[]>(
       [],
@@ -156,6 +169,7 @@ import {
         descricao: "Cartões cadastrados",
         cor: "border-blue-200 bg-blue-50 text-blue-700",
         Icone: CreditCard,
+        destino: "cartoes" as const,
       },
       {
         nome: "Disponíveis",
@@ -163,6 +177,7 @@ import {
         descricao: "Ativos sem veículo",
         cor: "border-green-200 bg-green-50 text-green-700",
         Icone: CreditCard,
+        destino: "associacoes" as const,
       },
       {
         nome: "Em utilização",
@@ -170,6 +185,7 @@ import {
         descricao: "Com associação ativa",
         cor: "border-indigo-200 bg-indigo-50 text-indigo-700",
         Icone: CreditCard,
+        destino: "associacoes" as const,
       },
       {
         nome: "Exigem atenção",
@@ -177,6 +193,7 @@ import {
         descricao: "Não estão ativos",
         cor: "border-amber-200 bg-amber-50 text-amber-700",
         Icone: AlertTriangle,
+        destino: "cartoes" as const,
       },
       {
         nome: "Veículos ativos",
@@ -184,6 +201,7 @@ import {
         descricao: "Disponíveis no cadastro",
         cor: "border-purple-200 bg-purple-50 text-purple-700",
         Icone: Car,
+        destino: "veiculos" as const,
       },
       {
         nome: "Sem cartão",
@@ -191,6 +209,7 @@ import {
         descricao: "Veículos sem cartões",
         cor: "border-gray-200 bg-gray-50 text-gray-700",
         Icone: Car,
+        destino: "veiculos" as const,
       },
       {
         nome: "Sem condutor",
@@ -198,6 +217,7 @@ import {
         descricao: "Veículos sem condutor",
         cor: "border-rose-200 bg-rose-50 text-rose-700",
         Icone: UserRound,
+        destino: "condutores" as const,
       },
     ];
 
@@ -248,31 +268,37 @@ import {
                 const Icone = indicador.Icone;
 
                 return (
-                  <article
-                    key={indicador.nome}
-                    className={
-                      "rounded-xl border p-4 "
-                      + indicador.cor
-                    }
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium">
-                          {indicador.nome}
-                        </p>
+                    <button
+                        key={indicador.nome}
+                        type="button"
+                        onClick={() => {
+                        onNavegar(indicador.destino);
+                        }}
+                        className={
+                        "rounded-xl border p-4 text-left "
+                        + "transition hover:-translate-y-0.5 "
+                        + "hover:shadow-md "
+                        + indicador.cor
+                        }
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <p className="text-sm font-medium">
+                            {indicador.nome}
+                            </p>
 
-                        <p className="mt-2 text-3xl font-bold">
-                          {indicador.valor}
-                        </p>
+                            <p className="mt-2 text-3xl font-bold">
+                            {indicador.valor}
+                            </p>
 
-                        <p className="mt-1 text-xs opacity-80">
-                          {indicador.descricao}
-                        </p>
-                      </div>
+                            <p className="mt-1 text-xs opacity-80">
+                            {indicador.descricao}
+                            </p>
+                        </div>
 
-                      <Icone className="h-6 w-6" />
-                    </div>
-                  </article>
+                        <Icone className="h-6 w-6" />
+                        </div>
+                    </button>
                 );
               })}
             </div>

@@ -74,8 +74,8 @@ export default function ControleCartoes() {
         </h1>
 
         <p className="mt-1 text-sm text-gray-600">
-        Gerencie cartões, veículos, condutores e
-        o histórico de movimentações.
+          Gerencie cartões, veículos, condutores e
+          o histórico de movimentações.
         </p>
       </header>
 
@@ -131,7 +131,9 @@ export default function ControleCartoes() {
 
       <main className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:p-6">
         {abaAtiva === "resumo" && (
-          <ResumoPanel />
+          <ResumoPanel
+            onNavegar={(aba) => setAbaAtiva(aba)}
+          />
         )}
 
         {abaAtiva === "associacoes" && (
