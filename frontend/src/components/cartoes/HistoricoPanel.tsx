@@ -55,6 +55,43 @@ import {
     ).format(new Date(valor));
   }
 
+  function formatarDataInput(data: Date): string {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1)
+      .padStart(2, "0");
+    const dia = String(data.getDate())
+      .padStart(2, "0");
+
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  function converterDataInput(
+    valor: string,
+    finalDoDia = false,
+  ): Date | null {
+    if (!valor) {
+      return null;
+    }
+
+    const [ano, mes, dia] = valor
+      .split("-")
+      .map(Number);
+
+    if (!ano || !mes || !dia) {
+      return null;
+    }
+
+    return new Date(
+      ano,
+      mes - 1,
+      dia,
+      finalDoDia ? 23 : 0,
+      finalDoDia ? 59 : 0,
+      finalDoDia ? 59 : 0,
+      finalDoDia ? 999 : 0,
+    );
+  }
+
   function nomeAcao(
     categoria: Categoria,
     acao: Acao,
@@ -83,6 +120,8 @@ import {
     const [pesquisa, setPesquisa] = useState("");
     const [categoria, setCategoria] = useState("");
     const [acao, setAcao] = useState("");
+    const [dataInicial, setDataInicial] = useState("");
+    const [dataFinal, setDataFinal] = useState("");
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState<string | null>(null);
 
@@ -182,10 +221,67 @@ import {
       void carregar();
     }, []);
 
+    function aplicarUltimosDias(dias: number) {
+        const final = new Date();
+        const inicial = new Date();
+
+        inicial.setDate(
+            inicial.getDate() - (dias - 1),
+        );
+
+        setDataInicial(formatarDataInput(inicial));
+        setDataFinal(formatarDataInput(final));
+    }
+
+    function aplicarHoje() {
+        const hoje = formatarDataInput(new Date());
+
+        setDataInicial(hoje);
+        setDataFinal(hoje);
+        }
+
+        function limparPeriodo() {
+        setDataInicial("");
+        setDataFinal("");
+    }
+
+    const periodoInvalido = Boolean(
+        dataInicial
+        && dataFinal
+        && dataInicial > dataFinal,
+    );
+
     const movimentosFiltrados = useMemo(() => {
       const termo = pesquisa.trim().toLocaleLowerCase();
 
       return movimentos.filter((movimento) => {
+        if (periodoInvalido) {
+            return false;
+        }
+
+        const inicio = converterDataInput(dataInicial);
+        const fim = converterDataInput(
+        dataFinal,
+        true,
+        );
+        const dataMovimento = new Date(
+        movimento.data,
+        ).getTime();
+
+        if (
+        inicio
+        && dataMovimento < inicio.getTime()
+        ) {
+        return false;
+        }
+
+        if (
+        fim
+        && dataMovimento > fim.getTime()
+        ) {
+        return false;
+        }
+
         if (
           categoria
           && movimento.categoria !== categoria
@@ -218,10 +314,13 @@ import {
         return texto.includes(termo);
       });
     }, [
-      acao,
-      categoria,
-      movimentos,
-      pesquisa,
+        acao,
+        categoria,
+        dataFinal,
+        dataInicial,
+        movimentos,
+        periodoInvalido,
+        pesquisa,
     ]);
 
     return (
@@ -305,6 +404,124 @@ import {
               Desassociações
             </option>
           </select>
+        </div>
+
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="space-y-1">
+                        <label
+                        htmlFor="historico-data-inicial"
+                        className="text-xs font-medium text-gray-600"
+                        >
+                        Data inicial
+                        </label>
+
+                        <Input
+                        id="historico-data-inicial"
+                        type="date"
+                        value={dataInicial}
+                        max={dataFinal || undefined}
+                        onChange={(event) => {
+                            setDataInicial(event.target.value);
+                        }}
+                        />
+                    </div>
+
+                    <div className="space-y-1">
+                        <label
+                        htmlFor="historico-data-final"
+                        className="text-xs font-medium text-gray-600"
+                        >
+                        Data final
+                        </label>
+
+                        <Input
+                        id="historico-data-final"
+                        type="date"
+                        value={dataFinal}
+                        min={dataInicial || undefined}
+                        onChange={(event) => {
+                            setDataFinal(event.target.value);
+                        }}
+                        />
+                    </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={aplicarHoje}
+                >
+                    Hoje
+                </Button>
+
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => aplicarUltimosDias(7)}
+                >
+                    7 dias
+                </Button>
+
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => aplicarUltimosDias(30)}
+                >
+                    30 dias
+                </Button>
+
+                <Button
+                    type="button"
+                    variant="outline"
+                    onClick={limparPeriodo}
+                    disabled={!dataInicial && !dataFinal}
+                >
+                    Todo o período
+                </Button>
+                </div>
+            </div>
+
+            {periodoInvalido && (
+                <p
+                className="mt-3 text-sm text-red-700"
+                role="alert"
+                >
+                A data inicial não pode ser posterior à
+                data final.
+                </p>
+            )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500">
+            <span>
+                {movimentosFiltrados.length}
+                {" "}
+                {movimentosFiltrados.length === 1
+                ? "movimentação encontrada"
+                : "movimentações encontradas"}
+            </span>
+
+            {(pesquisa
+                || categoria
+                || acao
+                || dataInicial
+                || dataFinal) && (
+                <button
+                type="button"
+                className="font-medium text-blue-700 hover:underline"
+                onClick={() => {
+                    setPesquisa("");
+                    setCategoria("");
+                    setAcao("");
+                    limparPeriodo();
+                }}
+                >
+                Limpar todos os filtros
+                </button>
+            )}
         </div>
 
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
