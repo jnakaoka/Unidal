@@ -28,6 +28,10 @@ import {
     VeiculoCondutorAssociacao,
   } from "@/types/cartao";
 
+  import {
+    obterSituacaoValidadeCartao,
+  } from "@/utils/validadeCartao";
+
   type AbaDestino =
     | "associacoes"
     | "cartoes"
@@ -49,6 +53,35 @@ import {
     }
 
     return "Não foi possível carregar o resumo.";
+  }
+
+  function obterAlertaCartao(cartao: Cartao): {
+    texto: string;
+    classe: string;
+  } {
+    if (cartao.estado !== "ativo") {
+      return {
+        texto: cartao.estado,
+        classe: (
+          "bg-amber-100 text-amber-700"
+        ),
+      };
+    }
+
+    const situacao =
+      obterSituacaoValidadeCartao(cartao);
+
+    if (situacao === "expirado") {
+      return {
+        texto: "Expirado",
+        classe: "bg-red-100 text-red-700",
+      };
+    }
+
+    return {
+      texto: "Vence em breve",
+      classe: "bg-amber-100 text-amber-700",
+    };
   }
 
   export default function ResumoPanel({
@@ -136,7 +169,19 @@ import {
       );
 
       const cartoesAtencao = cartoes.filter(
-        (cartao) => cartao.estado !== "ativo",
+        (cartao) => {
+          if (cartao.estado !== "ativo") {
+            return true;
+          }
+
+          const situacao =
+            obterSituacaoValidadeCartao(cartao);
+
+          return (
+            situacao === "expirado"
+            || situacao === "vence_em_breve"
+          );
+        },
       );
 
       const veiculosSemCartao = veiculos.filter(
@@ -311,34 +356,44 @@ import {
                   </h3>
 
                   <p className="mt-1 text-xs text-gray-500">
-                    Bloqueados, perdidos, cancelados ou
-                    expirados.
+                    Estados não ativos, cartões expirados ou
+                    próximos do vencimento.
                   </p>
                 </div>
 
                 <div className="divide-y divide-gray-100">
-                  {dadosResumo.cartoesAtencao.map(
-                    (cartao) => (
-                      <div
-                        key={cartao.id}
-                        className="flex items-center justify-between gap-4 px-5 py-3"
-                      >
-                        <div>
-                          <p className="font-semibold text-gray-900">
-                            {cartao.nome}
-                          </p>
+                {dadosResumo.cartoesAtencao.map(
+                    (cartao) => {
+                        const alerta = obterAlertaCartao(cartao);
 
-                          <p className="text-xs text-gray-500">
-                            {cartao.identificador}
-                          </p>
+                        return (
+                        <div
+                            key={cartao.id}
+                            className="flex items-center justify-between gap-4 px-5 py-3"
+                        >
+                            <div>
+                            <p className="font-semibold text-gray-900">
+                                {cartao.nome}
+                            </p>
+
+                            <p className="text-xs text-gray-500">
+                                {cartao.identificador}
+                            </p>
+                            </div>
+
+                            <span
+                            className={
+                                "rounded-full px-2 py-1 "
+                                + "text-xs font-medium "
+                                + alerta.classe
+                            }
+                            >
+                            {alerta.texto}
+                            </span>
                         </div>
-
-                        <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-700">
-                          {cartao.estado}
-                        </span>
-                      </div>
-                    ),
-                  )}
+                        );
+                    },
+                    )}
 
                   {dadosResumo.cartoesAtencao.length
                     === 0 && (

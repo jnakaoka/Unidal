@@ -28,6 +28,11 @@ import {
   } from "@/types/cartao";
   import LoadingState from "@/components/LoadingState";
 
+  import {
+    formatarValidadeCartao,
+    obterSituacaoValidadeCartao,
+  } from "@/utils/validadeCartao";
+
   interface CartaoForm {
     nome: string;
     identificador: string;
@@ -93,6 +98,57 @@ import {
     }
 
     return "Não foi possível concluir a operação.";
+  }
+
+  function ValidadeCartao({
+    cartao,
+  }: {
+    cartao: Cartao;
+  }) {
+    const situacao = obterSituacaoValidadeCartao(cartao);
+    const validade = formatarValidadeCartao(cartao);
+
+    if (situacao === "expirado") {
+      return (
+        <div>
+          <div className="font-medium text-red-700">
+            {validade}
+          </div>
+
+          <div className="text-xs text-red-600">
+            Expirado
+          </div>
+        </div>
+      );
+    }
+
+    if (situacao === "vence_em_breve") {
+      return (
+        <div>
+          <div className="font-medium text-amber-700">
+            {validade}
+          </div>
+
+          <div className="text-xs text-amber-600">
+            Vence em breve
+          </div>
+        </div>
+      );
+    }
+
+    if (situacao === "sem_validade") {
+      return (
+        <span className="text-gray-500">
+          Sem validade
+        </span>
+      );
+    }
+
+    return (
+      <span className="text-gray-600">
+        {validade}
+      </span>
+    );
   }
 
   export default function CartoesPanel() {
@@ -641,15 +697,8 @@ import {
                       : "—"}
                   </td>
 
-                  <td className="px-4 py-3 text-gray-600">
-                    {cartao.validade_mes
-                      && cartao.validade_ano
-                      ? (
-                        String(cartao.validade_mes)
-                          .padStart(2, "0")
-                        + `/${cartao.validade_ano}`
-                      )
-                      : "—"}
+                  <td className="px-4 py-3">
+                    <ValidadeCartao cartao={cartao} />
                   </td>
 
                   <td className="px-4 py-3">
