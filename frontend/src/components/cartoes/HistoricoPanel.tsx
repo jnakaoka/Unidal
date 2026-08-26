@@ -20,6 +20,7 @@ import {
 
   type Categoria = "cartao" | "condutor";
   type Acao = "associacao" | "desassociacao";
+  const MOVIMENTOS_POR_PAGINA = 50;
 
   interface Movimento {
     id: string;
@@ -122,6 +123,7 @@ import {
     const [acao, setAcao] = useState("");
     const [dataInicial, setDataInicial] = useState("");
     const [dataFinal, setDataFinal] = useState("");
+    const [limite, setLimite] = useState(MOVIMENTOS_POR_PAGINA);
     const [carregando, setCarregando] = useState(true);
     const [erro, setErro] = useState<string | null>(null);
 
@@ -323,6 +325,29 @@ import {
         pesquisa,
     ]);
 
+    useEffect(() => {
+        setLimite(MOVIMENTOS_POR_PAGINA);
+        }, [
+            acao,
+            categoria,
+            dataFinal,
+            dataInicial,
+            pesquisa,
+        ]);
+
+    const movimentosVisiveis = useMemo(
+    () => movimentosFiltrados.slice(0, limite),
+    [
+        limite,
+        movimentosFiltrados,
+    ],
+    );
+
+    const quantidadeRestante = (
+    movimentosFiltrados.length
+    - movimentosVisiveis.length
+    );
+
     return (
       <section className="space-y-5">
         <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -497,11 +522,18 @@ import {
 
         <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-gray-500">
             <span>
-                {movimentosFiltrados.length}
-                {" "}
-                {movimentosFiltrados.length === 1
-                ? "movimentação encontrada"
-                : "movimentações encontradas"}
+                {movimentosFiltrados.length === 0
+                    ? "Nenhuma movimentação encontrada"
+                    : (
+                    movimentosVisiveis.length
+                    + " de "
+                    + movimentosFiltrados.length
+                    + (
+                        movimentosFiltrados.length === 1
+                        ? " movimentação"
+                        : " movimentações"
+                    )
+                )}
             </span>
 
             {(pesquisa
@@ -550,7 +582,7 @@ import {
             </thead>
 
             <tbody className="divide-y divide-gray-100">
-              {movimentosFiltrados.map((movimento) => (
+              {movimentosVisiveis.map((movimento) => (
                 <tr key={movimento.id}>
                   <td className="whitespace-nowrap px-4 py-3 text-gray-600">
                     {formatarData(movimento.data)}
@@ -616,6 +648,28 @@ import {
             />
           )}
         </div>
+        {quantidadeRestante > 0 && (
+            <div className="flex justify-center">
+                <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                    setLimite(
+                    (anterior) => (
+                        anterior + MOVIMENTOS_POR_PAGINA
+                    ),
+                    );
+                }}
+                >
+                Mostrar mais
+                {" "}
+                {Math.min(
+                    MOVIMENTOS_POR_PAGINA,
+                    quantidadeRestante,
+                )}
+                </Button>
+            </div>
+        )}
       </section>
     );
   }
