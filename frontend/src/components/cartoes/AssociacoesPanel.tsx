@@ -34,12 +34,21 @@ import {
   } from "@/types/cartao";
   import LoadingState from "@/components/LoadingState";
 
+  import type {
+    FiltroContextualCartoes,
+  } from "@/types/controleCartoes";
+
   type TipoOperacao = "associar" | "transferir";
 
   interface Operacao {
     tipo: TipoOperacao;
     cartao: Cartao;
     associacaoAtual: CartaoVeiculoAssociacao | null;
+  }
+
+  interface AssociacoesPanelProps {
+    filtroContextual: FiltroContextualCartoes;
+    onLimparFiltro: () => void;
   }
 
   function obterMensagemErro(erro: unknown): string {
@@ -68,7 +77,10 @@ import {
     ).format(new Date(valor));
   }
 
-  export default function AssociacoesPanel() {
+  export default function AssociacoesPanel({
+    filtroContextual,
+    onLimparFiltro,
+  }: AssociacoesPanelProps) {
     const [cartoes, setCartoes] = useState<Cartao[]>([]);
     const [veiculos, setVeiculos] = useState<Veiculo[]>(
       [],
@@ -155,16 +167,36 @@ import {
     const cartoesFiltrados = useMemo(() => {
       const termo = pesquisa.trim().toLocaleLowerCase();
 
-      if (!termo) {
-        return cartoes;
-      }
-
       return cartoes.filter((cartao) => {
-        const associacao = associacaoPorCartao.get(
-          cartao.id,
-        );
+        const associacao =
+          associacaoPorCartao.get(cartao.id);
 
-        const associacaoCondutor = associacao ? condutorPorVeiculo.get(associacao.veiculo_id,) : undefined;
+        if (
+          filtroContextual === "disponiveis"
+          && (
+            cartao.estado !== "ativo"
+            || associacao
+          )
+        ) {
+          return false;
+        }
+
+        if (
+          filtroContextual === "em_utilizacao"
+          && !associacao
+        ) {
+          return false;
+        }
+
+        if (!termo) {
+          return true;
+        }
+
+        const associacaoCondutor = associacao
+          ? condutorPorVeiculo.get(
+            associacao.veiculo_id,
+          )
+          : undefined;
 
         const texto = [
           cartao.nome,
@@ -184,6 +216,7 @@ import {
       associacaoPorCartao,
       cartoes,
       condutorPorVeiculo,
+      filtroContextual,
       pesquisa,
     ]);
 
@@ -444,6 +477,35 @@ import {
                   )}
               </Button>
             </div>
+          </div>
+        )}
+
+        {(
+          filtroContextual === "disponiveis"
+          || filtroContextual === "em_utilizacao"
+        ) && (
+          <div className="flex flex-col gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-blue-800">
+                {filtroContextual === "disponiveis"
+                  ? "Filtro do resumo: cartões disponíveis"
+                  : "Filtro do resumo: cartões em utilização"}
+              </p>
+
+              <p className="text-xs text-blue-700">
+                {filtroContextual === "disponiveis"
+                  ? "Mostra cartões ativos sem veículo associado."
+                  : "Mostra cartões com associação ativa."}
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onLimparFiltro}
+            >
+              Limpar filtro
+            </Button>
           </div>
         )}
 

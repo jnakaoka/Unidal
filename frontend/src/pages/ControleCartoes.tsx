@@ -14,6 +14,10 @@ import VeiculosPanel from "@/components/cartoes/VeiculosPanel";
 import CondutoresPanel from "@/components/cartoes/CondutoresPanel";
 import HistoricoPanel from "@/components/cartoes/HistoricoPanel";
 import ResumoPanel from "@/components/cartoes/ResumoPanel";
+import type {
+  AbaControleCartoes,
+  FiltroContextualCartoes,
+} from "@/types/controleCartoes";
 
 type Aba =
   | "resumo"
@@ -66,6 +70,16 @@ export default function ControleCartoes() {
   const [abaAtiva, setAbaAtiva] =
     useState<Aba>("resumo");
 
+    const [
+      filtroContextual,
+      setFiltroContextual,
+    ] = useState<FiltroContextualCartoes>("todos");
+
+    function selecionarAba(aba: AbaControleCartoes) {
+      setFiltroContextual("todos");
+      setAbaAtiva(aba);
+    }
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 md:p-6">
       <header className="mb-6">
@@ -92,7 +106,7 @@ export default function ControleCartoes() {
               key={aba.id}
               type="button"
               aria-pressed={selecionada}
-              onClick={() => setAbaAtiva(aba.id)}
+              onClick={() => selecionarAba(aba.id)}
               className={
                 "flex items-center gap-3 rounded-xl border p-4 text-left transition "
                 + (
@@ -132,24 +146,47 @@ export default function ControleCartoes() {
       <main className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm md:p-6">
         {abaAtiva === "resumo" && (
           <ResumoPanel
-            onNavegar={(aba) => setAbaAtiva(aba)}
+            onNavegar={(destino) => {
+              setFiltroContextual(destino.filtro);
+              setAbaAtiva(destino.aba);
+            }}
           />
         )}
 
         {abaAtiva === "associacoes" && (
-          <AssociacoesPanel />
+          <AssociacoesPanel
+            filtroContextual={filtroContextual}
+            onLimparFiltro={() => {
+              setFiltroContextual("todos");
+            }}
+          />
         )}
 
         {abaAtiva === "cartoes" && (
-          <CartoesPanel />
+          <CartoesPanel
+            filtroContextual={filtroContextual}
+            onLimparFiltro={() => {
+              setFiltroContextual("todos");
+            }}
+          />
         )}
 
         {abaAtiva === "veiculos" && (
-          <VeiculosPanel />
+          <VeiculosPanel
+            filtroContextual={filtroContextual}
+            onLimparFiltro={() => {
+              setFiltroContextual("todos");
+            }}
+          />
         )}
 
         {abaAtiva === "condutores" && (
-          <CondutoresPanel />
+          <CondutoresPanel
+            filtroContextual={filtroContextual}
+            onLimparFiltro={() => {
+              setFiltroContextual("todos");
+            }}
+          />
         )}
 
         {abaAtiva === "historico" && (

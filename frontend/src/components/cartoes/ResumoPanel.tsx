@@ -32,15 +32,14 @@ import {
     obterSituacaoValidadeCartao,
   } from "@/utils/validadeCartao";
 
-  type AbaDestino =
-    | "associacoes"
-    | "cartoes"
-    | "veiculos"
-    | "condutores";
+  import type {
+    NavegacaoResumo,
+  } from "@/types/controleCartoes";
 
-    interface ResumoPanelProps {
-        onNavegar: (aba: AbaDestino) => void;
-    }
+
+  interface ResumoPanelProps {
+    onNavegar: (destino: NavegacaoResumo) => void;
+  }
 
 
   function obterMensagemErro(erro: unknown): string {
@@ -214,7 +213,10 @@ import {
         descricao: "Cartões cadastrados",
         cor: "border-blue-200 bg-blue-50 text-blue-700",
         Icone: CreditCard,
-        destino: "cartoes" as const,
+        destino: {
+            aba: "cartoes",
+            filtro: "todos",
+          },
       },
       {
         nome: "Disponíveis",
@@ -222,7 +224,10 @@ import {
         descricao: "Ativos sem veículo",
         cor: "border-green-200 bg-green-50 text-green-700",
         Icone: CreditCard,
-        destino: "associacoes" as const,
+        destino: {
+            aba: "associacoes",
+            filtro: "disponiveis",
+          },
       },
       {
         nome: "Em utilização",
@@ -230,7 +235,10 @@ import {
         descricao: "Com associação ativa",
         cor: "border-indigo-200 bg-indigo-50 text-indigo-700",
         Icone: CreditCard,
-        destino: "associacoes" as const,
+        destino: {
+            aba: "associacoes",
+            filtro: "em_utilizacao",
+          },
       },
       {
         nome: "Exigem atenção",
@@ -238,7 +246,10 @@ import {
         descricao: "Não estão ativos",
         cor: "border-amber-200 bg-amber-50 text-amber-700",
         Icone: AlertTriangle,
-        destino: "cartoes" as const,
+        destino: {
+            aba: "cartoes",
+            filtro: "atencao",
+          },
       },
       {
         nome: "Veículos ativos",
@@ -246,7 +257,10 @@ import {
         descricao: "Disponíveis no cadastro",
         cor: "border-purple-200 bg-purple-50 text-purple-700",
         Icone: Car,
-        destino: "veiculos" as const,
+        destino: {
+            aba: "veiculos",
+            filtro: "todos",
+          },
       },
       {
         nome: "Sem cartão",
@@ -254,7 +268,10 @@ import {
         descricao: "Veículos sem cartões",
         cor: "border-gray-200 bg-gray-50 text-gray-700",
         Icone: Car,
-        destino: "veiculos" as const,
+        destino: {
+            aba: "veiculos",
+            filtro: "sem_cartao",
+          },
       },
       {
         nome: "Sem condutor",
@@ -262,9 +279,12 @@ import {
         descricao: "Veículos sem condutor",
         cor: "border-rose-200 bg-rose-50 text-rose-700",
         Icone: UserRound,
-        destino: "condutores" as const,
+        destino: {
+            aba: "condutores",
+            filtro: "sem_condutor",
+          },
       },
-    ];
+    ] as const;
 
     return (
       <section className="space-y-6">

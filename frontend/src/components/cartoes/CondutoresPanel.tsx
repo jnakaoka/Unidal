@@ -33,7 +33,9 @@ import {
     Veiculo,
     VeiculoCondutorAssociacao,
   } from "@/types/cartao";
-
+  import type {
+    FiltroContextualCartoes,
+  } from "@/types/controleCartoes";
 
   type TipoOperacao = "associar" | "transferir";
 
@@ -49,6 +51,10 @@ import {
     associacao: VeiculoCondutorAssociacao;
   }
 
+  interface CondutoresPanelProps {
+    filtroContextual: FiltroContextualCartoes;
+    onLimparFiltro: () => void;
+  }
 
   type Operacao =
     | OperacaoAssociar
@@ -83,7 +89,10 @@ import {
   }
 
 
-  export default function CondutoresPanel() {
+  export default function CondutoresPanel({
+    filtroContextual,
+    onLimparFiltro,
+  }: CondutoresPanelProps) {
     const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
     const [condutores, setCondutores] = useState<Condutor[]>(
       [],
@@ -183,35 +192,42 @@ import {
 
 
     const veiculosFiltrados = useMemo(() => {
-      const termo = pesquisa.trim().toLocaleLowerCase();
+        const termo = pesquisa.trim().toLocaleLowerCase();
 
-      if (!termo) {
-        return veiculos;
-      }
+        return veiculos.filter((veiculo) => {
+          const associacao =
+            associacaoPorVeiculo.get(veiculo.id);
 
-      return veiculos.filter((veiculo) => {
-        const associacao = associacaoPorVeiculo.get(
-          veiculo.id,
-        );
+          if (
+            filtroContextual === "sem_condutor"
+            && associacao
+          ) {
+            return false;
+          }
 
-        const texto = [
-          veiculo.matricula,
-          veiculo.tipo,
-          veiculo.descricao ?? "",
-          associacao?.condutor.name ?? "",
-          associacao?.condutor.email ?? "",
-          associacao?.condutor.empresa ?? "",
-        ]
-          .join(" ")
-          .toLocaleLowerCase();
+          if (!termo) {
+            return true;
+          }
 
-        return texto.includes(termo);
-      });
-    }, [
-      associacaoPorVeiculo,
-      pesquisa,
-      veiculos,
-    ]);
+          const texto = [
+            veiculo.matricula,
+            veiculo.tipo,
+            veiculo.descricao ?? "",
+            associacao?.condutor.name ?? "",
+            associacao?.condutor.email ?? "",
+            associacao?.condutor.empresa ?? "",
+          ]
+            .join(" ")
+            .toLocaleLowerCase();
+
+          return texto.includes(termo);
+        });
+      }, [
+        associacaoPorVeiculo,
+        filtroContextual,
+        pesquisa,
+        veiculos,
+      ]);
 
 
     function fecharOperacao() {
@@ -598,6 +614,28 @@ import {
           </div>
         )}
 
+        {filtroContextual === "sem_condutor" && (
+            <div className="flex flex-col gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                <p className="text-sm font-medium text-rose-800">
+                    Filtro do resumo: veículos sem condutor
+                </p>
+
+                <p className="text-xs text-rose-700">
+                    Mostra somente veículos sem associação ativa
+                    com um condutor.
+                </p>
+                </div>
+
+                <Button
+                type="button"
+                variant="outline"
+                onClick={onLimparFiltro}
+                >
+                Limpar filtro
+                </Button>
+            </div>
+        )}
 
         <div className="relative w-full">
           <Search

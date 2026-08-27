@@ -27,11 +27,13 @@ import {
     TipoCartao,
   } from "@/types/cartao";
   import LoadingState from "@/components/LoadingState";
-
   import {
     formatarValidadeCartao,
     obterSituacaoValidadeCartao,
   } from "@/utils/validadeCartao";
+  import type {
+    FiltroContextualCartoes,
+  } from "@/types/controleCartoes";
 
   interface CartaoForm {
     nome: string;
@@ -43,6 +45,11 @@ import {
     validade_ano: string;
     estado: EstadoCartao;
     observacoes: string;
+  }
+
+  interface CartoesPanelProps {
+    filtroContextual: FiltroContextualCartoes;
+    onLimparFiltro: () => void;
   }
 
   const formularioInicial: CartaoForm = {
@@ -151,7 +158,10 @@ import {
     );
   }
 
-  export default function CartoesPanel() {
+  export default function CartoesPanel({
+    filtroContextual,
+    onLimparFiltro,
+  }: CartoesPanelProps) {
     const [cartoes, setCartoes] = useState<Cartao[]>([]);
     const [pesquisa, setPesquisa] = useState("");
     const [estadoFiltro, setEstadoFiltro] = useState<
@@ -193,11 +203,26 @@ import {
     const cartoesFiltrados = useMemo(() => {
       const termo = pesquisa.trim().toLocaleLowerCase();
 
-      if (!termo) {
-        return cartoes;
-      }
-
       return cartoes.filter((cartao) => {
+        if (filtroContextual === "atencao") {
+          const situacaoValidade =
+            obterSituacaoValidadeCartao(cartao);
+
+          const exigeAtencao = (
+            cartao.estado !== "ativo"
+            || situacaoValidade === "expirado"
+            || situacaoValidade === "vence_em_breve"
+          );
+
+          if (!exigeAtencao) {
+            return false;
+          }
+        }
+
+        if (!termo) {
+          return true;
+        }
+
         const texto = [
           cartao.nome,
           cartao.identificador,
@@ -210,7 +235,11 @@ import {
 
         return texto.includes(termo);
       });
-    }, [cartoes, pesquisa]);
+    }, [
+      cartoes,
+      filtroContextual,
+      pesquisa,
+    ]);
 
     function abrirNovo() {
       setFormulario(formularioInicial);
@@ -612,6 +641,29 @@ import {
                   : "Guardar"}
               </Button>
             </div>
+          </div>
+        )}
+
+        {filtroContextual === "atencao" && (
+          <div className="flex flex-col gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-amber-800">
+                Filtro do resumo: cartões que exigem atenção
+              </p>
+
+              <p className="text-xs text-amber-700">
+                Mostra cartões inativos, expirados ou próximos
+                da validade.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onLimparFiltro}
+            >
+              Limpar filtro
+            </Button>
           </div>
         )}
 

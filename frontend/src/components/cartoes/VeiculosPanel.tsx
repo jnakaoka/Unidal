@@ -17,13 +17,19 @@ import {
   import {
     atualizarVeiculo,
     criarVeiculo,
+    listarAssociacoes,
     listarVeiculos,
   } from "@/services/cartoes";
   import type {
+    CartaoVeiculoAssociacao,
     TipoVeiculo,
     Veiculo,
   } from "@/types/cartao";
   import LoadingState from "@/components/LoadingState";
+
+  import type {
+    FiltroContextualCartoes,
+  } from "@/types/controleCartoes";
 
   interface VeiculoForm {
     matricula: string;
@@ -32,6 +38,10 @@ import {
     ativo: boolean;
   }
 
+  interface VeiculosPanelProps {
+    filtroContextual: FiltroContextualCartoes;
+    onLimparFiltro: () => void;
+  }
 
   const formularioInicial: VeiculoForm = {
     matricula: "",
@@ -62,10 +72,17 @@ import {
   }
 
 
-  export default function VeiculosPanel() {
+  export default function VeiculosPanel({
+    filtroContextual,
+    onLimparFiltro,
+  }: VeiculosPanelProps) {
     const [veiculos, setVeiculos] = useState<Veiculo[]>(
       [],
     );
+    const [
+      associacoesCartoes,
+      setAssociacoesCartoes,
+    ] = useState<CartaoVeiculoAssociacao[]>([]);
     const [pesquisa, setPesquisa] = useState("");
     const [formulario, setFormulario] = useState(
       formularioInicial,
@@ -84,9 +101,21 @@ import {
         setErro(null);
         setCarregando(true);
 
-        const dados = await listarVeiculos();
+        const [
+          dadosVeiculos,
+          dadosAssociacoesCartoes,
+        ] = await Promise.all([
+          listarVeiculos(),
+          listarAssociacoes({
+            ativa: true,
+          }),
+        ]);
 
-        setVeiculos(dados);
+        setVeiculos(dadosVeiculos);
+        setAssociacoesCartoes(
+          dadosAssociacoesCartoes,
+        );
+
       } catch (error) {
         setErro(obterMensagemErro(error));
       } finally {
@@ -100,14 +129,32 @@ import {
     }, []);
 
 
+    const veiculosComCartao = useMemo(() => {
+      return new Set(
+        associacoesCartoes.map(
+          (associacao) => associacao.veiculo_id,
+        ),
+      );
+    }, [associacoesCartoes]);
+
     const veiculosFiltrados = useMemo(() => {
       const termo = pesquisa.trim().toLocaleLowerCase();
 
-      if (!termo) {
-        return veiculos;
-      }
-
       return veiculos.filter((veiculo) => {
+        if (
+          filtroContextual === "sem_cartao"
+          && (
+            !veiculo.ativo
+            || veiculosComCartao.has(veiculo.id)
+          )
+        ) {
+          return false;
+        }
+
+        if (!termo) {
+          return true;
+        }
+
         const texto = [
           veiculo.matricula,
           veiculo.tipo,
@@ -118,7 +165,12 @@ import {
 
         return texto.includes(termo);
       });
-    }, [pesquisa, veiculos]);
+    }, [
+      filtroContextual,
+      pesquisa,
+      veiculos,
+      veiculosComCartao,
+    ]);
 
 
     function abrirNovo() {
@@ -372,6 +424,28 @@ import {
           </div>
         )}
 
+        {filtroContextual === "sem_cartao" && (
+          <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-800">
+                Filtro do resumo: veículos sem cartão
+              </p>
+
+              <p className="text-xs text-gray-600">
+                Mostra somente veículos ativos sem qualquer
+                associação ativa com cartões.
+              </p>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onLimparFiltro}
+            >
+              Limpar filtro
+            </Button>
+          </div>
+        )}
 
         <div className="relative w-full">
           <Search
