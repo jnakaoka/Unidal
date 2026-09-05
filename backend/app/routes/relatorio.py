@@ -1,12 +1,63 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import exists, or_
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import RegistroHora, User, Projeto
-from app.schemas.relatorio import RegistroHoraOut
+from app.models.registro_hora import RegistroHoraEquipa
+from app.schemas.relatorio import DiasTrabalhadosOut, RegistroHoraOut
+from app.dependencies.auth import require_role
 from typing import List, Optional
 from datetime import date
 
 router = APIRouter()
+
+
+@router.get("/dias-trabalhados", response_model=DiasTrabalhadosOut)
+def relatorio_dias_trabalhados(
+    funcionario_id: int = Query(..., gt=0),
+    data_inicio: date = Query(...),
+    data_fim: date = Query(...),
+    db: Session = Depends(get_db),
+    _current_user: User = Depends(require_role("admin")),
+):
+    if data_inicio > data_fim:
+        raise HTTPException(
+            status_code=422,
+            detail="A data inicial não pode ser posterior à data final.",
+        )
+
+    funcionario = db.query(User).filter(User.id == funcionario_id).first()
+    if not funcionario:
+        raise HTTPException(status_code=404, detail="Funcionário não encontrado.")
+
+    pertence_a_equipa = exists().where(
+        RegistroHoraEquipa.registro_id == RegistroHora.id,
+        RegistroHoraEquipa.user_id == funcionario_id,
+    )
+    datas = (
+        db.query(RegistroHora.data)
+        .filter(
+            RegistroHora.data.between(data_inicio, data_fim),
+            or_(
+                RegistroHora.usuario_id == funcionario_id,
+                pertence_a_equipa,
+            ),
+        )
+        .distinct()
+        .order_by(RegistroHora.data.asc())
+        .all()
+    )
+    datas_trabalhadas = [item[0] for item in datas]
+
+    return DiasTrabalhadosOut(
+        funcionario_id=funcionario.id,
+        funcionario_nome=funcionario.name,
+        empresa=funcionario.empresa,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        total_dias=len(datas_trabalhadas),
+        datas_trabalhadas=datas_trabalhadas,
+    )
 
 @router.get("/", response_model=List[RegistroHoraOut])
 def relatorio_por_projeto_operador(
