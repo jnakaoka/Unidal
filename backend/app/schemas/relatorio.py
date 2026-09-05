@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import date
+from typing import List
 
 class RegistroHoraOut(BaseModel):
     id: int
@@ -11,3 +12,13 @@ class RegistroHoraOut(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class DiasTrabalhadosOut(BaseModel):
+    funcionario_id: int
+    funcionario_nome: str
+    empresa: str
+    data_inicio: date
+    data_fim: date
+    total_dias: int
+    datas_trabalhadas: List[date]

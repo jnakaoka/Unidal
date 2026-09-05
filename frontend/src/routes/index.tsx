@@ -11,6 +11,7 @@ import Projetos from "../pages/Projetos";
 import RegistroHoras from "../pages/RegistroHoras";
 import Relatorios from "../pages/Relatorios";
 import RelatoriosMotorista from "../pages/RelatoriosMotorista";
+import RelatorioDiasTrabalhados from "../pages/RelatorioDiasTrabalhados";
 import ChangePassword from "@/pages/ChangePassword";
 
 const router = createBrowserRouter([
@@ -40,6 +41,12 @@ const router = createBrowserRouter([
       { path: "/RelatoriosMotorista", element: (
         <PrivateRoute allowedProfiles={["admin"]}>
           <RelatoriosMotorista />
+        </PrivateRoute>
+      )},
+
+      { path: "/relatorios/dias-trabalhados", element: (
+        <PrivateRoute allowedProfiles={["admin"]}>
+          <RelatorioDiasTrabalhados />
         </PrivateRoute>
       )},
     ],
