@@ -13,6 +13,7 @@ import {
   import LoadingState from "@/components/LoadingState";
   import { Button } from "@/components/ui/button";
   import { Input } from "@/components/ui/input";
+  import { normalizarTextoBusca } from "@/utils/text";
   import {
     listarAssociacoes,
     listarAssociacoesCondutores,
@@ -254,7 +255,7 @@ import {
     );
 
     const movimentosFiltrados = useMemo(() => {
-      const termo = pesquisa.trim().toLocaleLowerCase();
+      const termo = normalizarTextoBusca(pesquisa);
 
       return movimentos.filter((movimento) => {
         if (periodoInvalido) {
@@ -299,7 +300,7 @@ import {
           return true;
         }
 
-        const texto = [
+        const texto = normalizarTextoBusca([
           nomeAcao(
             movimento.categoria,
             movimento.acao,
@@ -309,9 +310,7 @@ import {
           movimento.veiculo,
           movimento.responsavel,
           movimento.observacoes ?? "",
-        ]
-          .join(" ")
-          .toLocaleLowerCase();
+        ].join(" "));
 
         return texto.includes(termo);
       });
