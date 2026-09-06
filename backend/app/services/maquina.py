@@ -33,7 +33,17 @@ def update(db: Session, maquina_id: int, data: MaquinaUpdate):
     maquina = db.get(Maquina, maquina_id)
     if not maquina:
         raise HTTPException(status_code=404, detail="Máquina não encontrada.")
-    for campo, valor in data.model_dump(exclude_unset=True).items():
+    alteracoes = data.model_dump(exclude_unset=True)
+    nome_final = alteracoes.get("nome", maquina.nome)
+    referencia_final = alteracoes.get("referencia", maquina.referencia)
+    duplicada = db.query(Maquina).filter(
+        Maquina.id != maquina_id,
+        func.lower(Maquina.nome) == nome_final.lower(),
+        func.lower(func.coalesce(Maquina.referencia, "")) == (referencia_final or "").lower(),
+    ).first()
+    if duplicada:
+        raise HTTPException(status_code=409, detail="Esta máquina já está cadastrada.")
+    for campo, valor in alteracoes.items():
         setattr(maquina, campo, valor)
     db.commit()
     db.refresh(maquina)
