@@ -42,6 +42,7 @@ class MembroEquipa(BaseModel):
     user_id: int  # valor obrigatório (se quiser opcional, use = None)
     intemperie: bool = False
     double_journey: bool = False
+    e_manobrador: bool = False
 
     class Config:
         from_attributes = True
@@ -183,6 +184,7 @@ class RegistroHoraEquipaResponse(BaseModel):
     user: UserResponse
     intemperie: bool = False
     double_journey: bool = False
+    e_manobrador: bool = False
     class Config:
         from_attributes = True
 

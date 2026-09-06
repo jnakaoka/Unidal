@@ -160,6 +160,7 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
             user_id=m["user_id"],
             intemperie=bool(m.get("intemperie", False)),
             double_journey=bool(m.get("double_journey", False)),
+            e_manobrador=bool(m.get("e_manobrador", False)),
         ))
 
     db.commit()
@@ -226,6 +227,7 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
         {
             "user_id": membro.user_id,
             "double_journey": membro.double_journey,
+            "e_manobrador": membro.e_manobrador,
         }
         for membro in reg.equipa
     ]
@@ -264,6 +266,7 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
                 user_id=m["user_id"],
                 intemperie=bool(m.get("intemperie", False)),
                 double_journey=bool(m.get("double_journey", False)),
+                e_manobrador=bool(m.get("e_manobrador", False)),
             ))
 
     db.commit()

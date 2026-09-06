@@ -42,6 +42,7 @@ interface RegistroEquipa {
   user: User;
   intemperie: boolean;
   double_journey: boolean;
+  e_manobrador: boolean;
 }
 
 type IntervencaoMaquinasOpcoes = {
@@ -131,7 +132,7 @@ const RegistroHoras: React.FC = () => {
     matricula?: string;
     km_rodados?: string;
     maquinas_transportadas?: string;
-    equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean; double_journey?: boolean }[];
+    equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean; double_journey?: boolean; e_manobrador?: boolean }[];
   };
   const { user } = useAuth();
   const [usuarios, setUsuarios] = useState<User[]>([]);
@@ -175,6 +176,7 @@ const RegistroHoras: React.FC = () => {
   const [obrasFiltro, setObrasFiltro] = useState<Obra[]>([]);
   const [intemperiePorUserId, setIntemperiePorUserId] = useState<Record<number, boolean>>({});
   const [doubleJourneyPorUserId, setDoubleJourneyPorUserId] = useState<Record<number, boolean>>({});
+  const [manobradorPorUserId, setManobradorPorUserId] = useState<Record<number, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<{type: 'success'|'error'|'info', text: string} | null>(null);
   const [searchUser, setSearchUser] = useState('');
@@ -527,8 +529,14 @@ const RegistroHoras: React.FC = () => {
 
     if (event.target.checked) {
       updatedSelectedUsers = [...selectedUsers, value];
+      setIntemperiePorUserId(prev => ({ ...prev, [value]: prev[value] ?? false }));
+      setDoubleJourneyPorUserId(prev => ({ ...prev, [value]: prev[value] ?? false }));
+      setManobradorPorUserId(prev => ({ ...prev, [value]: prev[value] ?? false }));
     } else {
       updatedSelectedUsers = selectedUsers.filter((id) => id !== value);
+      setIntemperiePorUserId(prev => ({ ...prev, [value]: false }));
+      setDoubleJourneyPorUserId(prev => ({ ...prev, [value]: false }));
+      setManobradorPorUserId(prev => ({ ...prev, [value]: false }));
     }
 
     console.log('updatedSelectedUsers', updatedSelectedUsers);
@@ -580,6 +588,11 @@ const RegistroHoras: React.FC = () => {
     setDoubleJourneyPorUserId(
       Object.fromEntries(
         regHora.equipa.map(e => [e.user.id, !!e.double_journey])
+      )
+    );
+    setManobradorPorUserId(
+      Object.fromEntries(
+        regHora.equipa.map(e => [e.user.id, !!e.e_manobrador])
       )
     );
 
@@ -658,6 +671,7 @@ const RegistroHoras: React.FC = () => {
         empresa: e.user.empresa,
         intemperie: !!intemperiePorUserId[e.user.id],
         double_journey: !!e.double_journey,
+        e_manobrador: !!e.e_manobrador,
       })) ?? [],
     });
 
@@ -727,6 +741,7 @@ const RegistroHoras: React.FC = () => {
           empresa: user.empresa,
           intemperie: !!intemperiePorUserId[user.id],
           double_journey: !!doubleJourneyPorUserId[user.id],
+          e_manobrador: !!manobradorPorUserId[user.id],
         };
       })
       .filter(Boolean); // remove nulls se algum id não for encontrado
@@ -900,6 +915,7 @@ const RegistroHoras: React.FC = () => {
     setSelectedUsers([]);
     setIntemperiePorUserId({});
     setDoubleJourneyPorUserId({});
+    setManobradorPorUserId({});
     setEditingRegistroHoras(null);
     setIsEditing(false);
     setModalAberto(false);
@@ -1184,6 +1200,7 @@ const RegistroHoras: React.FC = () => {
     // define intemperie padrão (ajuste se quiser herdar algo)
     setIntemperiePorUserId(prev => ({ ...prev, [u.id]: false }));
     setDoubleJourneyPorUserId(prev => ({ ...prev, [u.id]: false }));
+    setManobradorPorUserId(prev => ({ ...prev, [u.id]: false }));
 
     // limpa busca
     setSearchUser('');
@@ -1904,7 +1921,12 @@ const RegistroHoras: React.FC = () => {
                           <button
                             type="button"
                             className="text-gray-500 hover:text-gray-800"
-                            onClick={() => setSelectedUsers(prev => prev.filter(x => x !== id))}
+                            onClick={() => {
+                              setSelectedUsers(prev => prev.filter(x => x !== id));
+                              setIntemperiePorUserId(prev => ({ ...prev, [id]: false }));
+                              setDoubleJourneyPorUserId(prev => ({ ...prev, [id]: false }));
+                              setManobradorPorUserId(prev => ({ ...prev, [id]: false }));
+                            }}
                             title="Remover"
                           >
                             ×
@@ -2011,6 +2033,16 @@ const RegistroHoras: React.FC = () => {
                                       }
                                     />
                                     <span><b>Double Journey</b></span>
+                                  </label>
+                                  <label className="inline-flex items-center gap-1 text-blue-800">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!manobradorPorUserId[u.id]}
+                                      onChange={(e) =>
+                                        setManobradorPorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
+                                      }
+                                    />
+                                    <span><b>Manobrador</b></span>
                                   </label>
                                 </span>
                               )}
@@ -2397,6 +2429,7 @@ const RegistroHoras: React.FC = () => {
                             {label}
                             {e.intemperie && <strong> [Intempérie]</strong>}
                             {e.double_journey && <strong className="text-amber-700"> [Double Journey]</strong>}
+                            {e.e_manobrador && <strong className="text-blue-700"> [Manobrador]</strong>}
                           </span>
                         );
                       })}

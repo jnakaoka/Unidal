@@ -46,7 +46,7 @@ type RegistroHoras = {
 
   // novos campos usados no relatório
   metros_quadrados?: string | number;
-  equipa?: { user: User; intemperie?: boolean }[];
+  equipa?: { user: User; intemperie?: boolean; e_manobrador?: boolean }[];
   intervencao_maquinas?: boolean;
   intervencao_maquinas_opcoes?: IntervencaoMaquinasOpcoes | null;
 };
@@ -184,7 +184,7 @@ const Relatorios: React.FC = () => {
       { total: number; intemperie: number; normais: number }
     > = {};
 
-    (r.equipa || []).forEach((e) => {
+    (r.equipa || []).filter((e) => !e.e_manobrador).forEach((e) => {
       const empRaw = e.user?.empresa?.substring(0, 7) || "Sem Empresa";
       const empresa = empRaw.trim() || "Sem Empresa";
 
@@ -255,6 +255,16 @@ const Relatorios: React.FC = () => {
         `;
       })
       .join("");
+  };
+
+  const manobradores = (r: RegistroHoras) =>
+    (r.equipa || []).filter((e) => e.e_manobrador);
+
+  const resumoManobradores = (r: RegistroHoras): string => {
+    const itens = manobradores(r).map((e) =>
+      `${e.user?.name || "Utilizador"} (${e.user?.empresa || "Sem Empresa"})`
+    );
+    return itens.length ? itens.join(", ") : "—";
   };
 
 
@@ -525,6 +535,8 @@ const Relatorios: React.FC = () => {
     const rows = registrosFiltradosSorted
       .map((r, idx) => {
         const totalUsers = r.equipa?.length || 0;
+        const totalManobradores = manobradores(r).length;
+        const totalTrabalhadores = totalUsers - totalManobradores;
         //const metros = toNum(r.metros_quadrados);
         const rowClass = idx % 2 === 0 ? "line-bg-white-600" : "line-bg-gray-100";
         return `
@@ -533,6 +545,8 @@ const Relatorios: React.FC = () => {
             <td>${r.user?.name ?? `#${r.usuario_id}`}</td>
             <td>${r.cliente?.nome ?? (r.cliente_id ?? "-")}</td>
             <td>${r.obra?.nome ?? (r.obra_id ?? "-")}</td>
+            <td style="text-align:center">${totalTrabalhadores}</td>
+            <td>${resumoManobradores(r)}</td>
             <td style="text-align:center">${totalUsers}</td>
             <td>${resumoEmpresasHtml(r)}</td>
             <td>${r.metros_quadrados}</td>
@@ -589,6 +603,8 @@ const Relatorios: React.FC = () => {
               <col style="width:12%" />
               <col style="width:12%" />
               <col style="width:6%" />
+              <col style="width:13%" />
+              <col style="width:6%" />
               <col style="width:12%" />
               <col style="width:8%" />
               <col style="width:14%" />
@@ -601,6 +617,8 @@ const Relatorios: React.FC = () => {
                 <th>Cliente</th>
                 <th>Obra</th>
                 <th>Nº Trab</th>
+                <th>Manobradores</th>
+                <th>Total Geral</th>
                 <th>Trab. por Empresa</th>
                 <th>m²</th>
                 <th className="px-4 py-2">Etapas</th>
@@ -610,7 +628,7 @@ const Relatorios: React.FC = () => {
             <tbody>
               ${
                 rows ||
-                `<tr><td colspan=9 style='text-align:center;color:#777'>Nenhum registo encontrado</td></tr>`
+                `<tr><td colspan=11 style='text-align:center;color:#777'>Nenhum registo encontrado</td></tr>`
               }
             </tbody>
             <!-- Se quiser linha de totais impressa, descomenta o <tfoot> abaixo -->
@@ -944,6 +962,8 @@ const Relatorios: React.FC = () => {
             <col style={{ width: "12%" }} />  {/* Cliente */}
             <col style={{ width: "12%" }} />  {/* Obra */}
             <col style={{ width: "6%" }} />   {/* Nº Trab. */}
+            <col style={{ width: "13%" }} />  {/* Manobradores */}
+            <col style={{ width: "6%" }} />   {/* Total Geral */}
             <col style={{ width: "12%" }} />  {/* Trab. por Empresa */}
             <col style={{ width: "6%" }} />   {/* m² */}
             <col style={{ width: "14%" }} />  {/* Etapas */}
@@ -969,6 +989,8 @@ const Relatorios: React.FC = () => {
               <th className="px-4 py-2">Cliente</th>
               <th className="px-4 py-2">Obra</th>
               <th className="px-4 py-2">Nº Trabalhadores</th>
+              <th className="px-4 py-2">Manobradores</th>
+              <th className="px-4 py-2">Total Geral</th>
               <th className="px-4 py-2">Trab. por Empresa</th>
               <th className="px-4 py-2">m²</th>
               <th className="px-4 py-2">Etapas</th>
@@ -979,13 +1001,15 @@ const Relatorios: React.FC = () => {
           <tbody>
             {pageItems.length === 0 ? (
               <tr>
-                <td colSpan={9} className="p-6 text-center text-gray-500">
+                <td colSpan={11} className="p-6 text-center text-gray-500">
                   Nenhum registo encontrado
                 </td>
               </tr>
             ) : (
               pageItems.map((r, idx) => {
                 const totalUsers = r.equipa?.length || 0;
+                const totalManobradores = manobradores(r).length;
+                const totalTrabalhadores = totalUsers - totalManobradores;
                 //const metros = toNum(r.metros_quadrados);
                 return (
                   <tr key={r.id} className={idx % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
@@ -993,6 +1017,8 @@ const Relatorios: React.FC = () => {
                     <td className="px-4 py-2">{r.user?.name ?? `#${r.usuario_id}`}</td>
                     <td className="px-4 py-2">{r.cliente?.nome ?? (r.cliente_id ?? "-")}</td>
                     <td className="px-4 py-2">{r.obra?.nome ?? (r.obra_id ?? "-")}</td>
+                    <td className="px-4 py-2">{totalTrabalhadores}</td>
+                    <td className="px-4 py-2">{resumoManobradores(r)}</td>
                     <td className="px-4 py-2">{totalUsers}</td>
                     <td className="px-4 py-2 whitespace-pre-wrap">{renderResumoEmpresas(r)}</td>
                     {/* <td className="px-4 py-2">{metros}</td> */}

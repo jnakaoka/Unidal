@@ -83,6 +83,7 @@ class RegistroHoraEquipa(Base):
     registro_id = Column(Integer, ForeignKey("registros_hora.id"))
     intemperie = Column(Boolean, default=False)
     double_journey = Column(Boolean, default=False, nullable=False)
+    e_manobrador = Column(Boolean, default=False, nullable=False)
 
     user = relationship("User", back_populates="registros_hora_equipa")
     registro = relationship("RegistroHora", back_populates="equipa")
