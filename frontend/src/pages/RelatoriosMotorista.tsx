@@ -154,6 +154,7 @@ const RelatoriosMotorista: React.FC = () => {
         setMaquinas(maq.data);
 
         const motoristasOrdenados = (usr.data || [])
+          .filter((utilizador) => utilizador.is_active !== false)
           .filter(
             (utilizador) => (
               utilizador.perfil?.nome
