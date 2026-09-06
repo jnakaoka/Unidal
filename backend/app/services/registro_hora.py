@@ -5,6 +5,8 @@ from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraUpdate, Re
 from app.models.registro_hora import RegistroHora, RegistroHoraEquipa
 from app.models.obra import Obra
 from app.models.user import User
+from app.models.veiculo import Veiculo
+from app.models.maquina import Maquina
 from typing import Optional
 from datetime import datetime, timezone
 
@@ -57,6 +59,21 @@ def _validar_manobradores(db: Session, opcoes) -> list[dict]:
         if not funcionario or not funcionario.is_active:
             raise HTTPException(status_code=422, detail="Manobrador inválido ou inativo.")
     return manobradores
+
+
+def _validar_transporte(db: Session, data: dict) -> None:
+    veiculo_id = data.get("transporte_veiculo_id")
+    if veiculo_id:
+        veiculo = db.get(Veiculo, veiculo_id)
+        if not veiculo or not veiculo.ativo:
+            raise HTTPException(status_code=422, detail="Veículo de transporte inválido ou inativo.")
+    maquina_ids = data.get("transporte_maquina_ids") or []
+    if len(set(maquina_ids)) != len(maquina_ids):
+        raise HTTPException(status_code=422, detail="A mesma máquina não pode ser selecionada duas vezes.")
+    if maquina_ids:
+        total = db.query(Maquina).filter(Maquina.id.in_(maquina_ids), Maquina.ativo.is_(True)).count()
+        if total != len(maquina_ids):
+            raise HTTPException(status_code=422, detail="Existe uma máquina inválida ou inativa no transporte.")
 
 
 def _validar_double_journey(
@@ -188,6 +205,7 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
     # else: deixe como None (evita 'null' string)
 
     equipa_payload = data.pop("equipa", [])  # tratar fora
+    _validar_transporte(db, data)
     manobradores_payload = _validar_manobradores(
         db, data.get("intervencao_maquinas_opcoes")
     )
@@ -282,6 +300,7 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
 
     data = registro.model_dump(exclude_none=True)
     equipa_payload = data.pop("equipa", None)
+    _validar_transporte(db, data)
     manobradores_payload = _validar_manobradores(
         db, data.get("intervencao_maquinas_opcoes")
     )

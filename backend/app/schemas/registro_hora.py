@@ -126,6 +126,14 @@ class RegistroHoraCreate(BaseModel):
     matricula: Optional[str] = None
     km_rodados: Optional[float] = None
     maquinas_transportadas: Optional[str] = None
+    transporte_veiculo_id: Optional[int] = None
+    transporte_maquina_ids: Optional[List[int]] = None
+    origem_morada: Optional[str] = None
+    origem_codigo_postal: Optional[str] = None
+    origem_regiao: Optional[str] = None
+    destino_morada: Optional[str] = None
+    destino_codigo_postal: Optional[str] = None
+    destino_regiao: Optional[str] = None
 
     equipa: List[MembroEquipa] = Field(default_factory=list)
 
@@ -163,6 +171,14 @@ class RegistroHoraUpdate(BaseModel):
     matricula: Optional[str] = None
     km_rodados: Optional[float] = None
     maquinas_transportadas: Optional[str] = None
+    transporte_veiculo_id: Optional[int] = None
+    transporte_maquina_ids: Optional[List[int]] = None
+    origem_morada: Optional[str] = None
+    origem_codigo_postal: Optional[str] = None
+    origem_regiao: Optional[str] = None
+    destino_morada: Optional[str] = None
+    destino_codigo_postal: Optional[str] = None
+    destino_regiao: Optional[str] = None
 
     equipa: List[MembroEquipa] = Field(default_factory=list)
 
@@ -230,6 +246,14 @@ class RegistroHoraResponse(BaseModel):
     matricula: Optional[str] = None
     km_rodados: Optional[float] = None
     maquinas_transportadas: Optional[str] = None
+    transporte_veiculo_id: Optional[int] = None
+    transporte_maquina_ids: Optional[List[int]] = None
+    origem_morada: Optional[str] = None
+    origem_codigo_postal: Optional[str] = None
+    origem_regiao: Optional[str] = None
+    destino_morada: Optional[str] = None
+    destino_codigo_postal: Optional[str] = None
+    destino_regiao: Optional[str] = None
 
     user: UserResponse
     projeto: ProjetoResponse

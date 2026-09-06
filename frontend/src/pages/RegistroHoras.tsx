@@ -37,6 +37,8 @@ interface Obra {
   cliente_id: number;
   cliente?: { id: number; nome: string };
 }
+interface Veiculo { id: number; matricula: string; tipo: string; descricao?: string; ativo: boolean; }
+interface Maquina { id: number; nome: string; referencia?: string; ativo: boolean; }
 
 interface RegistroEquipa {
   user: User;
@@ -120,6 +122,10 @@ interface RegistroHoras {
   matricula: string;
   km_rodados: number;
   maquinas_transportadas: string;
+  transporte_veiculo_id?: number | null;
+  transporte_maquina_ids?: number[] | null;
+  origem_morada?: string; origem_codigo_postal?: string; origem_regiao?: string;
+  destino_morada?: string; destino_codigo_postal?: string; destino_regiao?: string;
 
   equipa: RegistroEquipa[]; // cada item tem a forma { user: { id, name, email } }
 }
@@ -160,10 +166,16 @@ const RegistroHoras: React.FC = () => {
     matricula?: string;
     km_rodados?: string;
     maquinas_transportadas?: string;
+    transporte_veiculo_id: number | null;
+    transporte_maquina_ids: number[];
+    origem_morada: string; origem_codigo_postal: string; origem_regiao: string;
+    destino_morada: string; destino_codigo_postal: string; destino_regiao: string;
     equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean; double_journey?: boolean }[];
   };
   const { user } = useAuth();
   const [usuarios, setUsuarios] = useState<User[]>([]);
+  const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
+  const [maquinas, setMaquinas] = useState<Maquina[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [registrosFiltrados, setRegistrosFiltrados] = useState<RegistroHoras[]>([]);
   const [registroHoras, setRegistroHoras] = useState<RegistroHoras[]>([]);
@@ -259,6 +271,10 @@ const RegistroHoras: React.FC = () => {
     matricula: "",
     km_rodados: "",
     maquinas_transportadas: "",
+    transporte_veiculo_id: null,
+    transporte_maquina_ids: [],
+    origem_morada: "", origem_codigo_postal: "", origem_regiao: "",
+    destino_morada: "", destino_codigo_postal: "", destino_regiao: "",
     equipa: [],
 
     // id: 0, usuario_id: 0,
@@ -340,6 +356,7 @@ const RegistroHoras: React.FC = () => {
           fetchUsuarios(),
           fetchClientes(),
           fetchRegistroHoras(),
+          fetchTransportes(),
         ]);
       } catch (error) {
         console.error(
@@ -391,6 +408,15 @@ const RegistroHoras: React.FC = () => {
     } catch (error) {
       console.error("Erro ao buscar perfis:", error);
     }
+  };
+
+  const fetchTransportes = async () => {
+    const [veiculosResponse, maquinasResponse] = await Promise.all([
+      api.get<Veiculo[]>('/veiculos/', { params: { ativo: true } }),
+      api.get<Maquina[]>('/maquinas/', { params: { ativo: true } }),
+    ]);
+    setVeiculos(veiculosResponse.data);
+    setMaquinas(maquinasResponse.data);
   };
 
   const fetchClientes = async () => {
@@ -691,6 +717,14 @@ const RegistroHoras: React.FC = () => {
       matricula: regHora.matricula ?? "",
       km_rodados: regHora.km_rodados != null ? String(regHora.km_rodados) : "",
       maquinas_transportadas: regHora.maquinas_transportadas ?? "",
+      transporte_veiculo_id: regHora.transporte_veiculo_id ?? null,
+      transporte_maquina_ids: regHora.transporte_maquina_ids ?? [],
+      origem_morada: regHora.origem_morada ?? "",
+      origem_codigo_postal: regHora.origem_codigo_postal ?? "",
+      origem_regiao: regHora.origem_regiao ?? "",
+      destino_morada: regHora.destino_morada ?? "",
+      destino_codigo_postal: regHora.destino_codigo_postal ?? "",
+      destino_regiao: regHora.destino_regiao ?? "",
       equipa: regHora.equipa?.map((e) => ({
         user_id: e.user.id,
         email: e.user.email,
@@ -838,12 +872,28 @@ const RegistroHoras: React.FC = () => {
         matricula: formData.matricula || null,
         km_rodados: formData.km_rodados ? parseFloat(formData.km_rodados) : null,
         maquinas_transportadas: formData.maquinas_transportadas || null,
+        transporte_veiculo_id: formData.transporte_veiculo_id || null,
+        transporte_maquina_ids: formData.transporte_maquina_ids,
+        origem_morada: formData.origem_morada || null,
+        origem_codigo_postal: formData.origem_codigo_postal || null,
+        origem_regiao: formData.origem_regiao || null,
+        destino_morada: formData.destino_morada || null,
+        destino_codigo_postal: formData.destino_codigo_postal || null,
+        destino_regiao: formData.destino_regiao || null,
       } : {
         origem: null,
         destino: null,
         matricula: null,
         km_rodados: null,
         maquinas_transportadas: null,
+        transporte_veiculo_id: null,
+        transporte_maquina_ids: [],
+        origem_morada: null,
+        origem_codigo_postal: null,
+        origem_regiao: null,
+        destino_morada: null,
+        destino_codigo_postal: null,
+        destino_regiao: null,
       };
 
       const basePayload = {
@@ -872,6 +922,14 @@ const RegistroHoras: React.FC = () => {
         matricula: formData.matricula || null,
         km_rodados: formData.km_rodados ? parseFloat(formData.km_rodados) : null,
         maquinas_transportadas: formData.maquinas_transportadas || null,
+        transporte_veiculo_id: formData.transporte_veiculo_id || null,
+        transporte_maquina_ids: formData.transporte_maquina_ids,
+        origem_morada: formData.origem_morada || null,
+        origem_codigo_postal: formData.origem_codigo_postal || null,
+        origem_regiao: formData.origem_regiao || null,
+        destino_morada: formData.destino_morada || null,
+        destino_codigo_postal: formData.destino_codigo_postal || null,
+        destino_regiao: formData.destino_regiao || null,
         motoristaPayload,
         equipa: equipa_user,
       };
@@ -957,6 +1015,11 @@ const RegistroHoras: React.FC = () => {
         soMaqLazerYZ30: { checked: false, m2: '', empresa: '' },
         manobradores: [],
       } as IntervencaoMaquinasOpcoes,
+      origem: '', destino: '', matricula: '', km_rodados: '', maquinas_transportadas: '',
+      transporte_veiculo_id: null,
+      transporte_maquina_ids: [],
+      origem_morada: '', origem_codigo_postal: '', origem_regiao: '',
+      destino_morada: '', destino_codigo_postal: '', destino_regiao: '',
       equipa: [] as { user_id: number; email: string, empresa: string }[]});
     setSelectedUsers([]);
     setIntemperiePorUserId({});
@@ -2310,6 +2373,34 @@ const RegistroHoras: React.FC = () => {
                         }
                         className={classeInputMotorista}
                       />
+                    </div>
+
+                    <div className="md:col-span-2 border-t pt-4">
+                      <h4 className="font-semibold text-gray-700">Dados detalhados do transporte</h4>
+                    </div>
+                    <div><Label>Origem — morada</Label><Input value={formData.origem_morada} onChange={e => setFormData({...formData, origem_morada: e.target.value})}/></div>
+                    <div><Label>Origem — código postal</Label><Input value={formData.origem_codigo_postal} onChange={e => setFormData({...formData, origem_codigo_postal: e.target.value})}/></div>
+                    <div><Label>Origem — região/localidade</Label><Input value={formData.origem_regiao} onChange={e => setFormData({...formData, origem_regiao: e.target.value})}/></div>
+                    <div><Label>Destino — morada</Label><Input value={formData.destino_morada} onChange={e => setFormData({...formData, destino_morada: e.target.value})}/></div>
+                    <div><Label>Destino — código postal</Label><Input value={formData.destino_codigo_postal} onChange={e => setFormData({...formData, destino_codigo_postal: e.target.value})}/></div>
+                    <div><Label>Destino — região/localidade</Label><Input value={formData.destino_regiao} onChange={e => setFormData({...formData, destino_regiao: e.target.value})}/></div>
+                    <div className="md:col-span-2">
+                      <Label>Veículo</Label>
+                      <select className="w-full rounded border bg-white px-3 py-2" value={formData.transporte_veiculo_id || ''} onChange={e => setFormData({...formData, transporte_veiculo_id: Number(e.target.value) || null})}>
+                        <option value="">Selecione a carrinha/camião</option>
+                        {veiculos.map(v => <option key={v.id} value={v.id}>{v.matricula} — {v.tipo}{v.descricao ? ` — ${v.descricao}` : ''}</option>)}
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label className="mb-2 block">Máquinas do catálogo</Label>
+                      <div className="grid gap-2 rounded border bg-white p-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {maquinas.length === 0 ? <span className="text-sm text-gray-500">Nenhuma máquina ativa cadastrada.</span> : maquinas.map(maquina => (
+                          <label key={maquina.id} className="flex items-center gap-2 text-sm">
+                            <input type="checkbox" checked={formData.transporte_maquina_ids.includes(maquina.id)} onChange={e => setFormData(prev => ({...prev, transporte_maquina_ids: e.target.checked ? [...prev.transporte_maquina_ids, maquina.id] : prev.transporte_maquina_ids.filter(id => id !== maquina.id)}))}/>
+                            {maquina.nome}{maquina.referencia ? ` — ${maquina.referencia}` : ''}
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </section>

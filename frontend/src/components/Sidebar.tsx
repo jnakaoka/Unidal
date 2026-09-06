@@ -1,7 +1,7 @@
 // Sidebar.tsx
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Clock, BarChartBig, UserCog, LogOut, CreditCard, ChevronDown } from "lucide-react";
+import { Clock, BarChartBig, UserCog, LogOut, CreditCard, ChevronDown, Wrench } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLayout } from "@/context/LayoutContext";
 import clsx from "clsx";
@@ -61,6 +61,12 @@ const Sidebar = () => {
       label: "Controle de cartões",
       to: "/controle-cartoes",
       icon: <CreditCard size={18} />,
+      showFor: ["admin"],
+    },
+    {
+      label: "Máquinas",
+      to: "/maquinas",
+      icon: <Wrench size={18} />,
       showFor: ["admin"],
     },
     // {

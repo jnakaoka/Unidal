@@ -19,6 +19,8 @@ type User = {
   is_active?: boolean;
   perfil?: Perfil;
 };
+type Veiculo = { id: number; matricula: string; tipo: string; descricao?: string };
+type Maquina = { id: number; nome: string; referencia?: string };
 
 type RegistroHorasMotorista = {
   id: number;
@@ -32,6 +34,10 @@ type RegistroHorasMotorista = {
   matricula?: string | null;
   km_rodados?: number | string | null;
   maquinas_transportadas?: string | null;
+  transporte_veiculo_id?: number | null;
+  transporte_maquina_ids?: number[] | null;
+  origem_morada?: string | null; origem_codigo_postal?: string | null; origem_regiao?: string | null;
+  destino_morada?: string | null; destino_codigo_postal?: string | null; destino_regiao?: string | null;
 };
 
 type DateMode = "week" | "month" | "year" | "range";
@@ -40,6 +46,8 @@ const RelatoriosMotorista: React.FC = () => {
   // dados
   const [registrosAll, setRegistrosAll] = useState<RegistroHorasMotorista[]>([]);
   const [drivers, setDrivers] = useState<User[]>([]);
+  const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
+  const [maquinas, setMaquinas] = useState<Maquina[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
 
@@ -75,14 +83,32 @@ const RelatoriosMotorista: React.FC = () => {
     if (!n) return true;
     return h.includes(n);
   };
+  const veiculoTexto = (r: RegistroHorasMotorista) => {
+    const veiculo = veiculos.find(item => item.id === r.transporte_veiculo_id);
+    return veiculo ? `${veiculo.matricula} — ${veiculo.tipo}` : normalize(r.matricula) || "-";
+  };
+  const enderecoTexto = (r: RegistroHorasMotorista, tipo: "origem" | "destino") => {
+    const partes = tipo === "origem"
+      ? [r.origem_morada, r.origem_codigo_postal, r.origem_regiao]
+      : [r.destino_morada, r.destino_codigo_postal, r.destino_regiao];
+    const detalhado = partes.map(normalize).filter(Boolean).join(", ");
+    return detalhado || normalize(tipo === "origem" ? r.origem : r.destino) || "-";
+  };
+  const maquinasTexto = (r: RegistroHorasMotorista) => {
+    const nomes = (r.transporte_maquina_ids || []).map(id => {
+      const maquina = maquinas.find(item => item.id === id);
+      return maquina ? `${maquina.nome}${maquina.referencia ? ` — ${maquina.referencia}` : ""}` : `#${id}`;
+    });
+    return nomes.length ? nomes.join(", ") : normalize(r.maquinas_transportadas) || "-";
+  };
 
   // definição “registro motorista preenchido”
   const isMotoristaRegistro = (r: RegistroHorasMotorista) => {
-    const origemOk = normalize(r.origem) !== "";
-    const destinoOk = normalize(r.destino) !== "";
-    const matriculaOk = normalize(r.matricula) !== "";
+    const origemOk = normalize(r.origem) !== "" || normalize(r.origem_morada) !== "";
+    const destinoOk = normalize(r.destino) !== "" || normalize(r.destino_morada) !== "";
+    const matriculaOk = normalize(r.matricula) !== "" || !!r.transporte_veiculo_id;
     const kmOk = toNum(r.km_rodados) > 0; // se você quiser permitir 0, troca para >= 0 e exige campo preenchido
-    const maqOk = normalize(r.maquinas_transportadas) !== "";
+    const maqOk = normalize(r.maquinas_transportadas) !== "" || !!r.transporte_maquina_ids?.length;
     return origemOk && destinoOk && matriculaOk && kmOk && maqOk;
   };
 
@@ -115,11 +141,13 @@ const RelatoriosMotorista: React.FC = () => {
         setCarregando(true);
         setErroCarregamento(null);
 
-        const [reg, usr] = await Promise.all([
+        const [reg, usr, vei, maq] = await Promise.all([
           api.get<RegistroHorasMotorista[]>(
             "/registro-horas/",
           ),
           api.get<User[]>("/users/", { params: { is_active: true } }),
+          api.get<Veiculo[]>("/veiculos/", { params: { ativo: true } }),
+          api.get<Maquina[]>("/maquinas/", { params: { ativo: true } }),
         ]);
 
         if (!componenteAtivo) {
@@ -127,6 +155,8 @@ const RelatoriosMotorista: React.FC = () => {
         }
 
         setRegistrosAll(reg.data);
+        setVeiculos(vei.data);
+        setMaquinas(maq.data);
 
         const motoristasOrdenados = (usr.data || [])
           .filter(
@@ -187,9 +217,9 @@ const RelatoriosMotorista: React.FC = () => {
         return false;
 
       // matrícula / origem / destino (contains case-insensitive)
-      if (!includesCI(r.matricula, filtroMatricula)) return false;
-      if (!includesCI(r.origem, filtroOrigem)) return false;
-      if (!includesCI(r.destino, filtroDestino)) return false;
+      if (!includesCI(veiculoTexto(r), filtroMatricula)) return false;
+      if (!includesCI(enderecoTexto(r, "origem"), filtroOrigem)) return false;
+      if (!includesCI(enderecoTexto(r, "destino"), filtroDestino)) return false;
 
       // data
       if (!r.data) return false;
@@ -222,6 +252,7 @@ const RelatoriosMotorista: React.FC = () => {
     weekValue,
     rangeFrom,
     rangeTo,
+    veiculos,
   ]);
 
   // ordenação por data
@@ -279,11 +310,11 @@ const RelatoriosMotorista: React.FC = () => {
           <tr class="${rowClass}">
             <td>${r.data ?? "-"}</td>
             <td>${r.user?.name ?? `#${r.usuario_id}`}</td>
-            <td>${normalize(r.matricula) || "-"}</td>
-            <td>${normalize(r.origem) || "-"}</td>
-            <td>${normalize(r.destino) || "-"}</td>
+            <td>${veiculoTexto(r)}</td>
+            <td>${enderecoTexto(r, "origem")}</td>
+            <td>${enderecoTexto(r, "destino")}</td>
             <td style="text-align:right">${toNum(r.km_rodados)}</td>
-            <td>${normalize(r.maquinas_transportadas) || "-"}</td>
+            <td>${maquinasTexto(r)}</td>
           </tr>`;
       })
       .join("");
@@ -590,12 +621,12 @@ const RelatoriosMotorista: React.FC = () => {
                 <tr key={r.id} className={idx % 2 === 0 ? "line-bg-white-600" : "line-bg-gray-100"}>
                   <td className="px-4 py-2">{r.data}</td>
                   <td className="px-4 py-2">{r.user?.name ?? `#${r.usuario_id}`}</td>
-                  <td className="px-4 py-2">{normalize(r.matricula) || "-"}</td>
-                  <td className="px-4 py-2">{normalize(r.origem) || "-"}</td>
-                  <td className="px-4 py-2">{normalize(r.destino) || "-"}</td>
+                  <td className="px-4 py-2">{veiculoTexto(r)}</td>
+                  <td className="px-4 py-2">{enderecoTexto(r, "origem")}</td>
+                  <td className="px-4 py-2">{enderecoTexto(r, "destino")}</td>
                   <td className="px-4 py-2 text-right">{toNum(r.km_rodados)}</td>
                   <td className="px-4 py-2 whitespace-pre-wrap">
-                    {normalize(r.maquinas_transportadas) || "-"}
+                    {maquinasTexto(r)}
                   </td>
                 </tr>
               ))
