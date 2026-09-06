@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import LoadingState from "@/components/LoadingState";
 
 // ==== Tipos ====
-type User = { id: number; name: string; empresa?: string };
+type User = { id: number; name: string; empresa?: string; is_active?: boolean };
 type Cliente = { id: number; nome: string };
 type Obra = { id: number; nome: string; cliente_id: number; cliente?: Cliente };
 type ManobradorMaquina = { user_id: number; opcao: string; m2?: string; double_journey?: boolean };
@@ -402,7 +402,9 @@ const Relatorios: React.FC = () => {
         setRegistrosAll(reg.data);
         setClientes(cls.data);
 
-        const utilizadoresOrdenados = [...usr.data].sort(
+        const utilizadoresOrdenados = usr.data
+          .filter((utilizador) => utilizador.is_active !== false)
+          .sort(
           (a, b) => (
             (a.name || "").localeCompare(
               b.name || "",
