@@ -14,6 +14,7 @@ import {
   import { Button } from "@/components/ui/button";
   import { Input } from "@/components/ui/input";
   import { Label } from "@/components/ui/label";
+  import { normalizarTextoBusca } from "@/utils/text";
   import {
     atualizarVeiculo,
     criarVeiculo,
@@ -138,7 +139,7 @@ import {
     }, [associacoesCartoes]);
 
     const veiculosFiltrados = useMemo(() => {
-      const termo = pesquisa.trim().toLocaleLowerCase();
+      const termo = normalizarTextoBusca(pesquisa);
 
       return veiculos.filter((veiculo) => {
         if (
@@ -155,13 +156,11 @@ import {
           return true;
         }
 
-        const texto = [
+        const texto = normalizarTextoBusca([
           veiculo.matricula,
           veiculo.tipo,
           veiculo.descricao ?? "",
-        ]
-          .join(" ")
-          .toLocaleLowerCase();
+        ].join(" "));
 
         return texto.includes(termo);
       });
