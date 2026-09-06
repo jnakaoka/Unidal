@@ -11,16 +11,23 @@ type User = { id: number; name: string; empresa?: string };
 type Cliente = { id: number; nome: string };
 type Obra = { id: number; nome: string; cliente_id: number; cliente?: Cliente };
 type ManobradorMaquina = { user_id: number; opcao: string; m2?: string; double_journey?: boolean };
+type M2ComManobrador = {
+  checked?: boolean;
+  m2?: string;
+  empresa?: string;
+  manobrador_user_id?: number | null;
+  double_journey?: boolean;
+};
 
 // Opções de máquinas (mantém alinhado com RegistroHoras.tsx)
 type IntervencaoMaquinasOpcoes = {
-  laserComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
-  poComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  laserComManobrador?: M2ComManobrador;
+  poComManobrador?: M2ComManobrador;
   manobrador?: { checked?: boolean; qtd?: number; empresa?: string };
   soLaser?: { checked?: boolean; m2?: string; empresa?: string };
   soPo?: { checked?: boolean; m2?: string; empresa?: string };
-  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
-  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  laserWS940CComManobrador?: M2ComManobrador;
+  lazerYZ30ComManobrador?: M2ComManobrador;
   soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string };
   manobradores?: ManobradorMaquina[];
@@ -187,7 +194,7 @@ const Relatorios: React.FC = () => {
     > = {};
 
     const idsManobradores = new Set(
-      (r.intervencao_maquinas_opcoes?.manobradores || []).map(item => item.user_id)
+      manobradoresDoRegistro(r).map(item => item.user_id)
     );
     (r.equipa || []).filter(e => !idsManobradores.has(e.user.id)).forEach((e) => {
       const empRaw = e.user?.empresa?.substring(0, 7) || "Sem Empresa";
@@ -263,8 +270,25 @@ const Relatorios: React.FC = () => {
   };
 
   const manobradoresDoRegistro = (r: RegistroHoras) => {
-    const itens = r.intervencao_maquinas_opcoes?.manobradores || [];
-    return Array.from(new Map(itens.map(item => [item.user_id, item])).values());
+    const opcoes = r.intervencao_maquinas_opcoes;
+    const itens = [...(opcoes?.manobradores || [])];
+    ([
+      "laserComManobrador",
+      "poComManobrador",
+      "laserWS940CComManobrador",
+      "lazerYZ30ComManobrador",
+    ] as const).forEach(opcao => {
+      const detalhe = opcoes?.[opcao];
+      if (detalhe?.checked && detalhe.manobrador_user_id) {
+        itens.push({
+          user_id: detalhe.manobrador_user_id,
+          opcao,
+          m2: detalhe.m2,
+          double_journey: detalhe.double_journey,
+        });
+      }
+    });
+    return itens;
   };
 
   const nomeOpcaoManobrador = (opcao: string) => ({
@@ -275,7 +299,7 @@ const Relatorios: React.FC = () => {
   }[opcao] || opcao);
 
   const resumoManobradores = (r: RegistroHoras): string => {
-    const novos = (r.intervencao_maquinas_opcoes?.manobradores || []).map(item => {
+    const novos = manobradoresDoRegistro(r).map(item => {
       const utilizador = leaders.find(user => user.id === item.user_id);
       return `${utilizador?.name || `#${item.user_id}`} (${utilizador?.empresa || "Sem Empresa"}) — ${nomeOpcaoManobrador(item.opcao)}: ${item.m2 || "0"} m²${item.double_journey ? " [Double Journey]" : ""}`;
     });
@@ -319,13 +343,18 @@ const Relatorios: React.FC = () => {
     if (!r.intervencao_maquinas || !o) return "—";
 
     const showEmp = (emp?: string) => ` (${emp && emp.trim() ? emp : "-"})`;
+    const showManobrador = (detalhe?: M2ComManobrador) => {
+      const utilizador = leaders.find(user => user.id === detalhe?.manobrador_user_id);
+      if (utilizador) return ` — ${utilizador.name} (${utilizador.empresa || "Sem Empresa"})`;
+      return showEmp(detalhe?.empresa);
+    };
     const parts: string[] = [];
 
     if (o.laserComManobrador?.checked)
-    parts.push(`Laser c/ manobr.: ${o.laserComManobrador.m2 || "0"} m²${showEmp(o.laserComManobrador.empresa)}`);
+    parts.push(`Laser c/ manobr.: ${o.laserComManobrador.m2 || "0"} m²${showManobrador(o.laserComManobrador)}`);
 
     if (o.poComManobrador?.checked)
-    parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || "0"} m²${showEmp(o.poComManobrador.empresa)}`);
+    parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || "0"} m²${showManobrador(o.poComManobrador)}`);
 
     if (o.manobrador?.checked)
     parts.push(`Manobrador: ${o.manobrador.qtd ?? 1}${showEmp(o.manobrador.empresa)}`);
@@ -337,10 +366,10 @@ const Relatorios: React.FC = () => {
     parts.push(`Só Pó: ${o.soPo.m2 || "0"} m²${showEmp(o.soPo.empresa)}`);
 
     if(o.laserWS940CComManobrador?.checked)
-    parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || "0"} m²${showEmp(o.laserWS940CComManobrador.empresa)}`);
+    parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || "0"} m²${showManobrador(o.laserWS940CComManobrador)}`);
 
     if(o.lazerYZ30ComManobrador?.checked)
-    parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || "0"} m²${showEmp(o.lazerYZ30ComManobrador.empresa)}`);
+    parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || "0"} m²${showManobrador(o.lazerYZ30ComManobrador)}`);
 
     if(o.soMaqLaserWS940C?.checked)
     parts.push(`Só Laser WS940C: ${o.soMaqLaserWS940C.m2 || "0"} m²${showEmp(o.soMaqLaserWS940C.empresa)}`);

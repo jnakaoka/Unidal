@@ -21,6 +21,8 @@ class M2Opt(BaseModel):
     checked: bool = False
     m2: str = ""
     empresa: Optional[str] = None
+    manobrador_user_id: Optional[int] = None
+    double_journey: bool = False
 
 class ManoOpt(BaseModel):
     checked: bool = False

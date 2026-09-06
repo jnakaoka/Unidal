@@ -4,6 +4,7 @@ from app.database import get_db
 from app.models import RegistroHora, User, Projeto
 from app.schemas.relatorio import DiasTrabalhadosOut, DoubleJourneyOut, RegistroHoraOut
 from app.dependencies.auth import require_role
+from app.services.registro_hora import _manobradores_opcoes
 from typing import List, Optional
 from datetime import date
 
@@ -41,11 +42,7 @@ def relatorio_dias_trabalhados(
     )
     registros = []
     for registro in registros_periodo:
-        manobradores = (
-            (registro.intervencao_maquinas_opcoes or {}).get("manobradores", [])
-            if isinstance(registro.intervencao_maquinas_opcoes, dict)
-            else []
-        )
+        manobradores = _manobradores_opcoes(registro.intervencao_maquinas_opcoes)
         participa = (
             registro.usuario_id == funcionario_id
             or any(item.user_id == funcionario_id for item in registro.equipa)
@@ -70,11 +67,7 @@ def relatorio_dias_trabalhados(
         ) or bool(membro and membro.double_journey) or any(
             item.get("user_id") == funcionario_id
             and item.get("double_journey", False)
-            for item in (
-                (registro.intervencao_maquinas_opcoes or {}).get("manobradores", [])
-                if isinstance(registro.intervencao_maquinas_opcoes, dict)
-                else []
-            )
+            for item in _manobradores_opcoes(registro.intervencao_maquinas_opcoes)
         )
         grupo = por_data.setdefault(
             registro.data,

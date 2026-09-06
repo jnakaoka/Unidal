@@ -45,16 +45,24 @@ interface RegistroEquipa {
 }
 
 type IntervencaoMaquinasOpcoes = {
-  laserComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
-  poComManobrador?:    { checked?: boolean; m2?: string; empresa?: string };
+  laserComManobrador?: M2ComManobrador;
+  poComManobrador?: M2ComManobrador;
   manobrador?:         { checked?: boolean; qtd?: number; empresa?: string }; // 1 ou 2
   soLaser?:            { checked?: boolean; m2?: string; empresa?: string };
   soPo?:               { checked?: boolean; m2?: string; empresa?: string };
-  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
-  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  laserWS940CComManobrador?: M2ComManobrador;
+  lazerYZ30ComManobrador?: M2ComManobrador;
   soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string }; //Só  Maq Lazer YZ30
   manobradores?: ManobradorMaquina[];
+};
+
+type M2ComManobrador = {
+  checked?: boolean;
+  m2?: string;
+  empresa?: string;
+  manobrador_user_id?: number | null;
+  double_journey?: boolean;
 };
 
 type OpcaoComManobrador =
@@ -630,11 +638,15 @@ const RegistroHoras: React.FC = () => {
       intervencao_maquinas_opcoes: {
         laserComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserComManobrador?.checked,
                               m2: regHora?.intervencao_maquinas_opcoes?.laserComManobrador?.m2 ?? '',
-                              empresa: regHora.intervencao_maquinas_opcoes?.laserComManobrador?.empresa ?? ''
+                              empresa: regHora.intervencao_maquinas_opcoes?.laserComManobrador?.empresa ?? '',
+                              manobrador_user_id: regHora.intervencao_maquinas_opcoes?.laserComManobrador?.manobrador_user_id,
+                              double_journey: !!regHora.intervencao_maquinas_opcoes?.laserComManobrador?.double_journey,
                             },
         poComManobrador:    { checked: !!regHora.intervencao_maquinas_opcoes?.poComManobrador?.checked,
                               m2: regHora?.intervencao_maquinas_opcoes?.poComManobrador?.m2 ?? '',
-                              empresa: regHora.intervencao_maquinas_opcoes?.poComManobrador?.empresa ?? ''
+                              empresa: regHora.intervencao_maquinas_opcoes?.poComManobrador?.empresa ?? '',
+                              manobrador_user_id: regHora.intervencao_maquinas_opcoes?.poComManobrador?.manobrador_user_id,
+                              double_journey: !!regHora.intervencao_maquinas_opcoes?.poComManobrador?.double_journey,
                             },
         manobrador:         { checked: !!regHora.intervencao_maquinas_opcoes?.manobrador?.checked,
                               qtd: regHora?.intervencao_maquinas_opcoes?.manobrador?.qtd ?? 1,
@@ -650,11 +662,15 @@ const RegistroHoras: React.FC = () => {
                             },
         laserWS940CComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.checked,
                                     m2: regHora?.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.m2 ?? '',
-                                    empresa: regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.empresa ?? ''
+                                    empresa: regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.empresa ?? '',
+                                    manobrador_user_id: regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.manobrador_user_id,
+                                    double_journey: !!regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.double_journey,
                                   },
         lazerYZ30ComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.checked,
                                   m2: regHora?.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.m2 ?? '',
-                                  empresa: regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.empresa ?? ''
+                                  empresa: regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.empresa ?? '',
+                                  manobrador_user_id: regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.manobrador_user_id,
+                                  double_journey: !!regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.double_journey,
                                 },
         soMaqLaserWS940C: { checked: !!regHora.intervencao_maquinas_opcoes?.soMaqLaserWS940C?.checked,
                             m2: regHora?.intervencao_maquinas_opcoes?.soMaqLaserWS940C?.m2 ?? '',
@@ -771,6 +787,15 @@ const RegistroHoras: React.FC = () => {
       const vinculos = manobradores.map(item => `${item.user_id}:${item.opcao}`);
       if (new Set(vinculos).size !== vinculos.length) {
         showNotice('error', 'O mesmo manobrador não pode ser repetido na mesma opção de máquina.');
+        return;
+      }
+
+      const opcoesIniciaisSemNome = opcoesComManobrador.filter(({ value }) => {
+        const detalhe = formData.intervencao_maquinas_opcoes[value];
+        return detalhe?.checked && !detalhe.manobrador_user_id;
+      });
+      if (opcoesIniciaisSemNome.length) {
+        showNotice('error', 'Selecione o manobrador inicial de cada opção de máquina assinalada.');
         return;
       }
 
@@ -983,6 +1008,19 @@ const RegistroHoras: React.FC = () => {
     }));
   };
 
+  const atualizarManobradorInicial = (opcao: OpcaoComManobrador, dados: Partial<M2ComManobrador>) => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        [opcao]: {
+          ...prev.intervencao_maquinas_opcoes[opcao],
+          ...dados,
+        },
+      },
+    }));
+  };
+
   const removerManobrador = (index: number) => {
     setFormData(prev => ({
       ...prev,
@@ -991,6 +1029,36 @@ const RegistroHoras: React.FC = () => {
         manobradores: (prev.intervencao_maquinas_opcoes.manobradores || []).filter((_, i) => i !== index),
       },
     }));
+  };
+
+  const camposManobradorInicial = (opcao: OpcaoComManobrador) => {
+    const detalhe = formData.intervencao_maquinas_opcoes[opcao];
+    if (!detalhe?.checked) return null;
+    const funcionario = usuarios.find(user => user.id === detalhe.manobrador_user_id);
+    return (
+      <span className="inline-flex min-w-[220px] flex-col gap-1">
+        <select
+          className="rounded border bg-white px-2 py-1"
+          value={detalhe.manobrador_user_id || ''}
+          onChange={(e) => atualizarManobradorInicial(opcao, {
+            manobrador_user_id: Number(e.target.value) || null,
+            empresa: usuarios.find(user => user.id === Number(e.target.value))?.empresa || '',
+          })}
+        >
+          <option value="">Selecione o manobrador</option>
+          {usuarios.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+        </select>
+        <small className="text-gray-600">Empresa: {funcionario?.empresa || '—'}</small>
+        <label className="inline-flex items-center gap-1 text-xs text-amber-800">
+          <input
+            type="checkbox"
+            checked={!!detalhe.double_journey}
+            onChange={(e) => atualizarManobradorInicial(opcao, { double_journey: e.target.checked })}
+          />
+          <b>Double Journey</b>
+        </label>
+      </span>
+    );
   };
 
   const setValorM2 = (key: Exclude<keyof IntervencaoMaquinasOpcoes, 'manobrador'>, m2: string) => {
@@ -1139,12 +1207,17 @@ const RegistroHoras: React.FC = () => {
     if (!reg.intervencao_maquinas || !o) return '—';
 
     const parts: string[] = [];
+    const manobradorInicial = (detalhe?: M2ComManobrador) => {
+      const funcionario = usuarios.find(user => user.id === detalhe?.manobrador_user_id);
+      if (funcionario) return `${funcionario.name} (${funcionario.empresa || '-'})`;
+      return detalhe?.empresa || '-';
+    };
 
     if (o.laserComManobrador?.checked) {
-      parts.push(`Laser c/ manobr.: ${o.laserComManobrador.m2 || '0'} m² (${o.laserComManobrador.empresa||'-'})`);
+      parts.push(`Laser c/ manobr.: ${o.laserComManobrador.m2 || '0'} m² — ${manobradorInicial(o.laserComManobrador)}`);
     }
     if (o.poComManobrador?.checked) {
-      parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || '0'} m² (${o.poComManobrador.empresa||'-'})`);
+      parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || '0'} m² — ${manobradorInicial(o.poComManobrador)}`);
     }
     if (o.manobrador?.checked) {
       parts.push(`Manobrador: ${o.manobrador.qtd ?? 1} (${o.manobrador.empresa||'-'})`);
@@ -1156,10 +1229,10 @@ const RegistroHoras: React.FC = () => {
       parts.push(`Só Pó: ${o.soPo.m2 || '0'} m² (${o.soPo.empresa||'-'})`);
     }
     if(o.laserWS940CComManobrador?.checked) {
-      parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || '0'} m² (${o.laserWS940CComManobrador.empresa||'-'})`);
+      parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || '0'} m² — ${manobradorInicial(o.laserWS940CComManobrador)}`);
     }
     if(o.lazerYZ30ComManobrador?.checked) {
-      parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || '0'} m² (${o.lazerYZ30ComManobrador.empresa||'-'})`);
+      parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || '0'} m² — ${manobradorInicial(o.lazerYZ30ComManobrador)}`);
     }
     if(o.soMaqLaserWS940C?.checked) {
       parts.push(`Só Laser WS940C: ${o.soMaqLaserWS940C.m2 || '0'} m² (${o.soMaqLaserWS940C.empresa||'-'})`);
@@ -1698,6 +1771,7 @@ const RegistroHoras: React.FC = () => {
                         value={formData.intervencao_maquinas_opcoes.laserComManobrador?.m2}
                         onChange={(e) => setValorM2('laserComManobrador', e.target.value)}
                       />
+                      {camposManobradorInicial('laserComManobrador')}
                     </label>
 
                     {/* Máq Pó c/ manobrador (m2) */}
@@ -1716,6 +1790,7 @@ const RegistroHoras: React.FC = () => {
                         value={formData.intervencao_maquinas_opcoes.poComManobrador?.m2}
                         onChange={(e) => setValorM2('poComManobrador', e.target.value)}
                       />
+                      {camposManobradorInicial('poComManobrador')}
                     </label>
 
 
@@ -1788,6 +1863,7 @@ const RegistroHoras: React.FC = () => {
                         value={formData.intervencao_maquinas_opcoes.laserWS940CComManobrador?.m2}
                         onChange={(e) => setValorM2('laserWS940CComManobrador', e.target.value)}
                       />
+                      {camposManobradorInicial('laserWS940CComManobrador')}
                     </label>
                     {/* lazer YZ30 (m2) com manobrador */}
                     <label className="flex items-center gap-3">
@@ -1804,6 +1880,7 @@ const RegistroHoras: React.FC = () => {
                         disabled={!formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.checked}                        value={formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.m2}
                         onChange={(e) => setValorM2('lazerYZ30ComManobrador', e.target.value)}
                       />
+                      {camposManobradorInicial('lazerYZ30ComManobrador')}
                     </label>
                     {/* so maquinas laser WS940C (m2)  */}
                     <label className="flex items-center gap-3">

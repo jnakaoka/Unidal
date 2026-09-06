@@ -16,7 +16,22 @@ def _manobradores_opcoes(opcoes) -> list[dict]:
         opcoes = opcoes.model_dump()
     if not isinstance(opcoes, dict):
         return []
-    return [m for m in opcoes.get("manobradores", []) if isinstance(m, dict)]
+    manobradores = [m for m in opcoes.get("manobradores", []) if isinstance(m, dict)]
+    for chave in (
+        "laserComManobrador",
+        "poComManobrador",
+        "laserWS940CComManobrador",
+        "lazerYZ30ComManobrador",
+    ):
+        detalhe = opcoes.get(chave)
+        if isinstance(detalhe, dict) and detalhe.get("checked") and detalhe.get("manobrador_user_id"):
+            manobradores.append({
+                "user_id": detalhe["manobrador_user_id"],
+                "opcao": chave,
+                "m2": detalhe.get("m2", ""),
+                "double_journey": bool(detalhe.get("double_journey", False)),
+            })
+    return manobradores
 
 
 def _validar_manobradores(db: Session, opcoes) -> list[dict]:
