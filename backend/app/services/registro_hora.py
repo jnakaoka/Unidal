@@ -1,10 +1,66 @@
 # services/registro_hora.py
+from fastapi import HTTPException
+from sqlalchemy import exists, or_
 from sqlalchemy.orm import Session, joinedload
 from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraUpdate, RegistroHoraResponse
 from app.models.registro_hora import RegistroHora, RegistroHoraEquipa
 from app.models.obra import Obra
 from typing import Optional
 from datetime import datetime, timezone
+
+
+def _validar_double_journey(
+    db: Session,
+    *,
+    data,
+    obra_id: int | None,
+    participantes: list[tuple[int, bool]],
+    registro_id: int | None = None,
+):
+    if obra_id is None:
+        return
+
+    for user_id, double_journey in participantes:
+        pertence_a_equipa = exists().where(
+            RegistroHoraEquipa.registro_id == RegistroHora.id,
+            RegistroHoraEquipa.user_id == user_id,
+        )
+        query = db.query(RegistroHora).filter(
+            RegistroHora.data == data,
+            RegistroHora.obra_id.isnot(None),
+            RegistroHora.obra_id != obra_id,
+            or_(
+                RegistroHora.usuario_id == user_id,
+                pertence_a_equipa,
+            ),
+        )
+        if registro_id is not None:
+            query = query.filter(RegistroHora.id != registro_id)
+
+        for conflito in query.all():
+            membro_conflitante = next(
+                (
+                    item for item in conflito.equipa
+                    if item.user_id == user_id
+                ),
+                None,
+            )
+            conflito_marcado = (
+                conflito.usuario_id == user_id
+                and conflito.double_journey_lider
+            ) or bool(
+                membro_conflitante
+                and membro_conflitante.double_journey
+            )
+
+            if not double_journey and not conflito_marcado:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        "O funcionário já está registado noutra obra nesta data. "
+                        "Marque Double Journey para autorizar o segundo apontamento."
+                    ),
+                )
 
 def _validate_cliente_obra(db: Session, cliente_id: int, obra_id: int):
     obra = db.query(Obra).filter(Obra.id == obra_id).first()
@@ -61,6 +117,18 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
 
     equipa_payload = data.pop("equipa", [])  # tratar fora
 
+    participantes = [(registro.usuario_id, registro.double_journey_lider)]
+    participantes.extend(
+        (m["user_id"], bool(m.get("double_journey", False)))
+        for m in equipa_payload
+    )
+    _validar_double_journey(
+        db,
+        data=registro.data,
+        obra_id=registro.obra_id,
+        participantes=participantes,
+    )
+
     data["modificado_por"] = None
     data["modificado_em"] = None
 
@@ -72,7 +140,8 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
         db.add(RegistroHoraEquipa(
             registro_id=reg.id, 
             user_id=m["user_id"],
-            intemperie=bool(m.get("intemperie", False))
+            intemperie=bool(m.get("intemperie", False)),
+            double_journey=bool(m.get("double_journey", False)),
         ))
 
     db.commit()
@@ -135,6 +204,26 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
 
     mod_por = data.pop("modificado_por", None)
 
+    equipa_para_validacao = equipa_payload if equipa_payload is not None else [
+        {
+            "user_id": membro.user_id,
+            "double_journey": membro.double_journey,
+        }
+        for membro in reg.equipa
+    ]
+    participantes = [(reg.usuario_id, registro.double_journey_lider)]
+    participantes.extend(
+        (m["user_id"], bool(m.get("double_journey", False)))
+        for m in equipa_para_validacao
+    )
+    _validar_double_journey(
+        db,
+        data=registro.data,
+        obra_id=registro.obra_id,
+        participantes=participantes,
+        registro_id=registro_id,
+    )
+
     # segurança absoluta: NÃO deixar que alterem usuario_id via update
     if "usuario_id" in data:
         data.pop("usuario_id")
@@ -153,7 +242,8 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
             db.add(RegistroHoraEquipa(
                 registro_id=reg.id, 
                 user_id=m["user_id"],
-                intemperie=bool(m.get("intemperie", False))
+                intemperie=bool(m.get("intemperie", False)),
+                double_journey=bool(m.get("double_journey", False)),
             ))
 
     db.commit()

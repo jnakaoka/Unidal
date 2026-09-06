@@ -323,7 +323,7 @@ const Relatorios: React.FC = () => {
         const [reg, cls, usr] = await Promise.all([
           api.get<RegistroHoras[]>("/registro-horas/"),
           api.get<Cliente[]>("/clientes/"),
-          api.get<User[]>("/users/"),
+          api.get<User[]>("/users/", { params: { is_active: true } }),
         ]);
 
         if (!componenteAtivo) {

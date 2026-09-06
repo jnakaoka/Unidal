@@ -119,7 +119,7 @@ const RelatoriosMotorista: React.FC = () => {
           api.get<RegistroHorasMotorista[]>(
             "/registro-horas/",
           ),
-          api.get<User[]>("/users/"),
+          api.get<User[]>("/users/", { params: { is_active: true } }),
         ]);
 
         if (!componenteAtivo) {

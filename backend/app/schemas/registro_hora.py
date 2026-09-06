@@ -41,6 +41,7 @@ class IntervencaoMaquinasOpcoes(BaseModel):
 class MembroEquipa(BaseModel):
     user_id: int  # valor obrigatório (se quiser opcional, use = None)
     intemperie: bool = False
+    double_journey: bool = False
 
     class Config:
         from_attributes = True
@@ -103,6 +104,7 @@ class RegistroHoraCreate(BaseModel):
     serragem: bool = False
     coli: bool = False
     optipav: bool = False
+    double_journey_lider: bool = False
     intervencao_maquinas: bool = False
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
     origem: Optional[str] = None
@@ -139,6 +141,7 @@ class RegistroHoraUpdate(BaseModel):
     serragem: bool = False
     coli: bool = False
     optipav: bool = False
+    double_journey_lider: bool = False
     intervencao_maquinas: bool = False
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
     origem: Optional[str] = None
@@ -179,6 +182,7 @@ class ProjetoResponse(BaseModel):
 class RegistroHoraEquipaResponse(BaseModel):
     user: UserResponse
     intemperie: bool = False
+    double_journey: bool = False
     class Config:
         from_attributes = True
 
@@ -202,6 +206,7 @@ class RegistroHoraResponse(BaseModel):
     serragem: Optional[bool] = None
     coli: Optional[bool] = None
     optipav: Optional[bool] = False
+    double_journey_lider: bool = False
     intervencao_maquinas: Optional[bool] = None
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
     modificado_por: Optional[int] = None

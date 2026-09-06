@@ -41,6 +41,7 @@ interface Obra {
 interface RegistroEquipa {
   user: User;
   intemperie: boolean;
+  double_journey: boolean;
 }
 
 type IntervencaoMaquinasOpcoes = {
@@ -75,6 +76,7 @@ interface RegistroHoras {
   serragem: boolean;
   coli: boolean;
   optipav: boolean;
+  double_journey_lider: boolean;
   intervencao_maquinas: boolean;
   intervencao_maquinas_opcoes?: IntervencaoMaquinasOpcoes | null;
 
@@ -121,6 +123,7 @@ const RegistroHoras: React.FC = () => {
     serragem: boolean;
     coli: boolean;
     optipav: boolean;
+    double_journey_lider: boolean;
     intervencao_maquinas: boolean;
     intervencao_maquinas_opcoes: IntervencaoMaquinasOpcoes;
     origem?: string;
@@ -128,7 +131,7 @@ const RegistroHoras: React.FC = () => {
     matricula?: string;
     km_rodados?: string;
     maquinas_transportadas?: string;
-    equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean }[];
+    equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean; double_journey?: boolean }[];
   };
   const { user } = useAuth();
   const [usuarios, setUsuarios] = useState<User[]>([]);
@@ -171,6 +174,7 @@ const RegistroHoras: React.FC = () => {
   const [empresasAbertas, setEmpresasAbertas] = useState<Record<string, boolean>>({});
   const [obrasFiltro, setObrasFiltro] = useState<Obra[]>([]);
   const [intemperiePorUserId, setIntemperiePorUserId] = useState<Record<number, boolean>>({});
+  const [doubleJourneyPorUserId, setDoubleJourneyPorUserId] = useState<Record<number, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<{type: 'success'|'error'|'info', text: string} | null>(null);
   const [searchUser, setSearchUser] = useState('');
@@ -204,6 +208,7 @@ const RegistroHoras: React.FC = () => {
     bruto: false,
     colagem: false,
     optipav: false,
+    double_journey_lider: false,
     acabamento: false,
     serragem: false,
     coli: false,
@@ -339,7 +344,9 @@ const RegistroHoras: React.FC = () => {
 
   const fetchUsuarios = async () => {
     try {
-      const response = await api.get<User[]>('/users/');
+      const response = await api.get<User[]>('/users/', {
+        params: { is_active: true },
+      });
       //console.log('usuarios',response.data);
       const usuariosData = response.data;
       if (Array.isArray(usuariosData)) {
@@ -570,6 +577,11 @@ const RegistroHoras: React.FC = () => {
         regHora.equipa.map(e => [e.user.id, !!(e as any).intemperie])
       )
     );
+    setDoubleJourneyPorUserId(
+      Object.fromEntries(
+        regHora.equipa.map(e => [e.user.id, !!e.double_journey])
+      )
+    );
 
     const cid: number | null = regHora.cliente_id ?? regHora.cliente?.id ?? null;
     const oid: number | null = regHora.obra_id ?? regHora.obra?.id ?? null;
@@ -591,6 +603,7 @@ const RegistroHoras: React.FC = () => {
       serragem: regHora.serragem,
       coli: regHora.coli,
       optipav: regHora.optipav,
+      double_journey_lider: !!regHora.double_journey_lider,
       intervencao_maquinas: regHora.intervencao_maquinas,
       intervencao_maquinas_opcoes: {
         laserComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserComManobrador?.checked,
@@ -644,6 +657,7 @@ const RegistroHoras: React.FC = () => {
         email: e.user.email,
         empresa: e.user.empresa,
         intemperie: !!intemperiePorUserId[e.user.id],
+        double_journey: !!e.double_journey,
       })) ?? [],
     });
 
@@ -704,13 +718,15 @@ const RegistroHoras: React.FC = () => {
 
       const equipa_user = selectedUsers
       .map((id) => {
-        const user = usuarios.find((u) => u.id === id);
+        const user = usuarios.find((u) => u.id === id)
+          ?? editingRegistroHoras?.equipa.find((e) => e.user.id === id)?.user;
         if (!user) return null;
         return {
           user_id: user.id,
           email: user.email,
           empresa: user.empresa,
-          intemperie: !!intemperiePorUserId[user.id]
+          intemperie: !!intemperiePorUserId[user.id],
+          double_journey: !!doubleJourneyPorUserId[user.id],
         };
       })
       .filter(Boolean); // remove nulls se algum id não for encontrado
@@ -786,6 +802,7 @@ const RegistroHoras: React.FC = () => {
         serragem: !!formData.serragem,
         coli: !!formData.coli,
         optipav: !!formData.optipav,
+        double_journey_lider: !!formData.double_journey_lider,
         intervencao_maquinas: !!formData.intervencao_maquinas,
         intervencao_maquinas_opcoes: formData.intervencao_maquinas
           ? formData.intervencao_maquinas_opcoes
@@ -866,6 +883,7 @@ const RegistroHoras: React.FC = () => {
       serragem: false,
       coli: false,
       optipav: false,
+      double_journey_lider: false,
       intervencao_maquinas: false,
       intervencao_maquinas_opcoes: {
         laserComManobrador: { checked: false, m2: '', empresa: '' },
@@ -879,6 +897,9 @@ const RegistroHoras: React.FC = () => {
         soMaqLazerYZ30: { checked: false, m2: '', empresa: '' },
       } as IntervencaoMaquinasOpcoes,
       equipa: [] as { user_id: number; email: string, empresa: string }[]});
+    setSelectedUsers([]);
+    setIntemperiePorUserId({});
+    setDoubleJourneyPorUserId({});
     setEditingRegistroHoras(null);
     setIsEditing(false);
     setModalAberto(false);
@@ -1162,6 +1183,7 @@ const RegistroHoras: React.FC = () => {
 
     // define intemperie padrão (ajuste se quiser herdar algo)
     setIntemperiePorUserId(prev => ({ ...prev, [u.id]: false }));
+    setDoubleJourneyPorUserId(prev => ({ ...prev, [u.id]: false }));
 
     // limpa busca
     setSearchUser('');
@@ -1878,6 +1900,18 @@ const RegistroHoras: React.FC = () => {
                   </div>
                 )}
 
+                <label className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <input
+                    type="checkbox"
+                    checked={!!formData.double_journey_lider}
+                    onChange={(e) => setFormData((prev) => ({
+                      ...prev,
+                      double_journey_lider: e.target.checked,
+                    }))}
+                  />
+                  <span><b>Double Journey do chefe de equipa</b> — trabalhou noutra obra nesta data</span>
+                </label>
+
                 <label className="block text-sm font-medium text-gray-700" style={{ fontWeight: '700' }} >Equipa</label>
                 <div className="space-y-3">
                   {Object.entries(usuariosPorEmpresa).map(([empresa, lista]) => {
@@ -1954,16 +1988,28 @@ const RegistroHoras: React.FC = () => {
                               />
                               {u.name}
                               {selectedUsers.includes(u.id) && (
-                                <label className="ml-2 inline-flex items-center gap-1 text-xs">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!intemperiePorUserId[u.id]}
-                                    onChange={(e) =>
-                                      setIntemperiePorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
-                                    }
-                                  />
-                                  <span><b>Intempérie</b></span>
-                                </label>
+                                <span className="ml-2 inline-flex flex-wrap items-center gap-3 text-xs">
+                                  <label className="inline-flex items-center gap-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!intemperiePorUserId[u.id]}
+                                      onChange={(e) =>
+                                        setIntemperiePorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
+                                      }
+                                    />
+                                    <span><b>Intempérie</b></span>
+                                  </label>
+                                  <label className="inline-flex items-center gap-1 text-amber-800">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!doubleJourneyPorUserId[u.id]}
+                                      onChange={(e) =>
+                                        setDoubleJourneyPorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
+                                      }
+                                    />
+                                    <span><b>Double Journey</b></span>
+                                  </label>
+                                </span>
                               )}
                             </label>
                           ))}
@@ -2325,7 +2371,12 @@ const RegistroHoras: React.FC = () => {
 
                 return (
                   <tr key={reg.id} className={rowClass}>
-                    <td className="px-4 py-2">{reg.user?.name}</td>
+                    <td className="px-4 py-2">
+                      {reg.user?.name}
+                      {reg.double_journey_lider && (
+                        <strong className="block text-amber-700">[Double Journey]</strong>
+                      )}
+                    </td>
                     <td className="px-4 py-2">{reg.data}</td>
                     <td className="px-4 py-2">{reg.cliente?.nome ?? '-'}</td>
                     <td className="px-4 py-2">{reg.obra?.nome ?? '-'}</td>
@@ -2342,6 +2393,7 @@ const RegistroHoras: React.FC = () => {
                             {i > 0 && ', '}
                             {label}
                             {e.intemperie && <strong> [Intempérie]</strong>}
+                            {e.double_journey && <strong className="text-amber-700"> [Double Journey]</strong>}
                           </span>
                         );
                       })}

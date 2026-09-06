@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import exists, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import RegistroHora, User, Projeto
 from app.models.registro_hora import RegistroHoraEquipa
-from app.schemas.relatorio import DiasTrabalhadosOut, RegistroHoraOut
+from app.schemas.relatorio import DiasTrabalhadosOut, DoubleJourneyOut, RegistroHoraOut
 from app.dependencies.auth import require_role
 from typing import List, Optional
 from datetime import date
@@ -49,6 +49,49 @@ def relatorio_dias_trabalhados(
     )
     datas_trabalhadas = [item[0] for item in datas]
 
+    registros = (
+        db.query(RegistroHora)
+        .options(
+            joinedload(RegistroHora.obra),
+            joinedload(RegistroHora.equipa),
+        )
+        .filter(
+            RegistroHora.data.between(data_inicio, data_fim),
+            or_(
+                RegistroHora.usuario_id == funcionario_id,
+                pertence_a_equipa,
+            ),
+        )
+        .all()
+    )
+    por_data: dict[date, dict] = {}
+    for registro in registros:
+        membro = next(
+            (
+                item for item in registro.equipa
+                if item.user_id == funcionario_id
+            ),
+            None,
+        )
+        marcado = (
+            registro.usuario_id == funcionario_id
+            and registro.double_journey_lider
+        ) or bool(membro and membro.double_journey)
+        grupo = por_data.setdefault(
+            registro.data,
+            {"marcado": False, "obras": set()},
+        )
+        grupo["marcado"] = grupo["marcado"] or marcado
+        grupo["obras"].add(
+            registro.obra.nome if registro.obra else "Obra não informada"
+        )
+
+    double_journeys = [
+        DoubleJourneyOut(data=data_registro, obras=sorted(info["obras"]))
+        for data_registro, info in sorted(por_data.items())
+        if info["marcado"] and len(info["obras"]) > 1
+    ]
+
     return DiasTrabalhadosOut(
         funcionario_id=funcionario.id,
         funcionario_nome=funcionario.name,
@@ -57,6 +100,8 @@ def relatorio_dias_trabalhados(
         data_fim=data_fim,
         total_dias=len(datas_trabalhadas),
         datas_trabalhadas=datas_trabalhadas,
+        total_double_journeys=len(double_journeys),
+        double_journeys=double_journeys,
     )
 
 @router.get("/", response_model=List[RegistroHoraOut])

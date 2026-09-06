@@ -14,6 +14,11 @@ class RegistroHoraOut(BaseModel):
         orm_mode = True
 
 
+class DoubleJourneyOut(BaseModel):
+    data: date
+    obras: List[str]
+
+
 class DiasTrabalhadosOut(BaseModel):
     funcionario_id: int
     funcionario_nome: str
@@ -22,3 +27,5 @@ class DiasTrabalhadosOut(BaseModel):
     data_fim: date
     total_dias: int
     datas_trabalhadas: List[date]
+    total_double_journeys: int
+    double_journeys: List[DoubleJourneyOut]

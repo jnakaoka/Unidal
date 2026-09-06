@@ -18,6 +18,8 @@ type Relatorio = {
   data_fim: string;
   total_dias: number;
   datas_trabalhadas: string[];
+  total_double_journeys: number;
+  double_journeys: { data: string; obras: string[] }[];
 };
 
 type DateMode = "month" | "range";
@@ -57,7 +59,7 @@ const RelatorioDiasTrabalhados: React.FC = () => {
 
   useEffect(() => {
     let ativo = true;
-    api.get<User[]>("/users/")
+    api.get<User[]>("/users/", { params: { is_active: true } })
       .then(({ data }) => {
         if (ativo) {
           setFuncionarios([...data].sort((a, b) => a.name.localeCompare(b.name, "pt")));
@@ -111,6 +113,9 @@ const RelatorioDiasTrabalhados: React.FC = () => {
     const datas = relatorio.datas_trabalhadas
       .map((data, indice) => `<tr><td>${indice + 1}</td><td>${formatarData(data)}</td></tr>`)
       .join("");
+    const ocorrencias = relatorio.double_journeys
+      .map((item) => `<li><strong>${formatarData(item.data)}:</strong> ${item.obras.join(" • ")}</li>`)
+      .join("");
     const janela = window.open("", "_blank", "width=850,height=700");
     if (!janela) return;
     janela.document.write(`<!doctype html><html><head><title>Dias trabalhados</title>
@@ -120,6 +125,8 @@ const RelatorioDiasTrabalhados: React.FC = () => {
       <p><strong>Empresa:</strong> ${relatorio.empresa}</p>
       <p><strong>Período:</strong> ${formatarData(relatorio.data_inicio)} a ${formatarData(relatorio.data_fim)}</p>
       <div class="resumo"><strong>Total de dias trabalhados: ${relatorio.total_dias}</strong></div>
+      <div class="resumo"><strong>Double journeys identificados: ${relatorio.total_double_journeys}</strong></div>
+      ${ocorrencias ? `<h2>Ocorrências para conferência</h2><ul>${ocorrencias}</ul>` : ""}
       <table><thead><tr><th>#</th><th>Data</th></tr></thead><tbody>${datas || '<tr><td colspan="2">Nenhum dia trabalhado no período.</td></tr>'}</tbody></table>
       <script>window.onload=()=>window.print()</script></body></html>`);
     janela.document.close();
@@ -144,7 +151,7 @@ const RelatorioDiasTrabalhados: React.FC = () => {
               <option value="">Selecione um funcionário</option>
               {funcionarios.map((funcionario) => (
                 <option key={funcionario.id} value={funcionario.id}>
-                  {funcionario.name}{funcionario.is_active ? "" : " (inativo)"}
+                  {funcionario.name}
                 </option>
               ))}
             </select>
@@ -181,7 +188,20 @@ const RelatorioDiasTrabalhados: React.FC = () => {
             <div><h2 className="text-xl font-semibold text-gray-800">{relatorio.funcionario_nome}</h2><p className="text-sm text-gray-500">{relatorio.empresa}</p></div>
             <Button variant="outline" onClick={imprimir}>Imprimir</Button>
           </div>
-          <div className="rounded-xl bg-indigo-50 p-5 text-indigo-900"><p className="text-sm">Total no período</p><p className="text-3xl font-bold">{relatorio.total_dias} {relatorio.total_dias === 1 ? "dia" : "dias"}</p></div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="rounded-xl bg-indigo-50 p-5 text-indigo-900"><p className="text-sm">Dias trabalhados</p><p className="text-3xl font-bold">{relatorio.total_dias} {relatorio.total_dias === 1 ? "dia" : "dias"}</p></div>
+            <div className="rounded-xl bg-amber-50 p-5 text-amber-900"><p className="text-sm">Double journeys identificados</p><p className="text-3xl font-bold">{relatorio.total_double_journeys}</p></div>
+          </div>
+          {relatorio.double_journeys.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <h3 className="font-semibold text-amber-900">Ocorrências para conferência administrativa</h3>
+              <ul className="mt-2 space-y-2 text-sm text-amber-900">
+                {relatorio.double_journeys.map((ocorrencia) => (
+                  <li key={ocorrencia.data}><b className="capitalize">{formatarData(ocorrencia.data)}:</b> {ocorrencia.obras.join(" • ")}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="overflow-x-auto rounded-xl border">
             <table className="w-full text-sm"><thead className="bg-gray-50 text-left text-xs uppercase text-gray-500"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Data trabalhada</th></tr></thead>
               <tbody>{relatorio.datas_trabalhadas.length ? relatorio.datas_trabalhadas.map((data, indice) => <tr key={data} className="border-t"><td className="px-4 py-3 text-gray-500">{indice + 1}</td><td className="px-4 py-3 capitalize">{formatarData(data)}</td></tr>) : <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-500">Nenhum dia trabalhado neste período.</td></tr>}</tbody>
