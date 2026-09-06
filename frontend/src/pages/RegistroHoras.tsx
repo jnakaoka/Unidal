@@ -11,6 +11,7 @@ import axios from 'axios';
 import { FiltroRegistros } from "../components/FiltroRegistros";
 import Pagination, { usePagination } from "@/components/pagination-utils";
 import LoadingState from "@/components/LoadingState";
+import { contemTextoBusca, normalizarTextoBusca } from "@/utils/text";
 
 interface User {
   id: number;
@@ -512,19 +513,17 @@ const RegistroHoras: React.FC = () => {
       filtrados = filtrados.filter(r => (r.obra_id ?? r.obra?.id ?? null) === obraId);
     }
     if (usuario) {
-      const u = usuario.toLowerCase();
-      filtrados = filtrados.filter(r => (r.user?.name || "").toLowerCase().includes(u));
+      filtrados = filtrados.filter(r => contemTextoBusca(r.user?.name, usuario));
     }
     // filtra por FUNCIONÁRIO dentro da equipa (reg.equipa[].user)
     if (funcionario) {
-      const f = funcionario.toLowerCase();
       filtrados = filtrados.filter((r) =>
         r.equipa?.some((e) => {
           const nome  = e.user?.name  ?? "";
           const email = e.user?.email ?? "";
           return (
-            nome.toLowerCase().includes(f) ||
-            email.toLowerCase().includes(f)
+            contemTextoBusca(nome, funcionario) ||
+            contemTextoBusca(email, funcionario)
           );
         })
       );
@@ -1373,10 +1372,10 @@ const RegistroHoras: React.FC = () => {
     }
   }
 
-  const usuariosFiltrados = searchUser.trim().length >= 2
+  const usuariosFiltrados = normalizarTextoBusca(searchUser).length >= 2
   ? usuarios
       .filter(u => !selectedUsers.includes(u.id))
-      .filter(u => u.name.toLowerCase().includes(searchUser.toLowerCase()))
+      .filter(u => contemTextoBusca(u.name, searchUser))
       .slice(0, 10) // limita a 10 sugestões
   : [];
 
