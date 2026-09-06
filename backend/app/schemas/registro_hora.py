@@ -35,6 +35,7 @@ class ManobradorMaquina(BaseModel):
         "laserWS940CComManobrador",
         "lazerYZ30ComManobrador",
     ]
+    m2: str = ""
     double_journey: bool = False
 
 class IntervencaoMaquinasOpcoes(BaseModel):

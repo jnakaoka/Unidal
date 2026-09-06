@@ -10,7 +10,7 @@ import LoadingState from "@/components/LoadingState";
 type User = { id: number; name: string; empresa?: string };
 type Cliente = { id: number; nome: string };
 type Obra = { id: number; nome: string; cliente_id: number; cliente?: Cliente };
-type ManobradorMaquina = { user_id: number; opcao: string; double_journey?: boolean };
+type ManobradorMaquina = { user_id: number; opcao: string; m2?: string; double_journey?: boolean };
 
 // Opções de máquinas (mantém alinhado com RegistroHoras.tsx)
 type IntervencaoMaquinasOpcoes = {
@@ -277,7 +277,7 @@ const Relatorios: React.FC = () => {
   const resumoManobradores = (r: RegistroHoras): string => {
     const novos = (r.intervencao_maquinas_opcoes?.manobradores || []).map(item => {
       const utilizador = leaders.find(user => user.id === item.user_id);
-      return `${utilizador?.name || `#${item.user_id}`} (${utilizador?.empresa || "Sem Empresa"}) — ${nomeOpcaoManobrador(item.opcao)}`;
+      return `${utilizador?.name || `#${item.user_id}`} (${utilizador?.empresa || "Sem Empresa"}) — ${nomeOpcaoManobrador(item.opcao)}: ${item.m2 || "0"} m²${item.double_journey ? " [Double Journey]" : ""}`;
     });
     const legado = r.intervencao_maquinas_opcoes?.manobrador;
     if (legado?.checked) {

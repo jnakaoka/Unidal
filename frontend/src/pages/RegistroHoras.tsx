@@ -66,6 +66,7 @@ type OpcaoComManobrador =
 type ManobradorMaquina = {
   user_id: number;
   opcao: OpcaoComManobrador | '';
+  m2: string;
   double_journey: boolean;
 };
 
@@ -964,7 +965,7 @@ const RegistroHoras: React.FC = () => {
         ...prev.intervencao_maquinas_opcoes,
         manobradores: [
           ...(prev.intervencao_maquinas_opcoes.manobradores || []),
-          { user_id: 0, opcao: '', double_journey: false },
+          { user_id: 0, opcao: '', m2: '', double_journey: false },
         ],
       },
     }));
@@ -1166,6 +1167,14 @@ const RegistroHoras: React.FC = () => {
     if(o.soMaqLazerYZ30?.checked) {
       parts.push(`Só Lazer YZ30: ${o.soMaqLazerYZ30.m2 || '0'} m² (${o.soMaqLazerYZ30.empresa||'-'})`);
     }
+
+    (o.manobradores || []).forEach(item => {
+      const funcionario = usuarios.find(user => user.id === item.user_id);
+      const opcao = opcoesComManobrador.find(opcao => opcao.value === item.opcao)?.label || item.opcao;
+      parts.push(
+        `Manobrador: ${funcionario?.name || `#${item.user_id}`} (${funcionario?.empresa || '-'}) — ${opcao}: ${item.m2 || '0'} m²${item.double_journey ? ' [Double Journey]' : ''}`
+      );
+    });
 
     // return parts.length ? parts.join(' • ') : '—';
     return parts.length ? parts.join(', ') : '—';
@@ -1870,7 +1879,7 @@ const RegistroHoras: React.FC = () => {
                         {(formData.intervencao_maquinas_opcoes.manobradores || []).map((item, index) => {
                           const funcionario = usuarios.find(u => u.id === item.user_id);
                           return (
-                            <div key={index} className="grid gap-3 rounded-md border bg-white p-3 md:grid-cols-[1.4fr_1.4fr_0.8fr_auto] md:items-end">
+                            <div key={index} className="grid gap-3 rounded-md border bg-white p-3 md:grid-cols-[1.3fr_1.3fr_0.6fr_0.8fr_auto] md:items-end">
                               <div>
                                 <Label>Funcionário</Label>
                                 <select
@@ -1883,6 +1892,17 @@ const RegistroHoras: React.FC = () => {
                                     <option key={u.id} value={u.id}>{u.name}</option>
                                   ))}
                                 </select>
+                              </div>
+                              <div>
+                                <Label>Metros (m²)</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  placeholder="m²"
+                                  value={item.m2 || ''}
+                                  onChange={(e) => atualizarManobrador(index, { m2: e.target.value })}
+                                />
                               </div>
                               <div>
                                 <Label>Opção de intervenção</Label>
