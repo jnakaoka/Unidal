@@ -12,6 +12,7 @@ import { Perfil } from "../types/perfil";
 import { FiltroUsuarios } from "@/components/FiltroUsuarios";
 import Pagination, { usePagination } from "@/components/pagination-utils";
 import LoadingState from "@/components/LoadingState";
+import { contemTextoBusca } from "@/utils/text";
 
 interface User {
   id: number;
@@ -267,22 +268,22 @@ const GestaoUsuarios: React.FC = () => {
     console.log('Filtro recebido:', { nome, email, empresa, perfil });
     if (nome) {
       filtrados = filtrados.filter((u) =>
-        u.name?.toLowerCase().includes(nome.toLowerCase())
+        contemTextoBusca(u.name, nome)
       );
     }
     if (email) {
       filtrados = filtrados.filter((u) =>
-        u.email?.toLowerCase().includes(email.toLowerCase())
+        contemTextoBusca(u.email, email)
       );
     }
     if (empresa) {
       filtrados = filtrados.filter((u) =>
-        u.empresa?.toLowerCase().includes(empresa.toLowerCase())
+        contemTextoBusca(u.empresa, empresa)
       );
     }
     if (perfil) {
       filtrados = filtrados.filter((u) =>
-        u.perfil?.nome?.toLowerCase().includes(perfil.toLowerCase())
+        contemTextoBusca(u.perfil?.nome, perfil)
       );
     }
 
