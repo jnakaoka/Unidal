@@ -4,6 +4,7 @@ import api from "@/services/api";
 import Pagination, { usePagination } from "@/components/pagination-utils";
 import { Button } from "@/components/ui/button";
 import LoadingState from "@/components/LoadingState";
+import { contemTextoBusca } from "@/utils/text";
 
 // ==== Tipos ====
 type Perfil = {
@@ -77,12 +78,6 @@ const RelatoriosMotorista: React.FC = () => {
   const toNumHours = (h?: number | string) => toNum(h);
 
   const normalize = (s?: string | null) => (s ?? "").trim();
-  const includesCI = (hay?: string | null, needle?: string) => {
-    const h = normalize(hay).toLowerCase();
-    const n = (needle ?? "").trim().toLowerCase();
-    if (!n) return true;
-    return h.includes(n);
-  };
   const veiculoTexto = (r: RegistroHorasMotorista) => {
     const veiculo = veiculos.find(item => item.id === r.transporte_veiculo_id);
     return veiculo ? `${veiculo.matricula} — ${veiculo.tipo}` : normalize(r.matricula) || "-";
@@ -217,9 +212,9 @@ const RelatoriosMotorista: React.FC = () => {
         return false;
 
       // matrícula / origem / destino (contains case-insensitive)
-      if (!includesCI(veiculoTexto(r), filtroMatricula)) return false;
-      if (!includesCI(enderecoTexto(r, "origem"), filtroOrigem)) return false;
-      if (!includesCI(enderecoTexto(r, "destino"), filtroDestino)) return false;
+      if (!contemTextoBusca(veiculoTexto(r), filtroMatricula)) return false;
+      if (!contemTextoBusca(enderecoTexto(r, "origem"), filtroOrigem)) return false;
+      if (!contemTextoBusca(enderecoTexto(r, "destino"), filtroDestino)) return false;
 
       // data
       if (!r.data) return false;
