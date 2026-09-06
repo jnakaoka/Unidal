@@ -1,7 +1,7 @@
 """add double journey fields
 
 Revision ID: e4c8a2d91f06
-Revises: c7ccf17ce974
+Revises: b557ffcd2731
 """
 from typing import Sequence, Union
 
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 revision: str = "e4c8a2d91f06"
-down_revision: Union[str, None] = "c7ccf17ce974"
+down_revision: Union[str, None] = "b557ffcd2731"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
