@@ -2295,52 +2295,10 @@ const RegistroHoras: React.FC = () => {
                   ].join(" ")}
                 >
                   <h3 className="mb-4 text-sm font-semibold text-gray-700">
-                    Dados de Motorista
+                    Transporte de máquinas
                   </h3>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="min-w-0">
-                      <Label className="mb-1 block">Origem</Label>
-                      <Input
-                        value={formData.origem}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            origem: e.target.value,
-                          })
-                        }
-                        className={classeInputMotorista}
-                      />
-                    </div>
-
-                    <div className="min-w-0">
-                      <Label className="mb-1 block">Destino</Label>
-                      <Input
-                        value={formData.destino}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            destino: e.target.value,
-                          })
-                        }
-                        className={classeInputMotorista}
-                      />
-                    </div>
-
-                    <div className="min-w-0">
-                      <Label className="mb-1 block">Matrícula</Label>
-                      <Input
-                        value={formData.matricula}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            matricula: e.target.value,
-                          })
-                        }
-                        className={classeInputMotorista}
-                      />
-                    </div>
-
                     <div className="min-w-0">
                       <Label className="mb-1 block">KM Rodados</Label>
                       <Input
@@ -2357,27 +2315,6 @@ const RegistroHoras: React.FC = () => {
                       />
                     </div>
 
-                    <div className="min-w-0 md:col-span-2">
-                      <Label className="mb-1 block">
-                        Máquinas transportadas
-                      </Label>
-
-                      <Input
-                        placeholder="Ex.: WS940C, YZ30, Pá carregadora..."
-                        value={formData.maquinas_transportadas}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            maquinas_transportadas: e.target.value,
-                          })
-                        }
-                        className={classeInputMotorista}
-                      />
-                    </div>
-
-                    <div className="md:col-span-2 border-t pt-4">
-                      <h4 className="font-semibold text-gray-700">Dados detalhados do transporte</h4>
-                    </div>
                     <div><Label>Origem — morada</Label><Input value={formData.origem_morada} onChange={e => setFormData({...formData, origem_morada: e.target.value})}/></div>
                     <div><Label>Origem — código postal</Label><Input value={formData.origem_codigo_postal} onChange={e => setFormData({...formData, origem_codigo_postal: e.target.value})}/></div>
                     <div><Label>Origem — região/localidade</Label><Input value={formData.origem_regiao} onChange={e => setFormData({...formData, origem_regiao: e.target.value})}/></div>
@@ -2624,7 +2561,22 @@ const RegistroHoras: React.FC = () => {
             ) : (
               pageItems.map((reg, index) => {
 
-                const isMoto = reg.origem != null && reg.origem != '';
+                // Registos antigos usavam `origem`; os novos usam os campos
+                // estruturados, veículo e máquinas do catálogo.
+                const isMoto = Boolean(
+                  reg.origem?.trim() ||
+                  reg.destino?.trim() ||
+                  reg.matricula?.trim() ||
+                  reg.maquinas_transportadas?.trim() ||
+                  reg.origem_morada?.trim() ||
+                  reg.origem_codigo_postal?.trim() ||
+                  reg.origem_regiao?.trim() ||
+                  reg.destino_morada?.trim() ||
+                  reg.destino_codigo_postal?.trim() ||
+                  reg.destino_regiao?.trim() ||
+                  reg.transporte_veiculo_id ||
+                  reg.transporte_maquina_ids?.length
+                );
 
                 const baseRowClass =
                   index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100';
