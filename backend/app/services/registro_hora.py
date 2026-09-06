@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraUpdate, RegistroHoraResponse
 from app.models.registro_hora import RegistroHora, RegistroHoraEquipa
 from app.models.obra import Obra
+from app.models.user import User
 from typing import Optional
 from datetime import datetime, timezone
 
@@ -14,13 +15,13 @@ def _validar_double_journey(
     *,
     data,
     obra_id: int | None,
-    participantes: list[tuple[int, bool]],
+    participantes: list[tuple[int, bool, str]],
     registro_id: int | None = None,
 ):
     if obra_id is None:
         return
 
-    for user_id, double_journey in participantes:
+    for user_id, double_journey, papel in participantes:
         pertence_a_equipa = exists().where(
             RegistroHoraEquipa.registro_id == RegistroHora.id,
             RegistroHoraEquipa.user_id == user_id,
@@ -54,11 +55,26 @@ def _validar_double_journey(
             )
 
             if not double_journey and not conflito_marcado:
+                funcionario = db.get(User, user_id)
+                nome = funcionario.name if funcionario else f"ID {user_id}"
+                obra = conflito.obra or db.get(Obra, conflito.obra_id)
+                obra_nome = obra.nome if obra else f"ID {conflito.obra_id}"
+                sujeito = (
+                    f"O chefe de equipa {nome}"
+                    if papel == "lider"
+                    else f"O funcionário {nome}"
+                )
+                instrucao = (
+                    "Marque Double Journey do chefe de equipa"
+                    if papel == "lider"
+                    else f"Marque Double Journey para {nome}"
+                )
                 raise HTTPException(
                     status_code=409,
                     detail=(
-                        "O funcionário já está registado noutra obra nesta data. "
-                        "Marque Double Journey para autorizar o segundo apontamento."
+                        f"{sujeito} já está registado na obra {obra_nome} "
+                        f"em {data.strftime('%d/%m/%Y')}. {instrucao} para "
+                        "autorizar o segundo apontamento."
                     ),
                 )
 
@@ -117,9 +133,11 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
 
     equipa_payload = data.pop("equipa", [])  # tratar fora
 
-    participantes = [(registro.usuario_id, registro.double_journey_lider)]
+    participantes = [
+        (registro.usuario_id, registro.double_journey_lider, "lider")
+    ]
     participantes.extend(
-        (m["user_id"], bool(m.get("double_journey", False)))
+        (m["user_id"], bool(m.get("double_journey", False)), "equipa")
         for m in equipa_payload
     )
     _validar_double_journey(
@@ -211,9 +229,11 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
         }
         for membro in reg.equipa
     ]
-    participantes = [(reg.usuario_id, registro.double_journey_lider)]
+    participantes = [
+        (reg.usuario_id, registro.double_journey_lider, "lider")
+    ]
     participantes.extend(
-        (m["user_id"], bool(m.get("double_journey", False)))
+        (m["user_id"], bool(m.get("double_journey", False)), "equipa")
         for m in equipa_para_validacao
     )
     _validar_double_journey(

@@ -1327,6 +1327,21 @@ const RegistroHoras: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, data: e.target.value })}
                   />
                 </div>
+                <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={!!formData.double_journey_lider}
+                    onChange={(e) => setFormData((prev) => ({
+                      ...prev,
+                      double_journey_lider: e.target.checked,
+                    }))}
+                  />
+                  <span>
+                    <b>Double Journey do chefe de equipa</b>
+                    <span className="block text-xs">Marque se o chefe trabalhou noutra obra nesta data.</span>
+                  </span>
+                </label>
                 {/* <div className="ff-class-form-registro-hora-elements align-float-left" >
                   <Label className="ff-class-form-registro-hora-elements-lbl">Cliente</Label>
                   <Input
@@ -1899,18 +1914,6 @@ const RegistroHoras: React.FC = () => {
                     })}
                   </div>
                 )}
-
-                <label className="mb-3 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                  <input
-                    type="checkbox"
-                    checked={!!formData.double_journey_lider}
-                    onChange={(e) => setFormData((prev) => ({
-                      ...prev,
-                      double_journey_lider: e.target.checked,
-                    }))}
-                  />
-                  <span><b>Double Journey do chefe de equipa</b> — trabalhou noutra obra nesta data</span>
-                </label>
 
                 <label className="block text-sm font-medium text-gray-700" style={{ fontWeight: '700' }} >Equipa</label>
                 <div className="space-y-3">
