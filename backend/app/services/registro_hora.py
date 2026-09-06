@@ -1,6 +1,5 @@
 # services/registro_hora.py
 from fastapi import HTTPException
-from sqlalchemy import exists, or_
 from sqlalchemy.orm import Session, joinedload
 from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraUpdate, RegistroHoraResponse
 from app.models.registro_hora import RegistroHora, RegistroHoraEquipa
@@ -8,6 +7,41 @@ from app.models.obra import Obra
 from app.models.user import User
 from typing import Optional
 from datetime import datetime, timezone
+
+
+def _manobradores_opcoes(opcoes) -> list[dict]:
+    if opcoes is None:
+        return []
+    if hasattr(opcoes, "model_dump"):
+        opcoes = opcoes.model_dump()
+    if not isinstance(opcoes, dict):
+        return []
+    return [m for m in opcoes.get("manobradores", []) if isinstance(m, dict)]
+
+
+def _validar_manobradores(db: Session, opcoes) -> list[dict]:
+    manobradores = _manobradores_opcoes(opcoes)
+    opcoes_dict = opcoes.model_dump() if hasattr(opcoes, "model_dump") else (opcoes or {})
+    vinculos: set[tuple[int, str]] = set()
+    for item in manobradores:
+        user_id = item.get("user_id")
+        opcao = item.get("opcao")
+        vinculo = (user_id, opcao)
+        if vinculo in vinculos:
+            raise HTTPException(
+                status_code=422,
+                detail="O mesmo manobrador não pode ser repetido na mesma opção de máquina.",
+            )
+        vinculos.add(vinculo)
+        if not isinstance(opcoes_dict.get(opcao), dict) or not opcoes_dict[opcao].get("checked"):
+            raise HTTPException(
+                status_code=422,
+                detail="A opção de máquina ligada ao manobrador precisa estar selecionada.",
+            )
+        funcionario = db.get(User, user_id)
+        if not funcionario or not funcionario.is_active:
+            raise HTTPException(status_code=422, detail="Manobrador inválido ou inativo.")
+    return manobradores
 
 
 def _validar_double_journey(
@@ -22,23 +56,27 @@ def _validar_double_journey(
         return
 
     for user_id, double_journey, papel in participantes:
-        pertence_a_equipa = exists().where(
-            RegistroHoraEquipa.registro_id == RegistroHora.id,
-            RegistroHoraEquipa.user_id == user_id,
-        )
         query = db.query(RegistroHora).filter(
             RegistroHora.data == data,
             RegistroHora.obra_id.isnot(None),
             RegistroHora.obra_id != obra_id,
-            or_(
-                RegistroHora.usuario_id == user_id,
-                pertence_a_equipa,
-            ),
         )
         if registro_id is not None:
             query = query.filter(RegistroHora.id != registro_id)
 
         for conflito in query.all():
+            manobrador_conflitante = next(
+                (item for item in _manobradores_opcoes(conflito.intervencao_maquinas_opcoes)
+                 if item.get("user_id") == user_id),
+                None,
+            )
+            participa_conflito = (
+                conflito.usuario_id == user_id
+                or any(item.user_id == user_id for item in conflito.equipa)
+                or manobrador_conflitante is not None
+            )
+            if not participa_conflito:
+                continue
             membro_conflitante = next(
                 (
                     item for item in conflito.equipa
@@ -52,6 +90,9 @@ def _validar_double_journey(
             ) or bool(
                 membro_conflitante
                 and membro_conflitante.double_journey
+            ) or bool(
+                manobrador_conflitante
+                and manobrador_conflitante.get("double_journey", False)
             )
 
             if not double_journey and not conflito_marcado:
@@ -132,6 +173,9 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
     # else: deixe como None (evita 'null' string)
 
     equipa_payload = data.pop("equipa", [])  # tratar fora
+    manobradores_payload = _validar_manobradores(
+        db, data.get("intervencao_maquinas_opcoes")
+    )
 
     participantes = [
         (registro.usuario_id, registro.double_journey_lider, "lider")
@@ -139,6 +183,10 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
     participantes.extend(
         (m["user_id"], bool(m.get("double_journey", False)), "equipa")
         for m in equipa_payload
+    )
+    participantes.extend(
+        (m["user_id"], bool(m.get("double_journey", False)), "manobrador")
+        for m in manobradores_payload
     )
     _validar_double_journey(
         db,
@@ -160,7 +208,6 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
             user_id=m["user_id"],
             intemperie=bool(m.get("intemperie", False)),
             double_journey=bool(m.get("double_journey", False)),
-            e_manobrador=bool(m.get("e_manobrador", False)),
         ))
 
     db.commit()
@@ -220,6 +267,9 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
 
     data = registro.model_dump(exclude_none=True)
     equipa_payload = data.pop("equipa", None)
+    manobradores_payload = _validar_manobradores(
+        db, data.get("intervencao_maquinas_opcoes")
+    )
 
     mod_por = data.pop("modificado_por", None)
 
@@ -227,7 +277,6 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
         {
             "user_id": membro.user_id,
             "double_journey": membro.double_journey,
-            "e_manobrador": membro.e_manobrador,
         }
         for membro in reg.equipa
     ]
@@ -237,6 +286,10 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
     participantes.extend(
         (m["user_id"], bool(m.get("double_journey", False)), "equipa")
         for m in equipa_para_validacao
+    )
+    participantes.extend(
+        (m["user_id"], bool(m.get("double_journey", False)), "manobrador")
+        for m in manobradores_payload
     )
     _validar_double_journey(
         db,
@@ -266,7 +319,6 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
                 user_id=m["user_id"],
                 intemperie=bool(m.get("intemperie", False)),
                 double_journey=bool(m.get("double_journey", False)),
-                e_manobrador=bool(m.get("e_manobrador", False)),
             ))
 
     db.commit()

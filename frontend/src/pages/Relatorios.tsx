@@ -10,6 +10,7 @@ import LoadingState from "@/components/LoadingState";
 type User = { id: number; name: string; empresa?: string };
 type Cliente = { id: number; nome: string };
 type Obra = { id: number; nome: string; cliente_id: number; cliente?: Cliente };
+type ManobradorMaquina = { user_id: number; opcao: string; double_journey?: boolean };
 
 // Opções de máquinas (mantém alinhado com RegistroHoras.tsx)
 type IntervencaoMaquinasOpcoes = {
@@ -22,6 +23,7 @@ type IntervencaoMaquinasOpcoes = {
   lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string };
+  manobradores?: ManobradorMaquina[];
 };
 
 type RegistroHoras = {
@@ -46,7 +48,7 @@ type RegistroHoras = {
 
   // novos campos usados no relatório
   metros_quadrados?: string | number;
-  equipa?: { user: User; intemperie?: boolean; e_manobrador?: boolean }[];
+  equipa?: { user: User; intemperie?: boolean }[];
   intervencao_maquinas?: boolean;
   intervencao_maquinas_opcoes?: IntervencaoMaquinasOpcoes | null;
 };
@@ -184,7 +186,10 @@ const Relatorios: React.FC = () => {
       { total: number; intemperie: number; normais: number }
     > = {};
 
-    (r.equipa || []).filter((e) => !e.e_manobrador).forEach((e) => {
+    const idsManobradores = new Set(
+      (r.intervencao_maquinas_opcoes?.manobradores || []).map(item => item.user_id)
+    );
+    (r.equipa || []).filter(e => !idsManobradores.has(e.user.id)).forEach((e) => {
       const empRaw = e.user?.empresa?.substring(0, 7) || "Sem Empresa";
       const empresa = empRaw.trim() || "Sem Empresa";
 
@@ -257,14 +262,39 @@ const Relatorios: React.FC = () => {
       .join("");
   };
 
-  const manobradores = (r: RegistroHoras) =>
-    (r.equipa || []).filter((e) => e.e_manobrador);
+  const manobradoresDoRegistro = (r: RegistroHoras) => {
+    const itens = r.intervencao_maquinas_opcoes?.manobradores || [];
+    return Array.from(new Map(itens.map(item => [item.user_id, item])).values());
+  };
+
+  const nomeOpcaoManobrador = (opcao: string) => ({
+    laserComManobrador: "Máq Laser",
+    poComManobrador: "Máq Pó",
+    laserWS940CComManobrador: "Laser WS940C",
+    lazerYZ30ComManobrador: "Laser YZ30",
+  }[opcao] || opcao);
 
   const resumoManobradores = (r: RegistroHoras): string => {
-    const itens = manobradores(r).map((e) =>
-      `${e.user?.name || "Utilizador"} (${e.user?.empresa || "Sem Empresa"})`
-    );
-    return itens.length ? itens.join(", ") : "—";
+    const novos = (r.intervencao_maquinas_opcoes?.manobradores || []).map(item => {
+      const utilizador = leaders.find(user => user.id === item.user_id);
+      return `${utilizador?.name || `#${item.user_id}`} (${utilizador?.empresa || "Sem Empresa"}) — ${nomeOpcaoManobrador(item.opcao)}`;
+    });
+    const legado = r.intervencao_maquinas_opcoes?.manobrador;
+    if (legado?.checked) {
+      novos.push(`Registo antigo: ${legado.qtd || 1} (${legado.empresa || "Sem Empresa"})`);
+    }
+    return novos.length ? novos.join("; ") : "—";
+  };
+
+  const contagensPessoal = (r: RegistroHoras) => {
+    const idsManobradores = new Set(manobradoresDoRegistro(r).map(item => item.user_id));
+    const trabalhadores = (r.equipa || []).filter(e => !idsManobradores.has(e.user.id)).length;
+    const manobradoresNovos = idsManobradores.size;
+    const manobradoresLegado = r.intervencao_maquinas_opcoes?.manobrador?.checked
+      ? r.intervencao_maquinas_opcoes.manobrador.qtd || 1
+      : 0;
+    const manobradores = manobradoresNovos || manobradoresLegado;
+    return { trabalhadores, manobradores, total: trabalhadores + manobradores };
   };
 
 
@@ -426,7 +456,7 @@ const Relatorios: React.FC = () => {
             "soMaqLazerYZ30",
           ].includes(filtroMaquinas)
         ) {
-          const key = filtroMaquinas as keyof IntervencaoMaquinasOpcoes;
+          const key = filtroMaquinas as Exclude<keyof IntervencaoMaquinasOpcoes, "manobradores">;
           const checked = r.intervencao_maquinas_opcoes?.[key]?.checked;
           if (!checked) return false;
         }
@@ -534,9 +564,7 @@ const Relatorios: React.FC = () => {
     // usa a lista ORDENADA
     const rows = registrosFiltradosSorted
       .map((r, idx) => {
-        const totalUsers = r.equipa?.length || 0;
-        const totalManobradores = manobradores(r).length;
-        const totalTrabalhadores = totalUsers - totalManobradores;
+        const pessoal = contagensPessoal(r);
         //const metros = toNum(r.metros_quadrados);
         const rowClass = idx % 2 === 0 ? "line-bg-white-600" : "line-bg-gray-100";
         return `
@@ -545,9 +573,9 @@ const Relatorios: React.FC = () => {
             <td>${r.user?.name ?? `#${r.usuario_id}`}</td>
             <td>${r.cliente?.nome ?? (r.cliente_id ?? "-")}</td>
             <td>${r.obra?.nome ?? (r.obra_id ?? "-")}</td>
-            <td style="text-align:center">${totalTrabalhadores}</td>
+            <td style="text-align:center">${pessoal.trabalhadores}</td>
             <td>${resumoManobradores(r)}</td>
-            <td style="text-align:center">${totalUsers}</td>
+            <td style="text-align:center">${pessoal.total}</td>
             <td>${resumoEmpresasHtml(r)}</td>
             <td>${r.metros_quadrados}</td>
             <td>${etapasResumo(r)}</td>
@@ -603,7 +631,7 @@ const Relatorios: React.FC = () => {
               <col style="width:12%" />
               <col style="width:12%" />
               <col style="width:6%" />
-              <col style="width:13%" />
+              <col style="width:14%" />
               <col style="width:6%" />
               <col style="width:12%" />
               <col style="width:8%" />
@@ -962,7 +990,7 @@ const Relatorios: React.FC = () => {
             <col style={{ width: "12%" }} />  {/* Cliente */}
             <col style={{ width: "12%" }} />  {/* Obra */}
             <col style={{ width: "6%" }} />   {/* Nº Trab. */}
-            <col style={{ width: "13%" }} />  {/* Manobradores */}
+            <col style={{ width: "14%" }} />  {/* Manobradores */}
             <col style={{ width: "6%" }} />   {/* Total Geral */}
             <col style={{ width: "12%" }} />  {/* Trab. por Empresa */}
             <col style={{ width: "6%" }} />   {/* m² */}
@@ -1007,9 +1035,7 @@ const Relatorios: React.FC = () => {
               </tr>
             ) : (
               pageItems.map((r, idx) => {
-                const totalUsers = r.equipa?.length || 0;
-                const totalManobradores = manobradores(r).length;
-                const totalTrabalhadores = totalUsers - totalManobradores;
+                const pessoal = contagensPessoal(r);
                 //const metros = toNum(r.metros_quadrados);
                 return (
                   <tr key={r.id} className={idx % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
@@ -1017,9 +1043,9 @@ const Relatorios: React.FC = () => {
                     <td className="px-4 py-2">{r.user?.name ?? `#${r.usuario_id}`}</td>
                     <td className="px-4 py-2">{r.cliente?.nome ?? (r.cliente_id ?? "-")}</td>
                     <td className="px-4 py-2">{r.obra?.nome ?? (r.obra_id ?? "-")}</td>
-                    <td className="px-4 py-2">{totalTrabalhadores}</td>
+                    <td className="px-4 py-2">{pessoal.trabalhadores}</td>
                     <td className="px-4 py-2">{resumoManobradores(r)}</td>
-                    <td className="px-4 py-2">{totalUsers}</td>
+                    <td className="px-4 py-2">{pessoal.total}</td>
                     <td className="px-4 py-2 whitespace-pre-wrap">{renderResumoEmpresas(r)}</td>
                     {/* <td className="px-4 py-2">{metros}</td> */}
                     <td className="px-4 py-2">{r.metros_quadrados}</td>

@@ -1,9 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import exists, or_
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import RegistroHora, User, Projeto
-from app.models.registro_hora import RegistroHoraEquipa
 from app.schemas.relatorio import DiasTrabalhadosOut, DoubleJourneyOut, RegistroHoraOut
 from app.dependencies.auth import require_role
 from typing import List, Optional
@@ -30,26 +28,7 @@ def relatorio_dias_trabalhados(
     if not funcionario:
         raise HTTPException(status_code=404, detail="Funcionário não encontrado.")
 
-    pertence_a_equipa = exists().where(
-        RegistroHoraEquipa.registro_id == RegistroHora.id,
-        RegistroHoraEquipa.user_id == funcionario_id,
-    )
-    datas = (
-        db.query(RegistroHora.data)
-        .filter(
-            RegistroHora.data.between(data_inicio, data_fim),
-            or_(
-                RegistroHora.usuario_id == funcionario_id,
-                pertence_a_equipa,
-            ),
-        )
-        .distinct()
-        .order_by(RegistroHora.data.asc())
-        .all()
-    )
-    datas_trabalhadas = [item[0] for item in datas]
-
-    registros = (
+    registros_periodo = (
         db.query(RegistroHora)
         .options(
             joinedload(RegistroHora.obra),
@@ -57,13 +36,25 @@ def relatorio_dias_trabalhados(
         )
         .filter(
             RegistroHora.data.between(data_inicio, data_fim),
-            or_(
-                RegistroHora.usuario_id == funcionario_id,
-                pertence_a_equipa,
-            ),
         )
         .all()
     )
+    registros = []
+    for registro in registros_periodo:
+        manobradores = (
+            (registro.intervencao_maquinas_opcoes or {}).get("manobradores", [])
+            if isinstance(registro.intervencao_maquinas_opcoes, dict)
+            else []
+        )
+        participa = (
+            registro.usuario_id == funcionario_id
+            or any(item.user_id == funcionario_id for item in registro.equipa)
+            or any(item.get("user_id") == funcionario_id for item in manobradores)
+        )
+        if participa:
+            registros.append(registro)
+
+    datas_trabalhadas = sorted({registro.data for registro in registros})
     por_data: dict[date, dict] = {}
     for registro in registros:
         membro = next(
@@ -76,7 +67,15 @@ def relatorio_dias_trabalhados(
         marcado = (
             registro.usuario_id == funcionario_id
             and registro.double_journey_lider
-        ) or bool(membro and membro.double_journey)
+        ) or bool(membro and membro.double_journey) or any(
+            item.get("user_id") == funcionario_id
+            and item.get("double_journey", False)
+            for item in (
+                (registro.intervencao_maquinas_opcoes or {}).get("manobradores", [])
+                if isinstance(registro.intervencao_maquinas_opcoes, dict)
+                else []
+            )
+        )
         grupo = por_data.setdefault(
             registro.data,
             {"marcado": False, "obras": set()},

@@ -42,7 +42,6 @@ interface RegistroEquipa {
   user: User;
   intemperie: boolean;
   double_journey: boolean;
-  e_manobrador: boolean;
 }
 
 type IntervencaoMaquinasOpcoes = {
@@ -55,7 +54,27 @@ type IntervencaoMaquinasOpcoes = {
   lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string }; //Só  Maq Lazer YZ30
+  manobradores?: ManobradorMaquina[];
 };
+
+type OpcaoComManobrador =
+  | 'laserComManobrador'
+  | 'poComManobrador'
+  | 'laserWS940CComManobrador'
+  | 'lazerYZ30ComManobrador';
+
+type ManobradorMaquina = {
+  user_id: number;
+  opcao: OpcaoComManobrador | '';
+  double_journey: boolean;
+};
+
+const opcoesComManobrador: { value: OpcaoComManobrador; label: string }[] = [
+  { value: 'laserComManobrador', label: 'Máq Laser c/ manobrador' },
+  { value: 'poComManobrador', label: 'Máq Pó c/ manobrador' },
+  { value: 'laserWS940CComManobrador', label: 'Laser WS940C c/ manobrador' },
+  { value: 'lazerYZ30ComManobrador', label: 'Laser YZ30 c/ manobrador' },
+];
 
 interface RegistroHoras {
   id: number;
@@ -132,7 +151,7 @@ const RegistroHoras: React.FC = () => {
     matricula?: string;
     km_rodados?: string;
     maquinas_transportadas?: string;
-    equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean; double_journey?: boolean; e_manobrador?: boolean }[];
+    equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean; double_journey?: boolean }[];
   };
   const { user } = useAuth();
   const [usuarios, setUsuarios] = useState<User[]>([]);
@@ -176,7 +195,6 @@ const RegistroHoras: React.FC = () => {
   const [obrasFiltro, setObrasFiltro] = useState<Obra[]>([]);
   const [intemperiePorUserId, setIntemperiePorUserId] = useState<Record<number, boolean>>({});
   const [doubleJourneyPorUserId, setDoubleJourneyPorUserId] = useState<Record<number, boolean>>({});
-  const [manobradorPorUserId, setManobradorPorUserId] = useState<Record<number, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<{type: 'success'|'error'|'info', text: string} | null>(null);
   const [searchUser, setSearchUser] = useState('');
@@ -225,6 +243,7 @@ const RegistroHoras: React.FC = () => {
       lazerYZ30ComManobrador: { checked: false,  m2: '', empresa: '' },
       soMaqLaserWS940C: { checked: false,  m2: '', empresa: '' },
       soMaqLazerYZ30: { checked: false,  m2: '', empresa: '' }, //Só  Maq Lazer YZ30
+      manobradores: [],
     },
     origem: "",
     destino: "",
@@ -529,14 +548,8 @@ const RegistroHoras: React.FC = () => {
 
     if (event.target.checked) {
       updatedSelectedUsers = [...selectedUsers, value];
-      setIntemperiePorUserId(prev => ({ ...prev, [value]: prev[value] ?? false }));
-      setDoubleJourneyPorUserId(prev => ({ ...prev, [value]: prev[value] ?? false }));
-      setManobradorPorUserId(prev => ({ ...prev, [value]: prev[value] ?? false }));
     } else {
       updatedSelectedUsers = selectedUsers.filter((id) => id !== value);
-      setIntemperiePorUserId(prev => ({ ...prev, [value]: false }));
-      setDoubleJourneyPorUserId(prev => ({ ...prev, [value]: false }));
-      setManobradorPorUserId(prev => ({ ...prev, [value]: false }));
     }
 
     console.log('updatedSelectedUsers', updatedSelectedUsers);
@@ -588,11 +601,6 @@ const RegistroHoras: React.FC = () => {
     setDoubleJourneyPorUserId(
       Object.fromEntries(
         regHora.equipa.map(e => [e.user.id, !!e.double_journey])
-      )
-    );
-    setManobradorPorUserId(
-      Object.fromEntries(
-        regHora.equipa.map(e => [e.user.id, !!e.e_manobrador])
       )
     );
 
@@ -655,6 +663,7 @@ const RegistroHoras: React.FC = () => {
                           m2: regHora?.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.m2 ?? '',
                           empresa: regHora.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.empresa ?? ''
                         },
+        manobradores: regHora.intervencao_maquinas_opcoes?.manobradores ?? [],
       },
       projeto_id: 1,
       usuario_id: regHora.usuario_id,
@@ -671,7 +680,6 @@ const RegistroHoras: React.FC = () => {
         empresa: e.user.empresa,
         intemperie: !!intemperiePorUserId[e.user.id],
         double_journey: !!e.double_journey,
-        e_manobrador: !!e.e_manobrador,
       })) ?? [],
     });
 
@@ -741,7 +749,6 @@ const RegistroHoras: React.FC = () => {
           empresa: user.empresa,
           intemperie: !!intemperiePorUserId[user.id],
           double_journey: !!doubleJourneyPorUserId[user.id],
-          e_manobrador: !!manobradorPorUserId[user.id],
         };
       })
       .filter(Boolean); // remove nulls se algum id não for encontrado
@@ -751,6 +758,18 @@ const RegistroHoras: React.FC = () => {
 
       if (!formData.data || cid == null || oid == null) {
         showNotice('error', 'Preencha Data, Cliente e Obra.');
+        return;
+      }
+
+      const manobradores = formData.intervencao_maquinas_opcoes.manobradores || [];
+      if (manobradores.some(item => !item.user_id || !item.opcao)) {
+        showNotice('error', 'Selecione o funcionário e a opção de máquina de cada manobrador.');
+        return;
+      }
+
+      const vinculos = manobradores.map(item => `${item.user_id}:${item.opcao}`);
+      if (new Set(vinculos).size !== vinculos.length) {
+        showNotice('error', 'O mesmo manobrador não pode ser repetido na mesma opção de máquina.');
         return;
       }
 
@@ -910,18 +929,22 @@ const RegistroHoras: React.FC = () => {
         lazerYZ30ComManobrador: { checked: false, m2: '', empresa: '' },
         soMaqLaserWS940C: { checked: false, m2: '', empresa: '' },
         soMaqLazerYZ30: { checked: false, m2: '', empresa: '' },
+        manobradores: [],
       } as IntervencaoMaquinasOpcoes,
       equipa: [] as { user_id: number; email: string, empresa: string }[]});
     setSelectedUsers([]);
     setIntemperiePorUserId({});
     setDoubleJourneyPorUserId({});
-    setManobradorPorUserId({});
     setEditingRegistroHoras(null);
     setIsEditing(false);
     setModalAberto(false);
   };
 
   const toggleOpcaoIntervencao = (key: keyof IntervencaoMaquinasOpcoes, checked: boolean) => {
+    if (!checked && (formData.intervencao_maquinas_opcoes.manobradores || []).some(item => item.opcao === key)) {
+      showNotice('info', 'Remova primeiro os manobradores ligados a esta opção de máquina.');
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       intervencao_maquinas_opcoes: {
@@ -934,6 +957,41 @@ const RegistroHoras: React.FC = () => {
     }));
   };
 
+  const adicionarManobrador = () => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        manobradores: [
+          ...(prev.intervencao_maquinas_opcoes.manobradores || []),
+          { user_id: 0, opcao: '', double_journey: false },
+        ],
+      },
+    }));
+  };
+
+  const atualizarManobrador = (index: number, dados: Partial<ManobradorMaquina>) => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        manobradores: (prev.intervencao_maquinas_opcoes.manobradores || []).map(
+          (item, i) => i === index ? { ...item, ...dados } : item
+        ),
+      },
+    }));
+  };
+
+  const removerManobrador = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        manobradores: (prev.intervencao_maquinas_opcoes.manobradores || []).filter((_, i) => i !== index),
+      },
+    }));
+  };
+
   const setValorM2 = (key: Exclude<keyof IntervencaoMaquinasOpcoes, 'manobrador'>, m2: string) => {
     setFormData(prev => ({
       ...prev,
@@ -942,19 +1000,6 @@ const RegistroHoras: React.FC = () => {
         [key]: {
           ...(prev.intervencao_maquinas_opcoes as IntervencaoMaquinasOpcoes)[key],
           m2
-        }
-      }
-    }));
-  };
-
-  const setQtdManobrador = (qtd: number) => {
-    setFormData(prev => ({
-      ...prev,
-      intervencao_maquinas_opcoes: {
-        ...prev.intervencao_maquinas_opcoes,
-        manobrador: {
-          ...prev.intervencao_maquinas_opcoes!.manobrador,
-          qtd
         }
       }
     }));
@@ -1200,7 +1245,6 @@ const RegistroHoras: React.FC = () => {
     // define intemperie padrão (ajuste se quiser herdar algo)
     setIntemperiePorUserId(prev => ({ ...prev, [u.id]: false }));
     setDoubleJourneyPorUserId(prev => ({ ...prev, [u.id]: false }));
-    setManobradorPorUserId(prev => ({ ...prev, [u.id]: false }));
 
     // limpa busca
     setSearchUser('');
@@ -1645,15 +1689,6 @@ const RegistroHoras: React.FC = () => {
                         value={formData.intervencao_maquinas_opcoes.laserComManobrador?.m2}
                         onChange={(e) => setValorM2('laserComManobrador', e.target.value)}
                       />
-                      <select
-                        className="border rounded px-2 py-1"
-                        disabled={!formData.intervencao_maquinas_opcoes.laserComManobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.laserComManobrador?.empresa || ""}
-                        onChange={(e) => setEmpresaOpt('laserComManobrador', e.target.value)}
-                      >
-                        <option value="">Empresa</option>
-                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                      </select>
                     </label>
 
                     {/* Máq Pó c/ manobrador (m2) */}
@@ -1672,44 +1707,8 @@ const RegistroHoras: React.FC = () => {
                         value={formData.intervencao_maquinas_opcoes.poComManobrador?.m2}
                         onChange={(e) => setValorM2('poComManobrador', e.target.value)}
                       />
-                      <select
-                        className="border rounded px-2 py-1"
-                        disabled={!formData.intervencao_maquinas_opcoes.poComManobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.poComManobrador?.empresa || ""}
-                        onChange={(e) => setEmpresaOpt('poComManobrador', e.target.value)}
-                      >
-                        <option value="">Empresa</option>
-                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                      </select>
                     </label>
 
-                    {/* Manobrador (Quantidade 1 ou 2) */}
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={formData.intervencao_maquinas_opcoes.manobrador?.checked}
-                        onChange={(e) => toggleOpcaoIntervencao('manobrador', e.target.checked)}
-                      />
-                      <span className="min-w-[14ch]">Manobrador (Qtd)</span>
-                      <Input
-                        type="number"
-                        className="w-24"
-                        min={1}
-                        // max={2}
-                        disabled={!formData.intervencao_maquinas_opcoes.manobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.manobrador?.qtd}
-                        onChange={(e) => setQtdManobrador(Math.max(1, Math.min(2, Number(e.target.value) || 1)))}
-                      />
-                      <select
-                        className="border rounded px-2 py-1"
-                        disabled={!formData.intervencao_maquinas_opcoes.manobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.manobrador?.empresa || ""}
-                        onChange={(e) => setEmpresaOpt('manobrador', e.target.value)}
-                      >
-                        <option value="">Empresa</option>
-                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                      </select>
-                    </label>
 
                     {/* Só Máq Laser (m2) */}
                     <label className="flex items-center gap-3">
@@ -1780,15 +1779,6 @@ const RegistroHoras: React.FC = () => {
                         value={formData.intervencao_maquinas_opcoes.laserWS940CComManobrador?.m2}
                         onChange={(e) => setValorM2('laserWS940CComManobrador', e.target.value)}
                       />
-                      <select
-                        className="border rounded px-2 py-1"
-                        disabled={!formData.intervencao_maquinas_opcoes.laserWS940CComManobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.laserWS940CComManobrador?.empresa || ""}
-                        onChange={(e) => setEmpresaOpt('laserWS940CComManobrador', e.target.value)}
-                      >
-                        <option value="">Empresa</option>
-                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                      </select>
                     </label>
                     {/* lazer YZ30 (m2) com manobrador */}
                     <label className="flex items-center gap-3">
@@ -1805,15 +1795,6 @@ const RegistroHoras: React.FC = () => {
                         disabled={!formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.checked}                        value={formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.m2}
                         onChange={(e) => setValorM2('lazerYZ30ComManobrador', e.target.value)}
                       />
-                      <select
-                        className="border rounded px-2 py-1"
-                        disabled={!formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.empresa || ""}
-                        onChange={(e) => setEmpresaOpt('lazerYZ30ComManobrador', e.target.value)}
-                      >
-                        <option value="">Empresa</option>
-                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                      </select>
                     </label>
                     {/* so maquinas laser WS940C (m2)  */}
                     <label className="flex items-center gap-3">
@@ -1868,6 +1849,81 @@ const RegistroHoras: React.FC = () => {
                       </select>
                     </label>
                   </div>
+
+                  <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h4 className="font-semibold text-blue-950">Manobradores por máquina</h4>
+                        <p className="text-xs text-blue-800">
+                          Selecione o funcionário e a intervenção específica. A empresa vem do cadastro.
+                        </p>
+                      </div>
+                      <Button type="button" className="btn-bg-blue-500" onClick={adicionarManobrador}>
+                        + Adicionar manobrador
+                      </Button>
+                    </div>
+
+                    {(formData.intervencao_maquinas_opcoes.manobradores || []).length === 0 ? (
+                      <p className="text-sm text-gray-500">Nenhum manobrador adicionado.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {(formData.intervencao_maquinas_opcoes.manobradores || []).map((item, index) => {
+                          const funcionario = usuarios.find(u => u.id === item.user_id);
+                          return (
+                            <div key={index} className="grid gap-3 rounded-md border bg-white p-3 md:grid-cols-[1.4fr_1.4fr_0.8fr_auto] md:items-end">
+                              <div>
+                                <Label>Funcionário</Label>
+                                <select
+                                  className="w-full rounded border bg-white px-3 py-2"
+                                  value={item.user_id || ''}
+                                  onChange={(e) => atualizarManobrador(index, { user_id: Number(e.target.value) })}
+                                >
+                                  <option value="">Selecione</option>
+                                  {usuarios.map(u => (
+                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <Label>Opção de intervenção</Label>
+                                <select
+                                  className="w-full rounded border bg-white px-3 py-2"
+                                  value={item.opcao}
+                                  onChange={(e) => {
+                                    const opcao = e.target.value as OpcaoComManobrador;
+                                    atualizarManobrador(index, { opcao });
+                                    toggleOpcaoIntervencao(opcao, true);
+                                  }}
+                                >
+                                  <option value="">Selecione</option>
+                                  {opcoesComManobrador.map(opcao => (
+                                    <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <Label>Empresa</Label>
+                                <div className="rounded border bg-gray-100 px-3 py-2 text-sm">
+                                  {funcionario?.empresa || '—'}
+                                </div>
+                                <label className="mt-2 inline-flex items-center gap-2 text-xs text-amber-800">
+                                  <input
+                                    type="checkbox"
+                                    checked={item.double_journey}
+                                    onChange={(e) => atualizarManobrador(index, { double_journey: e.target.checked })}
+                                  />
+                                  <b>Double Journey</b>
+                                </label>
+                              </div>
+                              <Button type="button" variant="outline" onClick={() => removerManobrador(index)}>
+                                Remover
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
               <div className="min-w-0 space-y-3 xl:col-span-2">
@@ -1921,12 +1977,7 @@ const RegistroHoras: React.FC = () => {
                           <button
                             type="button"
                             className="text-gray-500 hover:text-gray-800"
-                            onClick={() => {
-                              setSelectedUsers(prev => prev.filter(x => x !== id));
-                              setIntemperiePorUserId(prev => ({ ...prev, [id]: false }));
-                              setDoubleJourneyPorUserId(prev => ({ ...prev, [id]: false }));
-                              setManobradorPorUserId(prev => ({ ...prev, [id]: false }));
-                            }}
+                            onClick={() => setSelectedUsers(prev => prev.filter(x => x !== id))}
                             title="Remover"
                           >
                             ×
@@ -2033,16 +2084,6 @@ const RegistroHoras: React.FC = () => {
                                       }
                                     />
                                     <span><b>Double Journey</b></span>
-                                  </label>
-                                  <label className="inline-flex items-center gap-1 text-blue-800">
-                                    <input
-                                      type="checkbox"
-                                      checked={!!manobradorPorUserId[u.id]}
-                                      onChange={(e) =>
-                                        setManobradorPorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
-                                      }
-                                    />
-                                    <span><b>Manobrador</b></span>
                                   </label>
                                 </span>
                               )}
@@ -2429,7 +2470,6 @@ const RegistroHoras: React.FC = () => {
                             {label}
                             {e.intemperie && <strong> [Intempérie]</strong>}
                             {e.double_journey && <strong className="text-amber-700"> [Double Journey]</strong>}
-                            {e.e_manobrador && <strong className="text-blue-700"> [Manobrador]</strong>}
                           </span>
                         );
                       })}

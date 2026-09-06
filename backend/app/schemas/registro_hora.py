@@ -1,5 +1,5 @@
 # schemas/registro_hora.py
-from typing import List, Optional
+from typing import List, Optional, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import date, datetime
 
@@ -27,6 +27,16 @@ class ManoOpt(BaseModel):
     qtd: int = 1
     empresa: Optional[str] = None
 
+class ManobradorMaquina(BaseModel):
+    user_id: int
+    opcao: Literal[
+        "laserComManobrador",
+        "poComManobrador",
+        "laserWS940CComManobrador",
+        "lazerYZ30ComManobrador",
+    ]
+    double_journey: bool = False
+
 class IntervencaoMaquinasOpcoes(BaseModel):
     laserComManobrador: M2Opt = M2Opt()
     poComManobrador:    M2Opt = M2Opt()
@@ -37,12 +47,12 @@ class IntervencaoMaquinasOpcoes(BaseModel):
     lazerYZ30ComManobrador: M2Opt = M2Opt()
     soMaqLaserWS940C: M2Opt = M2Opt()
     soMaqLazerYZ30: M2Opt = M2Opt()
+    manobradores: List[ManobradorMaquina] = Field(default_factory=list)
 
 class MembroEquipa(BaseModel):
     user_id: int  # valor obrigatório (se quiser opcional, use = None)
     intemperie: bool = False
     double_journey: bool = False
-    e_manobrador: bool = False
 
     class Config:
         from_attributes = True
@@ -184,7 +194,6 @@ class RegistroHoraEquipaResponse(BaseModel):
     user: UserResponse
     intemperie: bool = False
     double_journey: bool = False
-    e_manobrador: bool = False
     class Config:
         from_attributes = True
 
