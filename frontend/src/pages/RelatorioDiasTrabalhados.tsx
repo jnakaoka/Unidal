@@ -62,7 +62,11 @@ const RelatorioDiasTrabalhados: React.FC = () => {
     api.get<User[]>("/users/", { params: { is_active: true } })
       .then(({ data }) => {
         if (ativo) {
-          setFuncionarios([...data].sort((a, b) => a.name.localeCompare(b.name, "pt")));
+          setFuncionarios(
+            data
+              .filter((funcionario) => funcionario.is_active !== false)
+              .sort((a, b) => a.name.localeCompare(b.name, "pt")),
+          );
         }
       })
       .catch(() => ativo && setErro("Não foi possível carregar os funcionários."))
