@@ -18,6 +18,7 @@ interface User {
   name: string;
   email: string;
   empresa: string;
+  is_active?: boolean;
 }
 
 interface Projeto {
@@ -396,7 +397,11 @@ const RegistroHoras: React.FC = () => {
         params: { is_active: true },
       });
       //console.log('usuarios',response.data);
-      const usuariosData = response.data;
+      // A API já recebe is_active=true; o filtro local impede que uma resposta
+      // antiga/cacheada volte a oferecer utilizadores inativos no apontamento.
+      const usuariosData = Array.isArray(response.data)
+        ? response.data.filter((utilizador) => utilizador.is_active !== false)
+        : response.data;
       if (Array.isArray(usuariosData)) {
         setUsuarios(usuariosData);
       } else {
