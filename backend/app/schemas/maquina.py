@@ -25,6 +25,13 @@ class MaquinaUpdate(BaseModel):
     referencia: Optional[str] = Field(default=None, max_length=120)
     ativo: Optional[bool] = None
 
+    @field_validator("nome", "referencia")
+    @classmethod
+    def limpar(cls, valor):
+        if valor is None:
+            return None
+        return " ".join(valor.split()) or None
+
 
 class MaquinaOut(MaquinaBase):
     id: int
