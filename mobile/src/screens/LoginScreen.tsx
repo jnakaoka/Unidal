@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
@@ -10,6 +11,7 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../contexts/AuthContext";
+import { colors } from "../theme";
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
@@ -29,15 +31,13 @@ export default function LoginScreen() {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#f3f4f6" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView
         style={{ flex: 1, justifyContent: "center", padding: 24 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View style={{ alignItems: "center", marginBottom: 32 }}>
-          <Text style={{ fontSize: 40, fontWeight: "700", color: "#111827", marginBottom: 8 }}>
-            Unidal
-          </Text>
+          <Image source={require("../../assets/logo-unidal.png")} style={{ width: 150, height: 90, marginBottom: 10 }} resizeMode="contain" />
           <Text style={{ fontSize: 24, fontWeight: "600", color: "#374151" }}>
             Login
           </Text>
@@ -95,7 +95,7 @@ export default function LoginScreen() {
             onPress={onLogin}
             disabled={loading}
             style={{
-              backgroundColor: "#2563eb",
+              backgroundColor: colors.primary,
               borderRadius: 10,
               paddingVertical: 14,
               alignItems: "center",
