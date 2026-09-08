@@ -1,0 +1,53 @@
+name: Build Unidal Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature-mobile-apk
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-apk.yml"
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Obter código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Gerar projeto Android
+        run: npx expo prebuild --platform android --non-interactive
+
+      - name: Compilar APK
+        run: ./gradlew assembleRelease
+        working-directory: mobile/android
+        env:
+          GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=1g"
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: unidal-android-apk
+          path: mobile/android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
