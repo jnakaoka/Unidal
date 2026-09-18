@@ -18,7 +18,7 @@ router = APIRouter()
 def face_profile_status(
     user_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_role("admin")),
 ):
     return face_profile_service.get_status(db, user_id)
 
