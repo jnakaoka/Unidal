@@ -31,7 +31,13 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir que a Unidal utilize a câmera para cadastro e validação facial.",
+          "recordAudioAndroid": false
+        }
+      ]
     ]
   }
 }
