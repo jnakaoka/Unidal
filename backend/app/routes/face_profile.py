@@ -22,6 +22,8 @@ router = APIRouter()
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MIN_ENROLLMENT_IMAGES = 3
+MAX_ENROLLMENT_IMAGES = 5
 
 
 async def _read_face_image(image: UploadFile) -> bytes:
@@ -54,15 +56,24 @@ def face_profile_status(
 @router.post("/users/{user_id}/enroll", response_model=FaceProfileEnrollOut)
 async def enroll_face_profile(
     user_id: int,
-    image: UploadFile = File(...),
+    images: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin")),
     face_engine: FaceEngine = Depends(get_face_engine),
 ):
-    image_bytes = await _read_face_image(image)
+    if not MIN_ENROLLMENT_IMAGES <= len(images) <= MAX_ENROLLMENT_IMAGES:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Envie entre {MIN_ENROLLMENT_IMAGES} e "
+                f"{MAX_ENROLLMENT_IMAGES} capturas faciais."
+            ),
+        )
+
+    image_bytes = [await _read_face_image(image) for image in images]
 
     try:
-        face_embedding = face_engine.extract_embedding(image_bytes)
+        face_embedding = face_engine.build_enrollment(image_bytes)
     except FaceEngineNotConfiguredError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except FaceEngineError as exc:
