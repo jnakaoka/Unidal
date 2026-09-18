@@ -7,6 +7,7 @@ from .cliente import Cliente
 from .obra import Obra
 from .veiculo import Veiculo
 from .maquina import Maquina
+from .face_profile import FaceProfile
 from .cartao import Cartao
 from .registro_hora import RegistroHora
 #tables
