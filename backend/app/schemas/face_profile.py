@@ -16,6 +16,13 @@ class FaceProfileStatusOut(BaseModel):
     revoked_at: Optional[datetime] = None
 
 
+class FaceProfileEnrollOut(BaseModel):
+    user_id: int
+    enrolled: bool
+    model_version: str
+    enrolled_at: datetime
+
+
 class FaceProfileRevokeOut(BaseModel):
     user_id: int
     revoked: bool
