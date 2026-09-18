@@ -7,7 +7,7 @@ from typing import Generator
 
 # DATABASE_URL = "mysql+mysqlconnector://unidal:admin_135@unidal_db/unidal"
 
-print("URL de conexão com banco de dados:", settings.DATABASE_URL)
+print("URL de conexão com banco de dados:", settings.DATABASE_URL_SAFE)
 
 engine = create_engine(settings.DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
