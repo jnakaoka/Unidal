@@ -238,3 +238,38 @@ export const registrosHorasApi = {
     return res.data;
   },
 };
+
+export const biometricsApi = {
+  async enroll(userId: number, photoUris: string[]) {
+    const formData = new FormData();
+
+    photoUris.forEach((uri, index) => {
+      formData.append(
+        "images",
+        {
+          uri,
+          name: `face-${index + 1}.jpg`,
+          type: "image/jpeg",
+        } as any
+      );
+    });
+
+    const res = await api.post(
+      `/biometrics/users/${userId}/enroll`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        timeout: 60000,
+      }
+    );
+
+    return res.data;
+  },
+
+  async status(userId: number) {
+    const res = await api.get(`/biometrics/users/${userId}/status`);
+    return res.data;
+  },
+};
