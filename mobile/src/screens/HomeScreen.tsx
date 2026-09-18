@@ -20,6 +20,11 @@ export default function HomeScreen({ navigation }: any) {
       screen: "Dashboard",
       visible: ["admin"],
     },
+    {
+      title: "Cadastro Facial",
+      screen: "FaceEnrollment",
+      visible: ["admin"],
+    },
   ];
 
   const visibleItems = menuItems.filter((item) => item.visible.includes(perfil));
