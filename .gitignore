@@ -8,3 +8,8 @@ backups/
 *.sql
 
 docker-compose.override.yml
+
+
+.env
+.env.*
+!.env.example
