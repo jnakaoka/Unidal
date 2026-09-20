@@ -11,12 +11,14 @@ import axios from 'axios';
 import { FiltroRegistros } from "../components/FiltroRegistros";
 import Pagination, { usePagination } from "@/components/pagination-utils";
 import LoadingState from "@/components/LoadingState";
+import { contemTextoBusca, normalizarTextoBusca } from "@/utils/text";
 
 interface User {
   id: number;
   name: string;
   email: string;
   empresa: string;
+  is_active?: boolean;
 }
 
 interface Projeto {
@@ -37,23 +39,55 @@ interface Obra {
   cliente_id: number;
   cliente?: { id: number; nome: string };
 }
+interface Veiculo { id: number; matricula: string; tipo: string; descricao?: string; ativo: boolean; }
+interface Maquina { id: number; nome: string; referencia?: string; ativo: boolean; }
 
 interface RegistroEquipa {
   user: User;
   intemperie: boolean;
+  double_journey: boolean;
 }
 
 type IntervencaoMaquinasOpcoes = {
-  laserComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
-  poComManobrador?:    { checked?: boolean; m2?: string; empresa?: string };
+  laserComManobrador?: M2ComManobrador;
+  poComManobrador?: M2ComManobrador;
   manobrador?:         { checked?: boolean; qtd?: number; empresa?: string }; // 1 ou 2
   soLaser?:            { checked?: boolean; m2?: string; empresa?: string };
   soPo?:               { checked?: boolean; m2?: string; empresa?: string };
-  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
-  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  laserWS940CComManobrador?: M2ComManobrador;
+  lazerYZ30ComManobrador?: M2ComManobrador;
   soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string }; //Só  Maq Lazer YZ30
+  manobradores?: ManobradorMaquina[];
 };
+
+type M2ComManobrador = {
+  checked?: boolean;
+  m2?: string;
+  empresa?: string;
+  manobrador_user_id?: number | null;
+  double_journey?: boolean;
+};
+
+type OpcaoComManobrador =
+  | 'laserComManobrador'
+  | 'poComManobrador'
+  | 'laserWS940CComManobrador'
+  | 'lazerYZ30ComManobrador';
+
+type ManobradorMaquina = {
+  user_id: number;
+  opcao: OpcaoComManobrador | '';
+  m2: string;
+  double_journey: boolean;
+};
+
+const opcoesComManobrador: { value: OpcaoComManobrador; label: string }[] = [
+  { value: 'laserComManobrador', label: 'Máq Laser c/ manobrador' },
+  { value: 'poComManobrador', label: 'Máq Pó c/ manobrador' },
+  { value: 'laserWS940CComManobrador', label: 'Laser WS940C c/ manobrador' },
+  { value: 'lazerYZ30ComManobrador', label: 'Laser YZ30 c/ manobrador' },
+];
 
 interface RegistroHoras {
   id: number;
@@ -75,6 +109,7 @@ interface RegistroHoras {
   serragem: boolean;
   coli: boolean;
   optipav: boolean;
+  double_journey_lider: boolean;
   intervencao_maquinas: boolean;
   intervencao_maquinas_opcoes?: IntervencaoMaquinasOpcoes | null;
 
@@ -89,6 +124,10 @@ interface RegistroHoras {
   matricula: string;
   km_rodados: number;
   maquinas_transportadas: string;
+  transporte_veiculo_id?: number | null;
+  transporte_maquina_ids?: number[] | null;
+  origem_morada?: string; origem_codigo_postal?: string; origem_regiao?: string;
+  destino_morada?: string; destino_codigo_postal?: string; destino_regiao?: string;
 
   equipa: RegistroEquipa[]; // cada item tem a forma { user: { id, name, email } }
 }
@@ -121,6 +160,7 @@ const RegistroHoras: React.FC = () => {
     serragem: boolean;
     coli: boolean;
     optipav: boolean;
+    double_journey_lider: boolean;
     intervencao_maquinas: boolean;
     intervencao_maquinas_opcoes: IntervencaoMaquinasOpcoes;
     origem?: string;
@@ -128,10 +168,16 @@ const RegistroHoras: React.FC = () => {
     matricula?: string;
     km_rodados?: string;
     maquinas_transportadas?: string;
-    equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean }[];
+    transporte_veiculo_id: number | null;
+    transporte_maquina_ids: number[];
+    origem_morada: string; origem_codigo_postal: string; origem_regiao: string;
+    destino_morada: string; destino_codigo_postal: string; destino_regiao: string;
+    equipa: { user_id: number; email: string; empresa: string; intemperie?: boolean; double_journey?: boolean }[];
   };
   const { user } = useAuth();
   const [usuarios, setUsuarios] = useState<User[]>([]);
+  const [veiculos, setVeiculos] = useState<Veiculo[]>([]);
+  const [maquinas, setMaquinas] = useState<Maquina[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [registrosFiltrados, setRegistrosFiltrados] = useState<RegistroHoras[]>([]);
   const [registroHoras, setRegistroHoras] = useState<RegistroHoras[]>([]);
@@ -171,6 +217,7 @@ const RegistroHoras: React.FC = () => {
   const [empresasAbertas, setEmpresasAbertas] = useState<Record<string, boolean>>({});
   const [obrasFiltro, setObrasFiltro] = useState<Obra[]>([]);
   const [intemperiePorUserId, setIntemperiePorUserId] = useState<Record<number, boolean>>({});
+  const [doubleJourneyPorUserId, setDoubleJourneyPorUserId] = useState<Record<number, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<{type: 'success'|'error'|'info', text: string} | null>(null);
   const [searchUser, setSearchUser] = useState('');
@@ -204,6 +251,7 @@ const RegistroHoras: React.FC = () => {
     bruto: false,
     colagem: false,
     optipav: false,
+    double_journey_lider: false,
     acabamento: false,
     serragem: false,
     coli: false,
@@ -218,12 +266,17 @@ const RegistroHoras: React.FC = () => {
       lazerYZ30ComManobrador: { checked: false,  m2: '', empresa: '' },
       soMaqLaserWS940C: { checked: false,  m2: '', empresa: '' },
       soMaqLazerYZ30: { checked: false,  m2: '', empresa: '' }, //Só  Maq Lazer YZ30
+      manobradores: [],
     },
     origem: "",
     destino: "",
     matricula: "",
     km_rodados: "",
     maquinas_transportadas: "",
+    transporte_veiculo_id: null,
+    transporte_maquina_ids: [],
+    origem_morada: "", origem_codigo_postal: "", origem_regiao: "",
+    destino_morada: "", destino_codigo_postal: "", destino_regiao: "",
     equipa: [],
 
     // id: 0, usuario_id: 0,
@@ -305,6 +358,7 @@ const RegistroHoras: React.FC = () => {
           fetchUsuarios(),
           fetchClientes(),
           fetchRegistroHoras(),
+          fetchTransportes(),
         ]);
       } catch (error) {
         console.error(
@@ -339,9 +393,15 @@ const RegistroHoras: React.FC = () => {
 
   const fetchUsuarios = async () => {
     try {
-      const response = await api.get<User[]>('/users/');
+      const response = await api.get<User[]>('/users/', {
+        params: { is_active: true },
+      });
       //console.log('usuarios',response.data);
-      const usuariosData = response.data;
+      // A API já recebe is_active=true; o filtro local impede que uma resposta
+      // antiga/cacheada volte a oferecer utilizadores inativos no apontamento.
+      const usuariosData = Array.isArray(response.data)
+        ? response.data.filter((utilizador) => utilizador.is_active !== false)
+        : response.data;
       if (Array.isArray(usuariosData)) {
         setUsuarios(usuariosData);
       } else {
@@ -354,6 +414,15 @@ const RegistroHoras: React.FC = () => {
     } catch (error) {
       console.error("Erro ao buscar perfis:", error);
     }
+  };
+
+  const fetchTransportes = async () => {
+    const [veiculosResponse, maquinasResponse] = await Promise.all([
+      api.get<Veiculo[]>('/veiculos/', { params: { ativo: true } }),
+      api.get<Maquina[]>('/maquinas/', { params: { ativo: true } }),
+    ]);
+    setVeiculos(veiculosResponse.data);
+    setMaquinas(maquinasResponse.data);
   };
 
   const fetchClientes = async () => {
@@ -449,19 +518,17 @@ const RegistroHoras: React.FC = () => {
       filtrados = filtrados.filter(r => (r.obra_id ?? r.obra?.id ?? null) === obraId);
     }
     if (usuario) {
-      const u = usuario.toLowerCase();
-      filtrados = filtrados.filter(r => (r.user?.name || "").toLowerCase().includes(u));
+      filtrados = filtrados.filter(r => contemTextoBusca(r.user?.name, usuario));
     }
     // filtra por FUNCIONÁRIO dentro da equipa (reg.equipa[].user)
     if (funcionario) {
-      const f = funcionario.toLowerCase();
       filtrados = filtrados.filter((r) =>
         r.equipa?.some((e) => {
           const nome  = e.user?.name  ?? "";
           const email = e.user?.email ?? "";
           return (
-            nome.toLowerCase().includes(f) ||
-            email.toLowerCase().includes(f)
+            contemTextoBusca(nome, funcionario) ||
+            contemTextoBusca(email, funcionario)
           );
         })
       );
@@ -570,6 +637,11 @@ const RegistroHoras: React.FC = () => {
         regHora.equipa.map(e => [e.user.id, !!(e as any).intemperie])
       )
     );
+    setDoubleJourneyPorUserId(
+      Object.fromEntries(
+        regHora.equipa.map(e => [e.user.id, !!e.double_journey])
+      )
+    );
 
     const cid: number | null = regHora.cliente_id ?? regHora.cliente?.id ?? null;
     const oid: number | null = regHora.obra_id ?? regHora.obra?.id ?? null;
@@ -591,15 +663,20 @@ const RegistroHoras: React.FC = () => {
       serragem: regHora.serragem,
       coli: regHora.coli,
       optipav: regHora.optipav,
+      double_journey_lider: !!regHora.double_journey_lider,
       intervencao_maquinas: regHora.intervencao_maquinas,
       intervencao_maquinas_opcoes: {
         laserComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserComManobrador?.checked,
                               m2: regHora?.intervencao_maquinas_opcoes?.laserComManobrador?.m2 ?? '',
-                              empresa: regHora.intervencao_maquinas_opcoes?.laserComManobrador?.empresa ?? ''
+                              empresa: regHora.intervencao_maquinas_opcoes?.laserComManobrador?.empresa ?? '',
+                              manobrador_user_id: regHora.intervencao_maquinas_opcoes?.laserComManobrador?.manobrador_user_id,
+                              double_journey: !!regHora.intervencao_maquinas_opcoes?.laserComManobrador?.double_journey,
                             },
         poComManobrador:    { checked: !!regHora.intervencao_maquinas_opcoes?.poComManobrador?.checked,
                               m2: regHora?.intervencao_maquinas_opcoes?.poComManobrador?.m2 ?? '',
-                              empresa: regHora.intervencao_maquinas_opcoes?.poComManobrador?.empresa ?? ''
+                              empresa: regHora.intervencao_maquinas_opcoes?.poComManobrador?.empresa ?? '',
+                              manobrador_user_id: regHora.intervencao_maquinas_opcoes?.poComManobrador?.manobrador_user_id,
+                              double_journey: !!regHora.intervencao_maquinas_opcoes?.poComManobrador?.double_journey,
                             },
         manobrador:         { checked: !!regHora.intervencao_maquinas_opcoes?.manobrador?.checked,
                               qtd: regHora?.intervencao_maquinas_opcoes?.manobrador?.qtd ?? 1,
@@ -615,11 +692,15 @@ const RegistroHoras: React.FC = () => {
                             },
         laserWS940CComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.checked,
                                     m2: regHora?.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.m2 ?? '',
-                                    empresa: regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.empresa ?? ''
+                                    empresa: regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.empresa ?? '',
+                                    manobrador_user_id: regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.manobrador_user_id,
+                                    double_journey: !!regHora.intervencao_maquinas_opcoes?.laserWS940CComManobrador?.double_journey,
                                   },
         lazerYZ30ComManobrador: { checked: !!regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.checked,
                                   m2: regHora?.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.m2 ?? '',
-                                  empresa: regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.empresa ?? ''
+                                  empresa: regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.empresa ?? '',
+                                  manobrador_user_id: regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.manobrador_user_id,
+                                  double_journey: !!regHora.intervencao_maquinas_opcoes?.lazerYZ30ComManobrador?.double_journey,
                                 },
         soMaqLaserWS940C: { checked: !!regHora.intervencao_maquinas_opcoes?.soMaqLaserWS940C?.checked,
                             m2: regHora?.intervencao_maquinas_opcoes?.soMaqLaserWS940C?.m2 ?? '',
@@ -629,6 +710,7 @@ const RegistroHoras: React.FC = () => {
                           m2: regHora?.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.m2 ?? '',
                           empresa: regHora.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.empresa ?? ''
                         },
+        manobradores: regHora.intervencao_maquinas_opcoes?.manobradores ?? [],
       },
       projeto_id: 1,
       usuario_id: regHora.usuario_id,
@@ -639,11 +721,20 @@ const RegistroHoras: React.FC = () => {
       matricula: regHora.matricula ?? "",
       km_rodados: regHora.km_rodados != null ? String(regHora.km_rodados) : "",
       maquinas_transportadas: regHora.maquinas_transportadas ?? "",
+      transporte_veiculo_id: regHora.transporte_veiculo_id ?? null,
+      transporte_maquina_ids: regHora.transporte_maquina_ids ?? [],
+      origem_morada: regHora.origem_morada ?? "",
+      origem_codigo_postal: regHora.origem_codigo_postal ?? "",
+      origem_regiao: regHora.origem_regiao ?? "",
+      destino_morada: regHora.destino_morada ?? "",
+      destino_codigo_postal: regHora.destino_codigo_postal ?? "",
+      destino_regiao: regHora.destino_regiao ?? "",
       equipa: regHora.equipa?.map((e) => ({
         user_id: e.user.id,
         email: e.user.email,
         empresa: e.user.empresa,
         intemperie: !!intemperiePorUserId[e.user.id],
+        double_journey: !!e.double_journey,
       })) ?? [],
     });
 
@@ -704,13 +795,15 @@ const RegistroHoras: React.FC = () => {
 
       const equipa_user = selectedUsers
       .map((id) => {
-        const user = usuarios.find((u) => u.id === id);
+        const user = usuarios.find((u) => u.id === id)
+          ?? editingRegistroHoras?.equipa.find((e) => e.user.id === id)?.user;
         if (!user) return null;
         return {
           user_id: user.id,
           email: user.email,
           empresa: user.empresa,
-          intemperie: !!intemperiePorUserId[user.id]
+          intemperie: !!intemperiePorUserId[user.id],
+          double_journey: !!doubleJourneyPorUserId[user.id],
         };
       })
       .filter(Boolean); // remove nulls se algum id não for encontrado
@@ -720,6 +813,27 @@ const RegistroHoras: React.FC = () => {
 
       if (!formData.data || cid == null || oid == null) {
         showNotice('error', 'Preencha Data, Cliente e Obra.');
+        return;
+      }
+
+      const manobradores = formData.intervencao_maquinas_opcoes.manobradores || [];
+      if (manobradores.some(item => !item.user_id || !item.opcao)) {
+        showNotice('error', 'Selecione o funcionário e a opção de máquina de cada manobrador.');
+        return;
+      }
+
+      const vinculos = manobradores.map(item => `${item.user_id}:${item.opcao}`);
+      if (new Set(vinculos).size !== vinculos.length) {
+        showNotice('error', 'O mesmo manobrador não pode ser repetido na mesma opção de máquina.');
+        return;
+      }
+
+      const opcoesIniciaisSemNome = opcoesComManobrador.filter(({ value }) => {
+        const detalhe = formData.intervencao_maquinas_opcoes[value];
+        return detalhe?.checked && !detalhe.manobrador_user_id;
+      });
+      if (opcoesIniciaisSemNome.length) {
+        showNotice('error', 'Selecione o manobrador inicial de cada opção de máquina assinalada.');
         return;
       }
 
@@ -762,12 +876,28 @@ const RegistroHoras: React.FC = () => {
         matricula: formData.matricula || null,
         km_rodados: formData.km_rodados ? parseFloat(formData.km_rodados) : null,
         maquinas_transportadas: formData.maquinas_transportadas || null,
+        transporte_veiculo_id: formData.transporte_veiculo_id || null,
+        transporte_maquina_ids: formData.transporte_maquina_ids,
+        origem_morada: formData.origem_morada || null,
+        origem_codigo_postal: formData.origem_codigo_postal || null,
+        origem_regiao: formData.origem_regiao || null,
+        destino_morada: formData.destino_morada || null,
+        destino_codigo_postal: formData.destino_codigo_postal || null,
+        destino_regiao: formData.destino_regiao || null,
       } : {
         origem: null,
         destino: null,
         matricula: null,
         km_rodados: null,
         maquinas_transportadas: null,
+        transporte_veiculo_id: null,
+        transporte_maquina_ids: [],
+        origem_morada: null,
+        origem_codigo_postal: null,
+        origem_regiao: null,
+        destino_morada: null,
+        destino_codigo_postal: null,
+        destino_regiao: null,
       };
 
       const basePayload = {
@@ -786,6 +916,7 @@ const RegistroHoras: React.FC = () => {
         serragem: !!formData.serragem,
         coli: !!formData.coli,
         optipav: !!formData.optipav,
+        double_journey_lider: !!formData.double_journey_lider,
         intervencao_maquinas: !!formData.intervencao_maquinas,
         intervencao_maquinas_opcoes: formData.intervencao_maquinas
           ? formData.intervencao_maquinas_opcoes
@@ -795,6 +926,14 @@ const RegistroHoras: React.FC = () => {
         matricula: formData.matricula || null,
         km_rodados: formData.km_rodados ? parseFloat(formData.km_rodados) : null,
         maquinas_transportadas: formData.maquinas_transportadas || null,
+        transporte_veiculo_id: formData.transporte_veiculo_id || null,
+        transporte_maquina_ids: formData.transporte_maquina_ids,
+        origem_morada: formData.origem_morada || null,
+        origem_codigo_postal: formData.origem_codigo_postal || null,
+        origem_regiao: formData.origem_regiao || null,
+        destino_morada: formData.destino_morada || null,
+        destino_codigo_postal: formData.destino_codigo_postal || null,
+        destino_regiao: formData.destino_regiao || null,
         motoristaPayload,
         equipa: equipa_user,
       };
@@ -866,6 +1005,7 @@ const RegistroHoras: React.FC = () => {
       serragem: false,
       coli: false,
       optipav: false,
+      double_journey_lider: false,
       intervencao_maquinas: false,
       intervencao_maquinas_opcoes: {
         laserComManobrador: { checked: false, m2: '', empresa: '' },
@@ -877,14 +1017,27 @@ const RegistroHoras: React.FC = () => {
         lazerYZ30ComManobrador: { checked: false, m2: '', empresa: '' },
         soMaqLaserWS940C: { checked: false, m2: '', empresa: '' },
         soMaqLazerYZ30: { checked: false, m2: '', empresa: '' },
+        manobradores: [],
       } as IntervencaoMaquinasOpcoes,
+      origem: '', destino: '', matricula: '', km_rodados: '', maquinas_transportadas: '',
+      transporte_veiculo_id: null,
+      transporte_maquina_ids: [],
+      origem_morada: '', origem_codigo_postal: '', origem_regiao: '',
+      destino_morada: '', destino_codigo_postal: '', destino_regiao: '',
       equipa: [] as { user_id: number; email: string, empresa: string }[]});
+    setSelectedUsers([]);
+    setIntemperiePorUserId({});
+    setDoubleJourneyPorUserId({});
     setEditingRegistroHoras(null);
     setIsEditing(false);
     setModalAberto(false);
   };
 
   const toggleOpcaoIntervencao = (key: keyof IntervencaoMaquinasOpcoes, checked: boolean) => {
+    if (!checked && (formData.intervencao_maquinas_opcoes.manobradores || []).some(item => item.opcao === key)) {
+      showNotice('info', 'Remova primeiro os manobradores ligados a esta opção de máquina.');
+      return;
+    }
     setFormData(prev => ({
       ...prev,
       intervencao_maquinas_opcoes: {
@@ -897,6 +1050,84 @@ const RegistroHoras: React.FC = () => {
     }));
   };
 
+  const adicionarManobrador = () => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        manobradores: [
+          ...(prev.intervencao_maquinas_opcoes.manobradores || []),
+          { user_id: 0, opcao: '', m2: '', double_journey: false },
+        ],
+      },
+    }));
+  };
+
+  const atualizarManobrador = (index: number, dados: Partial<ManobradorMaquina>) => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        manobradores: (prev.intervencao_maquinas_opcoes.manobradores || []).map(
+          (item, i) => i === index ? { ...item, ...dados } : item
+        ),
+      },
+    }));
+  };
+
+  const atualizarManobradorInicial = (opcao: OpcaoComManobrador, dados: Partial<M2ComManobrador>) => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        [opcao]: {
+          ...prev.intervencao_maquinas_opcoes[opcao],
+          ...dados,
+        },
+      },
+    }));
+  };
+
+  const removerManobrador = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      intervencao_maquinas_opcoes: {
+        ...prev.intervencao_maquinas_opcoes,
+        manobradores: (prev.intervencao_maquinas_opcoes.manobradores || []).filter((_, i) => i !== index),
+      },
+    }));
+  };
+
+  const camposManobradorInicial = (opcao: OpcaoComManobrador) => {
+    const detalhe = formData.intervencao_maquinas_opcoes[opcao];
+    if (!detalhe?.checked) return null;
+    const funcionario = usuarios.find(user => user.id === detalhe.manobrador_user_id);
+    return (
+      <span className="inline-flex min-w-[220px] flex-col gap-1">
+        <select
+          className="rounded border bg-white px-2 py-1"
+          value={detalhe.manobrador_user_id || ''}
+          onChange={(e) => atualizarManobradorInicial(opcao, {
+            manobrador_user_id: Number(e.target.value) || null,
+            empresa: usuarios.find(user => user.id === Number(e.target.value))?.empresa || '',
+          })}
+        >
+          <option value="">Selecione o manobrador</option>
+          {usuarios.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+        </select>
+        <small className="text-gray-600">Empresa: {funcionario?.empresa || '—'}</small>
+        <label className="inline-flex items-center gap-1 text-xs text-amber-800">
+          <input
+            type="checkbox"
+            checked={!!detalhe.double_journey}
+            onChange={(e) => atualizarManobradorInicial(opcao, { double_journey: e.target.checked })}
+          />
+          <b>Double Journey</b>
+        </label>
+      </span>
+    );
+  };
+
   const setValorM2 = (key: Exclude<keyof IntervencaoMaquinasOpcoes, 'manobrador'>, m2: string) => {
     setFormData(prev => ({
       ...prev,
@@ -905,19 +1136,6 @@ const RegistroHoras: React.FC = () => {
         [key]: {
           ...(prev.intervencao_maquinas_opcoes as IntervencaoMaquinasOpcoes)[key],
           m2
-        }
-      }
-    }));
-  };
-
-  const setQtdManobrador = (qtd: number) => {
-    setFormData(prev => ({
-      ...prev,
-      intervencao_maquinas_opcoes: {
-        ...prev.intervencao_maquinas_opcoes,
-        manobrador: {
-          ...prev.intervencao_maquinas_opcoes!.manobrador,
-          qtd
         }
       }
     }));
@@ -1056,12 +1274,17 @@ const RegistroHoras: React.FC = () => {
     if (!reg.intervencao_maquinas || !o) return '—';
 
     const parts: string[] = [];
+    const manobradorInicial = (detalhe?: M2ComManobrador) => {
+      const funcionario = usuarios.find(user => user.id === detalhe?.manobrador_user_id);
+      if (funcionario) return `${funcionario.name} (${funcionario.empresa || '-'})`;
+      return detalhe?.empresa || '-';
+    };
 
     if (o.laserComManobrador?.checked) {
-      parts.push(`Laser c/ manobr.: ${o.laserComManobrador.m2 || '0'} m² (${o.laserComManobrador.empresa||'-'})`);
+      parts.push(`Laser c/ manobr.: ${o.laserComManobrador.m2 || '0'} m² — ${manobradorInicial(o.laserComManobrador)}`);
     }
     if (o.poComManobrador?.checked) {
-      parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || '0'} m² (${o.poComManobrador.empresa||'-'})`);
+      parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || '0'} m² — ${manobradorInicial(o.poComManobrador)}`);
     }
     if (o.manobrador?.checked) {
       parts.push(`Manobrador: ${o.manobrador.qtd ?? 1} (${o.manobrador.empresa||'-'})`);
@@ -1073,10 +1296,10 @@ const RegistroHoras: React.FC = () => {
       parts.push(`Só Pó: ${o.soPo.m2 || '0'} m² (${o.soPo.empresa||'-'})`);
     }
     if(o.laserWS940CComManobrador?.checked) {
-      parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || '0'} m² (${o.laserWS940CComManobrador.empresa||'-'})`);
+      parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || '0'} m² — ${manobradorInicial(o.laserWS940CComManobrador)}`);
     }
     if(o.lazerYZ30ComManobrador?.checked) {
-      parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || '0'} m² (${o.lazerYZ30ComManobrador.empresa||'-'})`);
+      parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || '0'} m² — ${manobradorInicial(o.lazerYZ30ComManobrador)}`);
     }
     if(o.soMaqLaserWS940C?.checked) {
       parts.push(`Só Laser WS940C: ${o.soMaqLaserWS940C.m2 || '0'} m² (${o.soMaqLaserWS940C.empresa||'-'})`);
@@ -1084,6 +1307,14 @@ const RegistroHoras: React.FC = () => {
     if(o.soMaqLazerYZ30?.checked) {
       parts.push(`Só Lazer YZ30: ${o.soMaqLazerYZ30.m2 || '0'} m² (${o.soMaqLazerYZ30.empresa||'-'})`);
     }
+
+    (o.manobradores || []).forEach(item => {
+      const funcionario = usuarios.find(user => user.id === item.user_id);
+      const opcao = opcoesComManobrador.find(opcao => opcao.value === item.opcao)?.label || item.opcao;
+      parts.push(
+        `Manobrador: ${funcionario?.name || `#${item.user_id}`} (${funcionario?.empresa || '-'}) — ${opcao}: ${item.m2 || '0'} m²${item.double_journey ? ' [Double Journey]' : ''}`
+      );
+    });
 
     // return parts.length ? parts.join(' • ') : '—';
     return parts.length ? parts.join(', ') : '—';
@@ -1146,10 +1377,10 @@ const RegistroHoras: React.FC = () => {
     }
   }
 
-  const usuariosFiltrados = searchUser.trim().length >= 2
+  const usuariosFiltrados = normalizarTextoBusca(searchUser).length >= 2
   ? usuarios
       .filter(u => !selectedUsers.includes(u.id))
-      .filter(u => u.name.toLowerCase().includes(searchUser.toLowerCase()))
+      .filter(u => contemTextoBusca(u.name, searchUser))
       .slice(0, 10) // limita a 10 sugestões
   : [];
 
@@ -1162,6 +1393,7 @@ const RegistroHoras: React.FC = () => {
 
     // define intemperie padrão (ajuste se quiser herdar algo)
     setIntemperiePorUserId(prev => ({ ...prev, [u.id]: false }));
+    setDoubleJourneyPorUserId(prev => ({ ...prev, [u.id]: false }));
 
     // limpa busca
     setSearchUser('');
@@ -1305,6 +1537,21 @@ const RegistroHoras: React.FC = () => {
                     onChange={(e) => setFormData({ ...formData, data: e.target.value })}
                   />
                 </div>
+                <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={!!formData.double_journey_lider}
+                    onChange={(e) => setFormData((prev) => ({
+                      ...prev,
+                      double_journey_lider: e.target.checked,
+                    }))}
+                  />
+                  <span>
+                    <b>Double Journey do chefe de equipa</b>
+                    <span className="block text-xs">Marque se o chefe trabalhou noutra obra nesta data.</span>
+                  </span>
+                </label>
                 {/* <div className="ff-class-form-registro-hora-elements align-float-left" >
                   <Label className="ff-class-form-registro-hora-elements-lbl">Cliente</Label>
                   <Input
@@ -1591,15 +1838,7 @@ const RegistroHoras: React.FC = () => {
                         value={formData.intervencao_maquinas_opcoes.laserComManobrador?.m2}
                         onChange={(e) => setValorM2('laserComManobrador', e.target.value)}
                       />
-                      <select
-                        className="border rounded px-2 py-1"
-                        disabled={!formData.intervencao_maquinas_opcoes.laserComManobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.laserComManobrador?.empresa || ""}
-                        onChange={(e) => setEmpresaOpt('laserComManobrador', e.target.value)}
-                      >
-                        <option value="">Empresa</option>
-                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                      </select>
+                      {camposManobradorInicial('laserComManobrador')}
                     </label>
 
                     {/* Máq Pó c/ manobrador (m2) */}
@@ -1618,44 +1857,9 @@ const RegistroHoras: React.FC = () => {
                         value={formData.intervencao_maquinas_opcoes.poComManobrador?.m2}
                         onChange={(e) => setValorM2('poComManobrador', e.target.value)}
                       />
-                      <select
-                        className="border rounded px-2 py-1"
-                        disabled={!formData.intervencao_maquinas_opcoes.poComManobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.poComManobrador?.empresa || ""}
-                        onChange={(e) => setEmpresaOpt('poComManobrador', e.target.value)}
-                      >
-                        <option value="">Empresa</option>
-                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                      </select>
+                      {camposManobradorInicial('poComManobrador')}
                     </label>
 
-                    {/* Manobrador (Quantidade 1 ou 2) */}
-                    <label className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={formData.intervencao_maquinas_opcoes.manobrador?.checked}
-                        onChange={(e) => toggleOpcaoIntervencao('manobrador', e.target.checked)}
-                      />
-                      <span className="min-w-[14ch]">Manobrador (Qtd)</span>
-                      <Input
-                        type="number"
-                        className="w-24"
-                        min={1}
-                        // max={2}
-                        disabled={!formData.intervencao_maquinas_opcoes.manobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.manobrador?.qtd}
-                        onChange={(e) => setQtdManobrador(Math.max(1, Math.min(2, Number(e.target.value) || 1)))}
-                      />
-                      <select
-                        className="border rounded px-2 py-1"
-                        disabled={!formData.intervencao_maquinas_opcoes.manobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.manobrador?.empresa || ""}
-                        onChange={(e) => setEmpresaOpt('manobrador', e.target.value)}
-                      >
-                        <option value="">Empresa</option>
-                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                      </select>
-                    </label>
 
                     {/* Só Máq Laser (m2) */}
                     <label className="flex items-center gap-3">
@@ -1726,15 +1930,7 @@ const RegistroHoras: React.FC = () => {
                         value={formData.intervencao_maquinas_opcoes.laserWS940CComManobrador?.m2}
                         onChange={(e) => setValorM2('laserWS940CComManobrador', e.target.value)}
                       />
-                      <select
-                        className="border rounded px-2 py-1"
-                        disabled={!formData.intervencao_maquinas_opcoes.laserWS940CComManobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.laserWS940CComManobrador?.empresa || ""}
-                        onChange={(e) => setEmpresaOpt('laserWS940CComManobrador', e.target.value)}
-                      >
-                        <option value="">Empresa</option>
-                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                      </select>
+                      {camposManobradorInicial('laserWS940CComManobrador')}
                     </label>
                     {/* lazer YZ30 (m2) com manobrador */}
                     <label className="flex items-center gap-3">
@@ -1751,15 +1947,7 @@ const RegistroHoras: React.FC = () => {
                         disabled={!formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.checked}                        value={formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.m2}
                         onChange={(e) => setValorM2('lazerYZ30ComManobrador', e.target.value)}
                       />
-                      <select
-                        className="border rounded px-2 py-1"
-                        disabled={!formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.checked}
-                        value={formData.intervencao_maquinas_opcoes.lazerYZ30ComManobrador?.empresa || ""}
-                        onChange={(e) => setEmpresaOpt('lazerYZ30ComManobrador', e.target.value)}
-                      >
-                        <option value="">Empresa</option>
-                        {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
-                      </select>
+                      {camposManobradorInicial('lazerYZ30ComManobrador')}
                     </label>
                     {/* so maquinas laser WS940C (m2)  */}
                     <label className="flex items-center gap-3">
@@ -1813,6 +2001,92 @@ const RegistroHoras: React.FC = () => {
                         {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
                       </select>
                     </label>
+                  </div>
+
+                  <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4">
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h4 className="font-semibold text-blue-950">Manobradores por máquina</h4>
+                        <p className="text-xs text-blue-800">
+                          Selecione o funcionário e a intervenção específica. A empresa vem do cadastro.
+                        </p>
+                      </div>
+                      <Button type="button" className="btn-bg-blue-500" onClick={adicionarManobrador}>
+                        + Adicionar manobrador
+                      </Button>
+                    </div>
+
+                    {(formData.intervencao_maquinas_opcoes.manobradores || []).length === 0 ? (
+                      <p className="text-sm text-gray-500">Nenhum manobrador adicionado.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {(formData.intervencao_maquinas_opcoes.manobradores || []).map((item, index) => {
+                          const funcionario = usuarios.find(u => u.id === item.user_id);
+                          return (
+                            <div key={index} className="grid gap-3 rounded-md border bg-white p-3 md:grid-cols-[1.3fr_1.3fr_0.6fr_0.8fr_auto] md:items-end">
+                              <div>
+                                <Label>Funcionário</Label>
+                                <select
+                                  className="w-full rounded border bg-white px-3 py-2"
+                                  value={item.user_id || ''}
+                                  onChange={(e) => atualizarManobrador(index, { user_id: Number(e.target.value) })}
+                                >
+                                  <option value="">Selecione</option>
+                                  {usuarios.map(u => (
+                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <Label>Metros (m²)</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  placeholder="m²"
+                                  value={item.m2 || ''}
+                                  onChange={(e) => atualizarManobrador(index, { m2: e.target.value })}
+                                />
+                              </div>
+                              <div>
+                                <Label>Opção de intervenção</Label>
+                                <select
+                                  className="w-full rounded border bg-white px-3 py-2"
+                                  value={item.opcao}
+                                  onChange={(e) => {
+                                    const opcao = e.target.value as OpcaoComManobrador;
+                                    atualizarManobrador(index, { opcao });
+                                    toggleOpcaoIntervencao(opcao, true);
+                                  }}
+                                >
+                                  <option value="">Selecione</option>
+                                  {opcoesComManobrador.map(opcao => (
+                                    <option key={opcao.value} value={opcao.value}>{opcao.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <Label>Empresa</Label>
+                                <div className="rounded border bg-gray-100 px-3 py-2 text-sm">
+                                  {funcionario?.empresa || '—'}
+                                </div>
+                                <label className="mt-2 inline-flex items-center gap-2 text-xs text-amber-800">
+                                  <input
+                                    type="checkbox"
+                                    checked={item.double_journey}
+                                    onChange={(e) => atualizarManobrador(index, { double_journey: e.target.checked })}
+                                  />
+                                  <b>Double Journey</b>
+                                </label>
+                              </div>
+                              <Button type="button" variant="outline" onClick={() => removerManobrador(index)}>
+                                Remover
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1954,16 +2228,28 @@ const RegistroHoras: React.FC = () => {
                               />
                               {u.name}
                               {selectedUsers.includes(u.id) && (
-                                <label className="ml-2 inline-flex items-center gap-1 text-xs">
-                                  <input
-                                    type="checkbox"
-                                    checked={!!intemperiePorUserId[u.id]}
-                                    onChange={(e) =>
-                                      setIntemperiePorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
-                                    }
-                                  />
-                                  <span><b>Intempérie</b></span>
-                                </label>
+                                <span className="ml-2 inline-flex flex-wrap items-center gap-3 text-xs">
+                                  <label className="inline-flex items-center gap-1">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!intemperiePorUserId[u.id]}
+                                      onChange={(e) =>
+                                        setIntemperiePorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
+                                      }
+                                    />
+                                    <span><b>Intempérie</b></span>
+                                  </label>
+                                  <label className="inline-flex items-center gap-1 text-amber-800">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!doubleJourneyPorUserId[u.id]}
+                                      onChange={(e) =>
+                                        setDoubleJourneyPorUserId(prev => ({ ...prev, [u.id]: e.target.checked }))
+                                      }
+                                    />
+                                    <span><b>Double Journey</b></span>
+                                  </label>
+                                </span>
                               )}
                             </label>
                           ))}
@@ -2013,52 +2299,10 @@ const RegistroHoras: React.FC = () => {
                   ].join(" ")}
                 >
                   <h3 className="mb-4 text-sm font-semibold text-gray-700">
-                    Dados de Motorista
+                    Transporte de máquinas
                   </h3>
 
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="min-w-0">
-                      <Label className="mb-1 block">Origem</Label>
-                      <Input
-                        value={formData.origem}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            origem: e.target.value,
-                          })
-                        }
-                        className={classeInputMotorista}
-                      />
-                    </div>
-
-                    <div className="min-w-0">
-                      <Label className="mb-1 block">Destino</Label>
-                      <Input
-                        value={formData.destino}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            destino: e.target.value,
-                          })
-                        }
-                        className={classeInputMotorista}
-                      />
-                    </div>
-
-                    <div className="min-w-0">
-                      <Label className="mb-1 block">Matrícula</Label>
-                      <Input
-                        value={formData.matricula}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            matricula: e.target.value,
-                          })
-                        }
-                        className={classeInputMotorista}
-                      />
-                    </div>
-
                     <div className="min-w-0">
                       <Label className="mb-1 block">KM Rodados</Label>
                       <Input
@@ -2075,22 +2319,29 @@ const RegistroHoras: React.FC = () => {
                       />
                     </div>
 
-                    <div className="min-w-0 md:col-span-2">
-                      <Label className="mb-1 block">
-                        Máquinas transportadas
-                      </Label>
-
-                      <Input
-                        placeholder="Ex.: WS940C, YZ30, Pá carregadora..."
-                        value={formData.maquinas_transportadas}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            maquinas_transportadas: e.target.value,
-                          })
-                        }
-                        className={classeInputMotorista}
-                      />
+                    <div><Label>Origem — morada</Label><Input value={formData.origem_morada} onChange={e => setFormData({...formData, origem_morada: e.target.value})}/></div>
+                    <div><Label>Origem — código postal</Label><Input value={formData.origem_codigo_postal} onChange={e => setFormData({...formData, origem_codigo_postal: e.target.value})}/></div>
+                    <div><Label>Origem — região/localidade</Label><Input value={formData.origem_regiao} onChange={e => setFormData({...formData, origem_regiao: e.target.value})}/></div>
+                    <div><Label>Destino — morada</Label><Input value={formData.destino_morada} onChange={e => setFormData({...formData, destino_morada: e.target.value})}/></div>
+                    <div><Label>Destino — código postal</Label><Input value={formData.destino_codigo_postal} onChange={e => setFormData({...formData, destino_codigo_postal: e.target.value})}/></div>
+                    <div><Label>Destino — região/localidade</Label><Input value={formData.destino_regiao} onChange={e => setFormData({...formData, destino_regiao: e.target.value})}/></div>
+                    <div className="md:col-span-2">
+                      <Label>Veículo</Label>
+                      <select className="w-full rounded border bg-white px-3 py-2" value={formData.transporte_veiculo_id || ''} onChange={e => setFormData({...formData, transporte_veiculo_id: Number(e.target.value) || null})}>
+                        <option value="">Selecione a carrinha/camião</option>
+                        {veiculos.map(v => <option key={v.id} value={v.id}>{v.matricula} — {v.tipo}{v.descricao ? ` — ${v.descricao}` : ''}</option>)}
+                      </select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <Label className="mb-2 block">Máquinas do catálogo</Label>
+                      <div className="grid gap-2 rounded border bg-white p-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {maquinas.length === 0 ? <span className="text-sm text-gray-500">Nenhuma máquina ativa cadastrada.</span> : maquinas.map(maquina => (
+                          <label key={maquina.id} className="flex items-center gap-2 text-sm">
+                            <input type="checkbox" checked={formData.transporte_maquina_ids.includes(maquina.id)} onChange={e => setFormData(prev => ({...prev, transporte_maquina_ids: e.target.checked ? [...prev.transporte_maquina_ids, maquina.id] : prev.transporte_maquina_ids.filter(id => id !== maquina.id)}))}/>
+                            {maquina.nome}{maquina.referencia ? ` — ${maquina.referencia}` : ''}
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -2314,7 +2565,22 @@ const RegistroHoras: React.FC = () => {
             ) : (
               pageItems.map((reg, index) => {
 
-                const isMoto = reg.origem != null && reg.origem != '';
+                // Registos antigos usavam `origem`; os novos usam os campos
+                // estruturados, veículo e máquinas do catálogo.
+                const isMoto = Boolean(
+                  reg.origem?.trim() ||
+                  reg.destino?.trim() ||
+                  reg.matricula?.trim() ||
+                  reg.maquinas_transportadas?.trim() ||
+                  reg.origem_morada?.trim() ||
+                  reg.origem_codigo_postal?.trim() ||
+                  reg.origem_regiao?.trim() ||
+                  reg.destino_morada?.trim() ||
+                  reg.destino_codigo_postal?.trim() ||
+                  reg.destino_regiao?.trim() ||
+                  reg.transporte_veiculo_id ||
+                  reg.transporte_maquina_ids?.length
+                );
 
                 const baseRowClass =
                   index % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100';
@@ -2325,7 +2591,12 @@ const RegistroHoras: React.FC = () => {
 
                 return (
                   <tr key={reg.id} className={rowClass}>
-                    <td className="px-4 py-2">{reg.user?.name}</td>
+                    <td className="px-4 py-2">
+                      {reg.user?.name}
+                      {reg.double_journey_lider && (
+                        <strong className="block text-amber-700">[Double Journey]</strong>
+                      )}
+                    </td>
                     <td className="px-4 py-2">{reg.data}</td>
                     <td className="px-4 py-2">{reg.cliente?.nome ?? '-'}</td>
                     <td className="px-4 py-2">{reg.obra?.nome ?? '-'}</td>
@@ -2342,6 +2613,7 @@ const RegistroHoras: React.FC = () => {
                             {i > 0 && ', '}
                             {label}
                             {e.intemperie && <strong> [Intempérie]</strong>}
+                            {e.double_journey && <strong className="text-amber-700"> [Double Journey]</strong>}
                           </span>
                         );
                       })}

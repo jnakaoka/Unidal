@@ -31,6 +31,7 @@ class RegistroHora(Base):
     serragem = Column(Boolean, default=False)
     coli = Column(Boolean, default=False)
     optipav = Column(Boolean, default=False, nullable=False)
+    double_journey_lider = Column(Boolean, default=False, nullable=False)
     intervencao_maquinas = Column(Boolean, default=False)
     intervencao_maquinas_opcoes = Column(SAJSON, nullable=True)
 
@@ -40,6 +41,14 @@ class RegistroHora(Base):
     matricula = Column(String(50), nullable=True)
     km_rodados = Column(Float, nullable=True)
     maquinas_transportadas = Column(SAJSON, nullable=True)
+    transporte_veiculo_id = Column(Integer, ForeignKey("veiculos.id"), nullable=True)
+    transporte_maquina_ids = Column(SAJSON, nullable=True)
+    origem_morada = Column(String(255), nullable=True)
+    origem_codigo_postal = Column(String(20), nullable=True)
+    origem_regiao = Column(String(120), nullable=True)
+    destino_morada = Column(String(255), nullable=True)
+    destino_codigo_postal = Column(String(20), nullable=True)
+    destino_regiao = Column(String(120), nullable=True)
 
     modificado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
     modificado_em  = Column(DateTime(timezone=True), nullable=True)
@@ -81,6 +90,7 @@ class RegistroHoraEquipa(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     registro_id = Column(Integer, ForeignKey("registros_hora.id"))
     intemperie = Column(Boolean, default=False)
+    double_journey = Column(Boolean, default=False, nullable=False)
 
     user = relationship("User", back_populates="registros_hora_equipa")
     registro = relationship("RegistroHora", back_populates="equipa")

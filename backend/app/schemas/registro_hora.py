@@ -1,5 +1,5 @@
 # schemas/registro_hora.py
-from typing import List, Optional
+from typing import List, Optional, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import date, datetime
 
@@ -21,11 +21,24 @@ class M2Opt(BaseModel):
     checked: bool = False
     m2: str = ""
     empresa: Optional[str] = None
+    manobrador_user_id: Optional[int] = None
+    double_journey: bool = False
 
 class ManoOpt(BaseModel):
     checked: bool = False
     qtd: int = 1
     empresa: Optional[str] = None
+
+class ManobradorMaquina(BaseModel):
+    user_id: int
+    opcao: Literal[
+        "laserComManobrador",
+        "poComManobrador",
+        "laserWS940CComManobrador",
+        "lazerYZ30ComManobrador",
+    ]
+    m2: str = ""
+    double_journey: bool = False
 
 class IntervencaoMaquinasOpcoes(BaseModel):
     laserComManobrador: M2Opt = M2Opt()
@@ -37,10 +50,12 @@ class IntervencaoMaquinasOpcoes(BaseModel):
     lazerYZ30ComManobrador: M2Opt = M2Opt()
     soMaqLaserWS940C: M2Opt = M2Opt()
     soMaqLazerYZ30: M2Opt = M2Opt()
+    manobradores: List[ManobradorMaquina] = Field(default_factory=list)
 
 class MembroEquipa(BaseModel):
     user_id: int  # valor obrigatório (se quiser opcional, use = None)
     intemperie: bool = False
+    double_journey: bool = False
 
     class Config:
         from_attributes = True
@@ -103,6 +118,7 @@ class RegistroHoraCreate(BaseModel):
     serragem: bool = False
     coli: bool = False
     optipav: bool = False
+    double_journey_lider: bool = False
     intervencao_maquinas: bool = False
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
     origem: Optional[str] = None
@@ -110,6 +126,14 @@ class RegistroHoraCreate(BaseModel):
     matricula: Optional[str] = None
     km_rodados: Optional[float] = None
     maquinas_transportadas: Optional[str] = None
+    transporte_veiculo_id: Optional[int] = None
+    transporte_maquina_ids: Optional[List[int]] = None
+    origem_morada: Optional[str] = None
+    origem_codigo_postal: Optional[str] = None
+    origem_regiao: Optional[str] = None
+    destino_morada: Optional[str] = None
+    destino_codigo_postal: Optional[str] = None
+    destino_regiao: Optional[str] = None
 
     equipa: List[MembroEquipa] = Field(default_factory=list)
 
@@ -139,6 +163,7 @@ class RegistroHoraUpdate(BaseModel):
     serragem: bool = False
     coli: bool = False
     optipav: bool = False
+    double_journey_lider: bool = False
     intervencao_maquinas: bool = False
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
     origem: Optional[str] = None
@@ -146,6 +171,14 @@ class RegistroHoraUpdate(BaseModel):
     matricula: Optional[str] = None
     km_rodados: Optional[float] = None
     maquinas_transportadas: Optional[str] = None
+    transporte_veiculo_id: Optional[int] = None
+    transporte_maquina_ids: Optional[List[int]] = None
+    origem_morada: Optional[str] = None
+    origem_codigo_postal: Optional[str] = None
+    origem_regiao: Optional[str] = None
+    destino_morada: Optional[str] = None
+    destino_codigo_postal: Optional[str] = None
+    destino_regiao: Optional[str] = None
 
     equipa: List[MembroEquipa] = Field(default_factory=list)
 
@@ -179,6 +212,7 @@ class ProjetoResponse(BaseModel):
 class RegistroHoraEquipaResponse(BaseModel):
     user: UserResponse
     intemperie: bool = False
+    double_journey: bool = False
     class Config:
         from_attributes = True
 
@@ -202,6 +236,7 @@ class RegistroHoraResponse(BaseModel):
     serragem: Optional[bool] = None
     coli: Optional[bool] = None
     optipav: Optional[bool] = False
+    double_journey_lider: bool = False
     intervencao_maquinas: Optional[bool] = None
     intervencao_maquinas_opcoes: Optional[IntervencaoMaquinasOpcoes] = None
     modificado_por: Optional[int] = None
@@ -211,6 +246,14 @@ class RegistroHoraResponse(BaseModel):
     matricula: Optional[str] = None
     km_rodados: Optional[float] = None
     maquinas_transportadas: Optional[str] = None
+    transporte_veiculo_id: Optional[int] = None
+    transporte_maquina_ids: Optional[List[int]] = None
+    origem_morada: Optional[str] = None
+    origem_codigo_postal: Optional[str] = None
+    origem_regiao: Optional[str] = None
+    destino_morada: Optional[str] = None
+    destino_codigo_postal: Optional[str] = None
+    destino_regiao: Optional[str] = None
 
     user: UserResponse
     projeto: ProjetoResponse

@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import PrivateRoute from "./routes/PrivateRoute";
 import Relatorio from "./pages/Relatorios";
 import RelatorioMotorista from "./pages/RelatoriosMotorista";
+import RelatorioDiasTrabalhados from "./pages/RelatorioDiasTrabalhados";
 import GestaoUsuarios from "./pages/GestaoUsuarios";
 import DefaultLayout from "./layouts/DefaultLayout";
 //import Projetos from "./pages/Projetos";
@@ -16,6 +17,7 @@ import Clientes from "./pages/Clientes";
 import Obras from "./pages/Obras";
 import ChangePassword from "./pages/ChangePassword";
 import ControleCartoes from "./pages/ControleCartoes";
+import Maquinas from "./pages/Maquinas";
 
 const App: React.FC = () => {
   return (
@@ -35,12 +37,21 @@ const App: React.FC = () => {
         <Route path="operador-dashboard" element={<OperadorDashboard />} />
         <Route path="relatorios" element={<Relatorio />} />
         <Route path="relatoriosmotorista" element={<RelatorioMotorista />} />
+        <Route
+          path="relatorios/dias-trabalhados"
+          element={
+            <PrivateRoute allowedProfiles={["admin"]}>
+              <RelatorioDiasTrabalhados />
+            </PrivateRoute>
+          }
+        />
         <Route path="usuarios" element={<GestaoUsuarios />} />
         <Route path="registro-horas" element={<RegistroHoras />} />
         <Route path="clientes" element={<Clientes />} />
         <Route path="obras" element={<Obras />} />
         <Route path="change-password" element={<ChangePassword />} />
         <Route path="controle-cartoes" element={<PrivateRoute allowedProfiles={["admin"]}><ControleCartoes /></PrivateRoute>}/>
+        <Route path="maquinas" element={<PrivateRoute allowedProfiles={["admin"]}><Maquinas /></PrivateRoute>}/>
       </Route>
 
       <Route path="*" element={<NotFound />} />

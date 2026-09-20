@@ -16,6 +16,7 @@ import {
   import { Input } from "@/components/ui/input";
   import { Label } from "@/components/ui/label";
   import { Textarea } from "@/components/ui/textarea";
+  import { normalizarTextoBusca } from "@/utils/text";
   import {
     associarCartao,
     desassociarCartao,
@@ -165,7 +166,7 @@ import {
     }, [associacoesCondutores]);
 
     const cartoesFiltrados = useMemo(() => {
-      const termo = pesquisa.trim().toLocaleLowerCase();
+      const termo = normalizarTextoBusca(pesquisa);
 
       return cartoes.filter((cartao) => {
         const associacao =
@@ -198,7 +199,7 @@ import {
           )
           : undefined;
 
-        const texto = [
+        const texto = normalizarTextoBusca([
           cartao.nome,
           cartao.identificador,
           cartao.tipo,
@@ -206,9 +207,7 @@ import {
           associacao?.veiculo.matricula ?? "",
           associacaoCondutor?.condutor.name ?? "",
           associacaoCondutor?.condutor.empresa ?? "",
-        ]
-          .join(" ")
-          .toLocaleLowerCase();
+        ].join(" "));
 
         return texto.includes(termo);
       });

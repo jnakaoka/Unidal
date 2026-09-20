@@ -1,10 +1,155 @@
 # services/registro_hora.py
+from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraUpdate, RegistroHoraResponse
 from app.models.registro_hora import RegistroHora, RegistroHoraEquipa
 from app.models.obra import Obra
+from app.models.user import User
+from app.models.veiculo import Veiculo
+from app.models.maquina import Maquina
 from typing import Optional
 from datetime import datetime, timezone
+
+
+def _manobradores_opcoes(opcoes) -> list[dict]:
+    if opcoes is None:
+        return []
+    if hasattr(opcoes, "model_dump"):
+        opcoes = opcoes.model_dump()
+    if not isinstance(opcoes, dict):
+        return []
+    manobradores = [m for m in opcoes.get("manobradores", []) if isinstance(m, dict)]
+    for chave in (
+        "laserComManobrador",
+        "poComManobrador",
+        "laserWS940CComManobrador",
+        "lazerYZ30ComManobrador",
+    ):
+        detalhe = opcoes.get(chave)
+        if isinstance(detalhe, dict) and detalhe.get("checked") and detalhe.get("manobrador_user_id"):
+            manobradores.append({
+                "user_id": detalhe["manobrador_user_id"],
+                "opcao": chave,
+                "m2": detalhe.get("m2", ""),
+                "double_journey": bool(detalhe.get("double_journey", False)),
+            })
+    return manobradores
+
+
+def _validar_manobradores(db: Session, opcoes) -> list[dict]:
+    manobradores = _manobradores_opcoes(opcoes)
+    opcoes_dict = opcoes.model_dump() if hasattr(opcoes, "model_dump") else (opcoes or {})
+    vinculos: set[tuple[int, str]] = set()
+    for item in manobradores:
+        user_id = item.get("user_id")
+        opcao = item.get("opcao")
+        vinculo = (user_id, opcao)
+        if vinculo in vinculos:
+            raise HTTPException(
+                status_code=422,
+                detail="O mesmo manobrador não pode ser repetido na mesma opção de máquina.",
+            )
+        vinculos.add(vinculo)
+        if not isinstance(opcoes_dict.get(opcao), dict) or not opcoes_dict[opcao].get("checked"):
+            raise HTTPException(
+                status_code=422,
+                detail="A opção de máquina ligada ao manobrador precisa estar selecionada.",
+            )
+        funcionario = db.get(User, user_id)
+        if not funcionario or not funcionario.is_active:
+            raise HTTPException(status_code=422, detail="Manobrador inválido ou inativo.")
+    return manobradores
+
+
+def _validar_transporte(db: Session, data: dict) -> None:
+    veiculo_id = data.get("transporte_veiculo_id")
+    if veiculo_id:
+        veiculo = db.get(Veiculo, veiculo_id)
+        if not veiculo or not veiculo.ativo:
+            raise HTTPException(status_code=422, detail="Veículo de transporte inválido ou inativo.")
+    maquina_ids = data.get("transporte_maquina_ids") or []
+    if len(set(maquina_ids)) != len(maquina_ids):
+        raise HTTPException(status_code=422, detail="A mesma máquina não pode ser selecionada duas vezes.")
+    if maquina_ids:
+        total = db.query(Maquina).filter(Maquina.id.in_(maquina_ids), Maquina.ativo.is_(True)).count()
+        if total != len(maquina_ids):
+            raise HTTPException(status_code=422, detail="Existe uma máquina inválida ou inativa no transporte.")
+
+
+def _validar_double_journey(
+    db: Session,
+    *,
+    data,
+    obra_id: int | None,
+    participantes: list[tuple[int, bool, str]],
+    registro_id: int | None = None,
+):
+    if obra_id is None:
+        return
+
+    for user_id, double_journey, papel in participantes:
+        query = db.query(RegistroHora).filter(
+            RegistroHora.data == data,
+            RegistroHora.obra_id.isnot(None),
+            RegistroHora.obra_id != obra_id,
+        )
+        if registro_id is not None:
+            query = query.filter(RegistroHora.id != registro_id)
+
+        for conflito in query.all():
+            manobrador_conflitante = next(
+                (item for item in _manobradores_opcoes(conflito.intervencao_maquinas_opcoes)
+                 if item.get("user_id") == user_id),
+                None,
+            )
+            participa_conflito = (
+                conflito.usuario_id == user_id
+                or any(item.user_id == user_id for item in conflito.equipa)
+                or manobrador_conflitante is not None
+            )
+            if not participa_conflito:
+                continue
+            membro_conflitante = next(
+                (
+                    item for item in conflito.equipa
+                    if item.user_id == user_id
+                ),
+                None,
+            )
+            conflito_marcado = (
+                conflito.usuario_id == user_id
+                and conflito.double_journey_lider
+            ) or bool(
+                membro_conflitante
+                and membro_conflitante.double_journey
+            ) or bool(
+                manobrador_conflitante
+                and manobrador_conflitante.get("double_journey", False)
+            )
+
+            if not double_journey and not conflito_marcado:
+                funcionario = db.get(User, user_id)
+                nome = funcionario.name if funcionario else f"ID {user_id}"
+                obra = conflito.obra or db.get(Obra, conflito.obra_id)
+                obra_nome = obra.nome if obra else f"ID {conflito.obra_id}"
+                sujeito = (
+                    f"O chefe de equipa {nome}"
+                    if papel == "lider"
+                    else f"O funcionário {nome}"
+                )
+                instrucao = (
+                    "Marque Double Journey do chefe de equipa"
+                    if papel == "lider"
+                    else f"Marque Double Journey para {nome}"
+                )
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"{sujeito} já está registado na obra {obra_nome} "
+                        f"em {data.strftime('%d/%m/%Y')}. {instrucao} para "
+                        "autorizar o segundo apontamento."
+                    ),
+                )
 
 def _validate_cliente_obra(db: Session, cliente_id: int, obra_id: int):
     obra = db.query(Obra).filter(Obra.id == obra_id).first()
@@ -60,6 +205,28 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
     # else: deixe como None (evita 'null' string)
 
     equipa_payload = data.pop("equipa", [])  # tratar fora
+    _validar_transporte(db, data)
+    manobradores_payload = _validar_manobradores(
+        db, data.get("intervencao_maquinas_opcoes")
+    )
+
+    participantes = [
+        (registro.usuario_id, registro.double_journey_lider, "lider")
+    ]
+    participantes.extend(
+        (m["user_id"], bool(m.get("double_journey", False)), "equipa")
+        for m in equipa_payload
+    )
+    participantes.extend(
+        (m["user_id"], bool(m.get("double_journey", False)), "manobrador")
+        for m in manobradores_payload
+    )
+    _validar_double_journey(
+        db,
+        data=registro.data,
+        obra_id=registro.obra_id,
+        participantes=participantes,
+    )
 
     data["modificado_por"] = None
     data["modificado_em"] = None
@@ -72,7 +239,8 @@ def criar_registro_hora(db: Session, registro: RegistroHoraCreate):
         db.add(RegistroHoraEquipa(
             registro_id=reg.id, 
             user_id=m["user_id"],
-            intemperie=bool(m.get("intemperie", False))
+            intemperie=bool(m.get("intemperie", False)),
+            double_journey=bool(m.get("double_journey", False)),
         ))
 
     db.commit()
@@ -132,8 +300,38 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
 
     data = registro.model_dump(exclude_none=True)
     equipa_payload = data.pop("equipa", None)
+    _validar_transporte(db, data)
+    manobradores_payload = _validar_manobradores(
+        db, data.get("intervencao_maquinas_opcoes")
+    )
 
     mod_por = data.pop("modificado_por", None)
+
+    equipa_para_validacao = equipa_payload if equipa_payload is not None else [
+        {
+            "user_id": membro.user_id,
+            "double_journey": membro.double_journey,
+        }
+        for membro in reg.equipa
+    ]
+    participantes = [
+        (reg.usuario_id, registro.double_journey_lider, "lider")
+    ]
+    participantes.extend(
+        (m["user_id"], bool(m.get("double_journey", False)), "equipa")
+        for m in equipa_para_validacao
+    )
+    participantes.extend(
+        (m["user_id"], bool(m.get("double_journey", False)), "manobrador")
+        for m in manobradores_payload
+    )
+    _validar_double_journey(
+        db,
+        data=registro.data,
+        obra_id=registro.obra_id,
+        participantes=participantes,
+        registro_id=registro_id,
+    )
 
     # segurança absoluta: NÃO deixar que alterem usuario_id via update
     if "usuario_id" in data:
@@ -153,7 +351,8 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
             db.add(RegistroHoraEquipa(
                 registro_id=reg.id, 
                 user_id=m["user_id"],
-                intemperie=bool(m.get("intemperie", False))
+                intemperie=bool(m.get("intemperie", False)),
+                double_journey=bool(m.get("double_journey", False)),
             ))
 
     db.commit()

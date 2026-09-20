@@ -7,21 +7,30 @@ import { Button } from "@/components/ui/button";
 import LoadingState from "@/components/LoadingState";
 
 // ==== Tipos ====
-type User = { id: number; name: string; empresa?: string };
+type User = { id: number; name: string; empresa?: string; is_active?: boolean };
 type Cliente = { id: number; nome: string };
 type Obra = { id: number; nome: string; cliente_id: number; cliente?: Cliente };
+type ManobradorMaquina = { user_id: number; opcao: string; m2?: string; double_journey?: boolean };
+type M2ComManobrador = {
+  checked?: boolean;
+  m2?: string;
+  empresa?: string;
+  manobrador_user_id?: number | null;
+  double_journey?: boolean;
+};
 
 // Opções de máquinas (mantém alinhado com RegistroHoras.tsx)
 type IntervencaoMaquinasOpcoes = {
-  laserComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
-  poComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  laserComManobrador?: M2ComManobrador;
+  poComManobrador?: M2ComManobrador;
   manobrador?: { checked?: boolean; qtd?: number; empresa?: string };
   soLaser?: { checked?: boolean; m2?: string; empresa?: string };
   soPo?: { checked?: boolean; m2?: string; empresa?: string };
-  laserWS940CComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
-  lazerYZ30ComManobrador?: { checked?: boolean; m2?: string; empresa?: string };
+  laserWS940CComManobrador?: M2ComManobrador;
+  lazerYZ30ComManobrador?: M2ComManobrador;
   soMaqLaserWS940C?: { checked?: boolean; m2?: string; empresa?: string };
   soMaqLazerYZ30?: { checked?: boolean; m2?: string; empresa?: string };
+  manobradores?: ManobradorMaquina[];
 };
 
 type RegistroHoras = {
@@ -184,7 +193,10 @@ const Relatorios: React.FC = () => {
       { total: number; intemperie: number; normais: number }
     > = {};
 
-    (r.equipa || []).forEach((e) => {
+    const idsManobradores = new Set(
+      manobradoresDoRegistro(r).map(item => item.user_id)
+    );
+    (r.equipa || []).filter(e => !idsManobradores.has(e.user.id)).forEach((e) => {
       const empRaw = e.user?.empresa?.substring(0, 7) || "Sem Empresa";
       const empresa = empRaw.trim() || "Sem Empresa";
 
@@ -257,6 +269,58 @@ const Relatorios: React.FC = () => {
       .join("");
   };
 
+  const manobradoresDoRegistro = (r: RegistroHoras) => {
+    const opcoes = r.intervencao_maquinas_opcoes;
+    const itens = [...(opcoes?.manobradores || [])];
+    ([
+      "laserComManobrador",
+      "poComManobrador",
+      "laserWS940CComManobrador",
+      "lazerYZ30ComManobrador",
+    ] as const).forEach(opcao => {
+      const detalhe = opcoes?.[opcao];
+      if (detalhe?.checked && detalhe.manobrador_user_id) {
+        itens.push({
+          user_id: detalhe.manobrador_user_id,
+          opcao,
+          m2: detalhe.m2,
+          double_journey: detalhe.double_journey,
+        });
+      }
+    });
+    return itens;
+  };
+
+  const nomeOpcaoManobrador = (opcao: string) => ({
+    laserComManobrador: "Máq Laser",
+    poComManobrador: "Máq Pó",
+    laserWS940CComManobrador: "Laser WS940C",
+    lazerYZ30ComManobrador: "Laser YZ30",
+  }[opcao] || opcao);
+
+  const resumoManobradores = (r: RegistroHoras): string => {
+    const novos = manobradoresDoRegistro(r).map(item => {
+      const utilizador = leaders.find(user => user.id === item.user_id);
+      return `${utilizador?.name || `#${item.user_id}`} (${utilizador?.empresa || "Sem Empresa"}) — ${nomeOpcaoManobrador(item.opcao)}: ${item.m2 || "0"} m²${item.double_journey ? " [Double Journey]" : ""}`;
+    });
+    const legado = r.intervencao_maquinas_opcoes?.manobrador;
+    if (legado?.checked) {
+      novos.push(`Registo antigo: ${legado.qtd || 1} (${legado.empresa || "Sem Empresa"})`);
+    }
+    return novos.length ? novos.join("; ") : "—";
+  };
+
+  const contagensPessoal = (r: RegistroHoras) => {
+    const idsManobradores = new Set(manobradoresDoRegistro(r).map(item => item.user_id));
+    const trabalhadores = (r.equipa || []).filter(e => !idsManobradores.has(e.user.id)).length;
+    const manobradoresNovos = idsManobradores.size;
+    const manobradoresLegado = r.intervencao_maquinas_opcoes?.manobrador?.checked
+      ? r.intervencao_maquinas_opcoes.manobrador.qtd || 1
+      : 0;
+    const manobradores = manobradoresNovos || manobradoresLegado;
+    return { trabalhadores, manobradores, total: trabalhadores + manobradores };
+  };
+
 
   // const maquinasResumo = (r: RegistroHoras): string => {
   //   const o = r.intervencao_maquinas_opcoes;
@@ -279,13 +343,18 @@ const Relatorios: React.FC = () => {
     if (!r.intervencao_maquinas || !o) return "—";
 
     const showEmp = (emp?: string) => ` (${emp && emp.trim() ? emp : "-"})`;
+    const showManobrador = (detalhe?: M2ComManobrador) => {
+      const utilizador = leaders.find(user => user.id === detalhe?.manobrador_user_id);
+      if (utilizador) return ` — ${utilizador.name} (${utilizador.empresa || "Sem Empresa"})`;
+      return showEmp(detalhe?.empresa);
+    };
     const parts: string[] = [];
 
     if (o.laserComManobrador?.checked)
-    parts.push(`Laser c/ manobr.: ${o.laserComManobrador.m2 || "0"} m²${showEmp(o.laserComManobrador.empresa)}`);
+    parts.push(`Laser c/ manobr.: ${o.laserComManobrador.m2 || "0"} m²${showManobrador(o.laserComManobrador)}`);
 
     if (o.poComManobrador?.checked)
-    parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || "0"} m²${showEmp(o.poComManobrador.empresa)}`);
+    parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || "0"} m²${showManobrador(o.poComManobrador)}`);
 
     if (o.manobrador?.checked)
     parts.push(`Manobrador: ${o.manobrador.qtd ?? 1}${showEmp(o.manobrador.empresa)}`);
@@ -297,10 +366,10 @@ const Relatorios: React.FC = () => {
     parts.push(`Só Pó: ${o.soPo.m2 || "0"} m²${showEmp(o.soPo.empresa)}`);
 
     if(o.laserWS940CComManobrador?.checked)
-    parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || "0"} m²${showEmp(o.laserWS940CComManobrador.empresa)}`);
+    parts.push(`Laser WS940C c/ manobr.: ${o.laserWS940CComManobrador.m2 || "0"} m²${showManobrador(o.laserWS940CComManobrador)}`);
 
     if(o.lazerYZ30ComManobrador?.checked)
-    parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || "0"} m²${showEmp(o.lazerYZ30ComManobrador.empresa)}`);
+    parts.push(`Lazer YZ30 c/ manobr.: ${o.lazerYZ30ComManobrador.m2 || "0"} m²${showManobrador(o.lazerYZ30ComManobrador)}`);
 
     if(o.soMaqLaserWS940C?.checked)
     parts.push(`Só Laser WS940C: ${o.soMaqLaserWS940C.m2 || "0"} m²${showEmp(o.soMaqLaserWS940C.empresa)}`);
@@ -323,7 +392,7 @@ const Relatorios: React.FC = () => {
         const [reg, cls, usr] = await Promise.all([
           api.get<RegistroHoras[]>("/registro-horas/"),
           api.get<Cliente[]>("/clientes/"),
-          api.get<User[]>("/users/"),
+          api.get<User[]>("/users/", { params: { is_active: true } }),
         ]);
 
         if (!componenteAtivo) {
@@ -333,7 +402,9 @@ const Relatorios: React.FC = () => {
         setRegistrosAll(reg.data);
         setClientes(cls.data);
 
-        const utilizadoresOrdenados = [...usr.data].sort(
+        const utilizadoresOrdenados = usr.data
+          .filter((utilizador) => utilizador.is_active !== false)
+          .sort(
           (a, b) => (
             (a.name || "").localeCompare(
               b.name || "",
@@ -416,7 +487,7 @@ const Relatorios: React.FC = () => {
             "soMaqLazerYZ30",
           ].includes(filtroMaquinas)
         ) {
-          const key = filtroMaquinas as keyof IntervencaoMaquinasOpcoes;
+          const key = filtroMaquinas as Exclude<keyof IntervencaoMaquinasOpcoes, "manobradores">;
           const checked = r.intervencao_maquinas_opcoes?.[key]?.checked;
           if (!checked) return false;
         }
@@ -524,7 +595,7 @@ const Relatorios: React.FC = () => {
     // usa a lista ORDENADA
     const rows = registrosFiltradosSorted
       .map((r, idx) => {
-        const totalUsers = r.equipa?.length || 0;
+        const pessoal = contagensPessoal(r);
         //const metros = toNum(r.metros_quadrados);
         const rowClass = idx % 2 === 0 ? "line-bg-white-600" : "line-bg-gray-100";
         return `
@@ -533,7 +604,9 @@ const Relatorios: React.FC = () => {
             <td>${r.user?.name ?? `#${r.usuario_id}`}</td>
             <td>${r.cliente?.nome ?? (r.cliente_id ?? "-")}</td>
             <td>${r.obra?.nome ?? (r.obra_id ?? "-")}</td>
-            <td style="text-align:center">${totalUsers}</td>
+            <td style="text-align:center">${pessoal.trabalhadores}</td>
+            <td>${resumoManobradores(r)}</td>
+            <td style="text-align:center">${pessoal.total}</td>
             <td>${resumoEmpresasHtml(r)}</td>
             <td>${r.metros_quadrados}</td>
             <td>${etapasResumo(r)}</td>
@@ -589,6 +662,8 @@ const Relatorios: React.FC = () => {
               <col style="width:12%" />
               <col style="width:12%" />
               <col style="width:6%" />
+              <col style="width:14%" />
+              <col style="width:6%" />
               <col style="width:12%" />
               <col style="width:8%" />
               <col style="width:14%" />
@@ -601,6 +676,8 @@ const Relatorios: React.FC = () => {
                 <th>Cliente</th>
                 <th>Obra</th>
                 <th>Nº Trab</th>
+                <th>Manobradores</th>
+                <th>Total Geral</th>
                 <th>Trab. por Empresa</th>
                 <th>m²</th>
                 <th className="px-4 py-2">Etapas</th>
@@ -610,7 +687,7 @@ const Relatorios: React.FC = () => {
             <tbody>
               ${
                 rows ||
-                `<tr><td colspan=9 style='text-align:center;color:#777'>Nenhum registo encontrado</td></tr>`
+                `<tr><td colspan=11 style='text-align:center;color:#777'>Nenhum registo encontrado</td></tr>`
               }
             </tbody>
             <!-- Se quiser linha de totais impressa, descomenta o <tfoot> abaixo -->
@@ -944,6 +1021,8 @@ const Relatorios: React.FC = () => {
             <col style={{ width: "12%" }} />  {/* Cliente */}
             <col style={{ width: "12%" }} />  {/* Obra */}
             <col style={{ width: "6%" }} />   {/* Nº Trab. */}
+            <col style={{ width: "14%" }} />  {/* Manobradores */}
+            <col style={{ width: "6%" }} />   {/* Total Geral */}
             <col style={{ width: "12%" }} />  {/* Trab. por Empresa */}
             <col style={{ width: "6%" }} />   {/* m² */}
             <col style={{ width: "14%" }} />  {/* Etapas */}
@@ -969,6 +1048,8 @@ const Relatorios: React.FC = () => {
               <th className="px-4 py-2">Cliente</th>
               <th className="px-4 py-2">Obra</th>
               <th className="px-4 py-2">Nº Trabalhadores</th>
+              <th className="px-4 py-2">Manobradores</th>
+              <th className="px-4 py-2">Total Geral</th>
               <th className="px-4 py-2">Trab. por Empresa</th>
               <th className="px-4 py-2">m²</th>
               <th className="px-4 py-2">Etapas</th>
@@ -979,13 +1060,13 @@ const Relatorios: React.FC = () => {
           <tbody>
             {pageItems.length === 0 ? (
               <tr>
-                <td colSpan={9} className="p-6 text-center text-gray-500">
+                <td colSpan={11} className="p-6 text-center text-gray-500">
                   Nenhum registo encontrado
                 </td>
               </tr>
             ) : (
               pageItems.map((r, idx) => {
-                const totalUsers = r.equipa?.length || 0;
+                const pessoal = contagensPessoal(r);
                 //const metros = toNum(r.metros_quadrados);
                 return (
                   <tr key={r.id} className={idx % 2 === 0 ? 'line-bg-white-600' : 'line-bg-gray-100'}>
@@ -993,7 +1074,9 @@ const Relatorios: React.FC = () => {
                     <td className="px-4 py-2">{r.user?.name ?? `#${r.usuario_id}`}</td>
                     <td className="px-4 py-2">{r.cliente?.nome ?? (r.cliente_id ?? "-")}</td>
                     <td className="px-4 py-2">{r.obra?.nome ?? (r.obra_id ?? "-")}</td>
-                    <td className="px-4 py-2">{totalUsers}</td>
+                    <td className="px-4 py-2">{pessoal.trabalhadores}</td>
+                    <td className="px-4 py-2">{resumoManobradores(r)}</td>
+                    <td className="px-4 py-2">{pessoal.total}</td>
                     <td className="px-4 py-2 whitespace-pre-wrap">{renderResumoEmpresas(r)}</td>
                     {/* <td className="px-4 py-2">{metros}</td> */}
                     <td className="px-4 py-2">{r.metros_quadrados}</td>

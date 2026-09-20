@@ -16,6 +16,7 @@ import {
   import { Input } from "@/components/ui/input";
   import { Label } from "@/components/ui/label";
   import { Textarea } from "@/components/ui/textarea";
+  import { normalizarTextoBusca } from "@/utils/text";
   import {
     atualizarCartao,
     criarCartao,
@@ -201,7 +202,7 @@ import {
     }, [estadoFiltro]);
 
     const cartoesFiltrados = useMemo(() => {
-      const termo = pesquisa.trim().toLocaleLowerCase();
+      const termo = normalizarTextoBusca(pesquisa);
 
       return cartoes.filter((cartao) => {
         if (filtroContextual === "atencao") {
@@ -223,15 +224,13 @@ import {
           return true;
         }
 
-        const texto = [
+        const texto = normalizarTextoBusca([
           cartao.nome,
           cartao.identificador,
           cartao.tipo,
           cartao.emissor ?? "",
           cartao.ultimos_quatro ?? "",
-        ]
-          .join(" ")
-          .toLocaleLowerCase();
+        ].join(" "));
 
         return texto.includes(termo);
       });

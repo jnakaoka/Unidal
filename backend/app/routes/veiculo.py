@@ -13,11 +13,7 @@ from app.schemas.veiculo import (
 from app.services import veiculo as service
 
 
-router = APIRouter(
-    dependencies=[
-        Depends(require_role("admin")),
-    ],
-)
+router = APIRouter()
 
 
 @router.get(
@@ -27,6 +23,7 @@ router = APIRouter(
 def listar(
     ativo: Optional[bool] = Query(default=None),
     db: Session = Depends(get_db),
+    _current_user=Depends(require_role("admin", "operador", "motorista")),
 ):
     return service.get_all(
         db,
@@ -41,6 +38,7 @@ def listar(
 def obter(
     veiculo_id: int,
     db: Session = Depends(get_db),
+    _current_user=Depends(require_role("admin", "operador", "motorista")),
 ):
     veiculo = service.get_by_id(
         db,
@@ -66,6 +64,7 @@ def obter(
 def criar(
     payload: VeiculoCreate,
     db: Session = Depends(get_db),
+    _current_user=Depends(require_role("admin")),
 ):
     return service.create(
         db,
@@ -81,6 +80,7 @@ def atualizar(
     veiculo_id: int,
     payload: VeiculoUpdate,
     db: Session = Depends(get_db),
+    _current_user=Depends(require_role("admin")),
 ):
     return service.update(
         db,
