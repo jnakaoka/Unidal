@@ -8,13 +8,34 @@ import HomeScreen from "../screens/HomeScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import RegistroHorasScreen from "../screens/RegistroHorasScreen";
 import FaceEnrollmentScreen from "../screens/FaceEnrollmentScreen";
+import WebModuleScreen from "../screens/WebModuleScreen";
 
 const Stack = createNativeStackNavigator();
 
 function AppStack() {
   return (
-    <Stack.Navigator>
-      <Stack.Screen name="Home" component={HomeScreen} options={{ title: "Unidal" }} />
+    <Stack.Navigator
+      screenOptions={{
+        headerStyle: { backgroundColor: "#ed0000" },
+        headerTintColor: "#ffffff",
+        headerTitleStyle: { fontWeight: "700" },
+        contentStyle: { backgroundColor: "#f5f6f8" },
+      }}
+    >
+      <Stack.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="WebModule"
+        component={WebModuleScreen}
+        options={({ route }: any) => ({
+          title: route?.params?.title || "Unidal",
+        })}
+      />
+
+      {/* Mantidos durante a recuperação para não perder funcionalidades já implementadas. */}
       <Stack.Screen name="Dashboard" component={DashboardScreen} options={{ title: "Dashboard" }} />
       <Stack.Screen
         name="RegistroHoras"
@@ -36,7 +57,7 @@ export default function AppNavigator() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
-        <ActivityIndicator />
+        <ActivityIndicator size="large" color="#ed0000" />
       </View>
     );
   }
@@ -46,8 +67,8 @@ export default function AppNavigator() {
       {user ? (
         <AppStack />
       ) : (
-        <Stack.Navigator>
-          <Stack.Screen name="Login" component={LoginScreen} options={{ title: "Entrar" }} />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Login" component={LoginScreen} />
         </Stack.Navigator>
       )}
     </NavigationContainer>
