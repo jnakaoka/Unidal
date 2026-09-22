@@ -151,7 +151,7 @@ const RelatorioDiasTrabalhados: React.FC = () => {
     <div className="mx-auto max-w-5xl space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-800">Dias Trabalhados</h1>
-        <p className="mt-1 text-sm text-gray-500">Conta cada data uma única vez, como chefe de equipa ou membro da equipa.</p>
+        <p className="mt-1 text-sm text-gray-500">Conta cada data uma única vez para o funcionário efetivamente apontado na equipa ou como manobrador.</p>
       </div>
 
       <div className="space-y-4 rounded-2xl bg-white p-4 shadow md:p-6">
