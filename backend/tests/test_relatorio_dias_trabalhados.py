@@ -1,16 +1,45 @@
 from datetime import date
 
 from app.models import RegistroHora, RegistroHoraEquipa
+from app.models.perfil import Perfil
+from app.models.user import User
+from app.utils.security import hash_password
 from app.models.cliente import Cliente
 from app.models.obra import Obra
 from app.models.projeto import Projeto
-from tests.conftest import criar_utilizador
+from tests.conftest import SENHA_TESTE
+
+
+def _criar_utilizador_relatorio(db, perfil, nome, email):
+    utilizador = User(
+        name=nome,
+        email=email,
+        empresa="UNIDAL TESTE",
+        hashed_password=hash_password(SENHA_TESTE),
+        must_change_password=False,
+        is_active=True,
+        e_condutor=False,
+        perfil_id=perfil.id,
+    )
+    db.add(utilizador)
+    db.flush()
+    return utilizador
 
 
 def _criar_contexto(db):
-    chefe = criar_utilizador(db, "operador", "chefe.relatorio@example.com")
-    jose = criar_utilizador(db, "operador", "jose.relatorio@example.com")
-    outro = criar_utilizador(db, "operador", "outro.relatorio@example.com")
+    perfil = Perfil(nome="operador", is_active=True)
+    db.add(perfil)
+    db.flush()
+
+    chefe = _criar_utilizador_relatorio(
+        db, perfil, "Chefe Relatório", "chefe.relatorio@example.com"
+    )
+    jose = _criar_utilizador_relatorio(
+        db, perfil, "José Relatório", "jose.relatorio@example.com"
+    )
+    outro = _criar_utilizador_relatorio(
+        db, perfil, "Outro Relatório", "outro.relatorio@example.com"
+    )
 
     projeto = Projeto(nome="Projeto Relatório", descricao="Teste", is_active=True)
     cliente = Cliente(nome="Cliente Relatório", is_active=True)
