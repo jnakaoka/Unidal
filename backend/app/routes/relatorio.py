@@ -2,7 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import RegistroHora, User, Projeto
-from app.schemas.relatorio import (\n    DiasTrabalhadosOut,\n    DoubleJourneyOut,\n    IntemperieOut,\n    RegistroHoraOut,\n)
+from app.schemas.relatorio import (
+    DiasTrabalhadosOut,
+    DoubleJourneyOut,
+    IntemperieOut,
+    RegistroHoraOut,
+)
 from app.dependencies.auth import require_role
 from app.services.registro_hora import _manobradores_opcoes
 from typing import List, Optional
