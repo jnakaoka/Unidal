@@ -22,6 +22,9 @@ TABELAS_LIMPAS = [
     "veiculos",
     "registros_hora_equipa",
     "registros_hora",
+    "obras",
+    "clientes",
+    "projetos",
     "users",
     "perfis",
 ]
