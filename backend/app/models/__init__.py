@@ -18,3 +18,5 @@ from app.models.veiculo_condutor_associacao import (
     VeiculoCondutorAssociacao,
 )
 
+
+from .ocorrencia import Ocorrencia, ocorrencia_testemunhas
