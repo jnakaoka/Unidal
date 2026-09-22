@@ -1,7 +1,7 @@
 // Sidebar.tsx
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Clock, BarChartBig, UserCog, LogOut, CreditCard, ChevronDown, Wrench } from "lucide-react";
+import { Clock, BarChartBig, UserCog, LogOut, CreditCard, ChevronDown, Wrench, ClipboardList } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLayout } from "@/context/LayoutContext";
 import clsx from "clsx";
@@ -39,6 +39,12 @@ const Sidebar = () => {
     //   icon: <FolderKanban size={18} />,
     //   showFor: ["admin"],
     // },
+    {
+      label: "Ocorrências",
+      to: "/ocorrencias",
+      icon: <ClipboardList size={18} />,
+      showFor: ["admin", "operador"],
+    },
     {
       label: "Usuários",
       to: "/usuarios",
