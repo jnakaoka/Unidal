@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import RegistroHora, User, Projeto
-from app.schemas.relatorio import DiasTrabalhadosOut, DoubleJourneyOut, RegistroHoraOut
+from app.schemas.relatorio import (\n    DiasTrabalhadosOut,\n    DoubleJourneyOut,\n    IntemperieOut,\n    RegistroHoraOut,\n)
 from app.dependencies.auth import require_role
 from app.services.registro_hora import _manobradores_opcoes
 from typing import List, Optional
@@ -44,8 +44,7 @@ def relatorio_dias_trabalhados(
     for registro in registros_periodo:
         manobradores = _manobradores_opcoes(registro.intervencao_maquinas_opcoes)
         participa = (
-            registro.usuario_id == funcionario_id
-            or any(item.user_id == funcionario_id for item in registro.equipa)
+            any(item.user_id == funcionario_id for item in registro.equipa)
             or any(item.get("user_id") == funcionario_id for item in manobradores)
         )
         if participa:
@@ -61,19 +60,22 @@ def relatorio_dias_trabalhados(
             ),
             None,
         )
-        marcado = (
-            registro.usuario_id == funcionario_id
-            and registro.double_journey_lider
-        ) or bool(membro and membro.double_journey) or any(
+        double_journey = bool(membro and membro.double_journey) or any(
             item.get("user_id") == funcionario_id
             and item.get("double_journey", False)
             for item in _manobradores_opcoes(registro.intervencao_maquinas_opcoes)
         )
+        intemperie = bool(membro and membro.intemperie)
         grupo = por_data.setdefault(
             registro.data,
-            {"marcado": False, "obras": set()},
+            {
+                "double_journey": False,
+                "intemperie": False,
+                "obras": set(),
+            },
         )
-        grupo["marcado"] = grupo["marcado"] or marcado
+        grupo["double_journey"] = grupo["double_journey"] or double_journey
+        grupo["intemperie"] = grupo["intemperie"] or intemperie
         grupo["obras"].add(
             registro.obra.nome if registro.obra else "Obra não informada"
         )
@@ -81,7 +83,12 @@ def relatorio_dias_trabalhados(
     double_journeys = [
         DoubleJourneyOut(data=data_registro, obras=sorted(info["obras"]))
         for data_registro, info in sorted(por_data.items())
-        if info["marcado"] and len(info["obras"]) > 1
+        if info["double_journey"] and len(info["obras"]) > 1
+    ]
+    intemperies = [
+        IntemperieOut(data=data_registro, obras=sorted(info["obras"]))
+        for data_registro, info in sorted(por_data.items())
+        if info["intemperie"]
     ]
 
     return DiasTrabalhadosOut(
@@ -94,6 +101,8 @@ def relatorio_dias_trabalhados(
         datas_trabalhadas=datas_trabalhadas,
         total_double_journeys=len(double_journeys),
         double_journeys=double_journeys,
+        total_intemperies=len(intemperies),
+        intemperies=intemperies,
     )
 
 @router.get("/", response_model=List[RegistroHoraOut])
