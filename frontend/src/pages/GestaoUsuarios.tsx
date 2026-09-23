@@ -665,7 +665,6 @@ const GestaoUsuarios: React.FC = () => {
                   As funções operacionais são independentes do perfil de acesso e um utilizador pode ter várias funções.
                 </p>
               </div>
-              </div>
             </div>
 
             <div className="mt-6 flex w-full justify-end gap-3 border-t border-gray-200 pt-4">
