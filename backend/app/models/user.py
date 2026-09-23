@@ -15,25 +15,23 @@ class User(Base):
     must_change_password = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True)
     e_condutor = Column(Boolean, default=False, nullable=False)
-    
+
     perfil_id = Column(Integer, ForeignKey("perfis.id"), nullable=False)
     perfil = relationship("Perfil", back_populates="usuarios")
- 
-    # registros que ESTE user criou / é dono
+    funcoes = relationship(
+        "Funcao",
+        secondary="usuario_funcoes",
+        back_populates="usuarios",
+    )
+
     registros = relationship(
         "RegistroHora",
         back_populates="user",
         foreign_keys="RegistroHora.usuario_id",
     )
-
-    # registros que ESTE user alterou depois
     registros_modificados = relationship(
         "RegistroHora",
         foreign_keys="RegistroHora.modificado_por",
         viewonly=True,
     )
-    # registros = relationship("RegistroHora", back_populates="user")
     registros_hora_equipa = relationship("RegistroHoraEquipa", back_populates="user")
-    # equipa_registros = relationship("RegistroHoraEquipa", back_populates="user", cascade="all, delete-orphan")
-    #registros = relationship("RegistroHora", back_populates="user")
-    #registros = relationship("RegistroHora", back_populates="usuario")
