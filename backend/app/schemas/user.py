@@ -15,7 +15,7 @@ class UserCreate(BaseModel):
     perfil_id: int
     empresa: str
     e_condutor: bool = False
-    funcao_codigos: list[str] = []
+    funcao_codigos: list[str] = Field(default_factory=list)
 
 
 class UserUpdate(BaseModel):
@@ -56,7 +56,7 @@ class UserOut(BaseModel):
     perfil_id: Optional[int]
     perfil: Optional[PerfilOut] = None
     e_condutor: bool
-    funcoes: list[FuncaoOut] = []
+    funcoes: list[FuncaoOut] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
