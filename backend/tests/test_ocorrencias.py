@@ -128,3 +128,52 @@ def test_funcionario_nao_pode_ser_testemunha(client, db):
     }
     response = client.post("/ocorrencias/", json=payload, headers=_headers(client, operador.email))
     assert response.status_code == 422
+
+
+def test_operador_nao_pode_registar_outro_chefe(client, db):
+    operador = _user(db, "Chefe autenticado", "chefe.auth@teste.pt", "operador")
+    outro_chefe = _user(db, "Outro chefe", "outro.chefe@teste.pt", "operador")
+    funcionario = _user(db, "Funcionário", "func.chefe@teste.pt", "operador")
+    payload = {
+        "data": "2026-09-23",
+        "chefe_equipe_id": outro_chefe.id,
+        "funcionario_id": funcionario.id,
+        "descricao": "Tentativa de registar por outro chefe.",
+        "testemunha_ids": [],
+    }
+    response = client.post("/ocorrencias/", json=payload, headers=_headers(client, operador.email))
+    assert response.status_code == 403
+
+
+def test_descricao_apenas_espacos_e_rejeitada(client, db):
+    operador = _user(db, "Chefe espaços", "chefe.espacos@teste.pt", "operador")
+    funcionario = _user(db, "Funcionário espaços", "func.espacos@teste.pt", "operador")
+    payload = {
+        "data": "2026-09-23",
+        "chefe_equipe_id": operador.id,
+        "funcionario_id": funcionario.id,
+        "descricao": "     ",
+        "testemunha_ids": [],
+    }
+    response = client.post("/ocorrencias/", json=payload, headers=_headers(client, operador.email))
+    assert response.status_code == 422
+
+
+def test_perfil_administrador_tem_permissoes_de_admin(client, db):
+    admin = _user(db, "Administrador", "administrador.oc@teste.pt", "administrador")
+    chefe = _user(db, "Chefe alias", "chefe.alias@teste.pt", "operador")
+    funcionario = _user(db, "Funcionário alias", "func.alias@teste.pt", "operador")
+    payload = {
+        "data": "2026-09-23",
+        "chefe_equipe_id": chefe.id,
+        "funcionario_id": funcionario.id,
+        "descricao": "Ocorrência criada pelo perfil administrador.",
+        "testemunha_ids": [],
+    }
+    response = client.post("/ocorrencias/", json=payload, headers=_headers(client, admin.email))
+    assert response.status_code == 201
+    ocorrencia_id = response.json()["id"]
+    assert client.delete(
+        f"/ocorrencias/{ocorrencia_id}",
+        headers=_headers(client, admin.email),
+    ).status_code == 204
