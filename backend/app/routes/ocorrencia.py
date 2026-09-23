@@ -16,8 +16,12 @@ def _perfil(user: User) -> str:
     return (user.perfil.nome or "").strip().lower() if user.perfil else ""
 
 
+def _is_admin(user: User) -> bool:
+    return _perfil(user) in {"admin", "administrador"}
+
+
 def _pode_usar_ocorrencias(user: User) -> bool:
-    return _perfil(user) in {"admin", "operador"}
+    return _is_admin(user) or _perfil(user) == "operador"
 
 
 def _carregar_usuarios_ativos(db: Session, ids: set[int]) -> dict[int, User]:
@@ -42,7 +46,7 @@ def _query(db: Session):
 
 def _obter_visivel(db: Session, ocorrencia_id: int, current_user: User) -> Ocorrencia:
     query = _query(db).filter(Ocorrencia.id == ocorrencia_id)
-    if _perfil(current_user) != "admin":
+    if not _is_admin(current_user):
         query = query.filter(Ocorrencia.criado_por_id == current_user.id)
     ocorrencia = query.first()
     if not ocorrencia:
@@ -55,7 +59,7 @@ def listar_ocorrencias(db: Session = Depends(get_db), current_user: User = Depen
     if not _pode_usar_ocorrencias(current_user):
         raise HTTPException(status_code=403, detail="Permissão negada")
     query = _query(db)
-    if _perfil(current_user) != "admin":
+    if not _is_admin(current_user):
         query = query.filter(Ocorrencia.criado_por_id == current_user.id)
     return query.order_by(Ocorrencia.data.desc(), Ocorrencia.id.desc()).all()
 
@@ -71,6 +75,12 @@ def obter_ocorrencia(ocorrencia_id: int, db: Session = Depends(get_db), current_
 def criar_ocorrencia(payload: OcorrenciaCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if not _pode_usar_ocorrencias(current_user):
         raise HTTPException(status_code=403, detail="Permissão negada")
+
+    if not _is_admin(current_user) and payload.chefe_equipe_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="O operador só pode registar ocorrências como chefe da própria equipa.",
+        )
 
     ids = {payload.chefe_equipe_id, payload.funcionario_id, *payload.testemunha_ids}
     usuarios = _carregar_usuarios_ativos(db, ids)
@@ -90,7 +100,7 @@ def criar_ocorrencia(payload: OcorrenciaCreate, db: Session = Depends(get_db), c
 
 @router.put("/{ocorrencia_id}", response_model=OcorrenciaOut)
 def atualizar_ocorrencia(ocorrencia_id: int, payload: OcorrenciaUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if _perfil(current_user) != "admin":
+    if not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Apenas administradores podem editar ocorrências.")
 
     ocorrencia = _obter_visivel(db, ocorrencia_id, current_user)
@@ -108,7 +118,7 @@ def atualizar_ocorrencia(ocorrencia_id: int, payload: OcorrenciaUpdate, db: Sess
 
 @router.delete("/{ocorrencia_id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_ocorrencia(ocorrencia_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    if _perfil(current_user) != "admin":
+    if not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Apenas administradores podem eliminar ocorrências.")
     ocorrencia = _obter_visivel(db, ocorrencia_id, current_user)
     db.delete(ocorrencia)
