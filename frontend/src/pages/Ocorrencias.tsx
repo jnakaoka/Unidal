@@ -4,12 +4,20 @@ import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
+type Funcao = {
+  id: number;
+  codigo: string;
+  nome: string;
+  is_active: boolean;
+};
+
 type Usuario = {
   id: number;
   name: string;
   email: string;
   empresa: string;
   is_active?: boolean;
+  funcoes?: Funcao[];
 };
 
 type Ocorrencia = {
@@ -81,6 +89,11 @@ const Ocorrencias: React.FC = () => {
       setForm((atual) => ({ ...atual, chefe_equipe_id: String(user.id) }));
     }
   }, [isAdmin, user?.id]);
+
+  const chefesDisponiveis = useMemo(
+    () => usuarios.filter((u) => (u.funcoes || []).some((f) => f.codigo === "CHEFE_EQUIPE" && f.is_active)),
+    [usuarios]
+  );
 
   const testemunhasDisponiveis = useMemo(() => {
     const termo = buscaTestemunha.trim().toLowerCase();
@@ -190,7 +203,7 @@ const Ocorrencias: React.FC = () => {
             Chefe de equipa
             <select required disabled={!isAdmin} value={form.chefe_equipe_id} onChange={(e) => setForm({ ...form, chefe_equipe_id: e.target.value })} className="mt-1 w-full rounded-md border p-2 disabled:bg-gray-100 disabled:text-gray-600">
               <option value="">Selecionar...</option>
-              {usuarios.map((u) => <option key={u.id} value={u.id}>{u.name} — {u.empresa}</option>)}
+              {chefesDisponiveis.map((u) => <option key={u.id} value={u.id}>{u.name} — {u.empresa}</option>)}
             </select>
           </label>
           <label className="text-sm font-medium text-gray-700">
