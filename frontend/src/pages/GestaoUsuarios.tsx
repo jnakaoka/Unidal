@@ -14,6 +14,13 @@ import Pagination, { usePagination } from "@/components/pagination-utils";
 import LoadingState from "@/components/LoadingState";
 import { contemTextoBusca } from "@/utils/text";
 
+interface Funcao {
+  id: number;
+  codigo: string;
+  nome: string;
+  is_active: boolean;
+}
+
 interface User {
   id: number;
   name: string;
@@ -23,6 +30,8 @@ interface User {
   is_active: boolean;
   e_condutor: boolean;
   perfil: Perfil;
+  funcoes: Funcao[];
+
 }
 
 interface FiltrosUsuarios {
@@ -41,8 +50,9 @@ const GestaoUsuarios: React.FC = () => {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [modalAberto, setModalAberto] = useState(false);
-  const [formData, setFormData] = useState({ id: 0, name: '', email: '', empresa: '', password: "", perfil_id: 0, e_condutor: false });
+  const [formData, setFormData] = useState({ id: 0, name: '', email: '', empresa: '', password: "", perfil_id: 0, e_condutor: false, funcao_codigos: [] as string[] });
   const [perfis, setPerfis] = useState<Perfil[]>([]);
+  const [funcoesDisponiveis, setFuncoesDisponiveis] = useState<Funcao[]>([]);
   const [carregandoInicial, setCarregandoInicial] = useState(true);
   const [carregandoLista, setCarregandoLista] = useState(false);
   const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
@@ -81,9 +91,8 @@ const GestaoUsuarios: React.FC = () => {
 
         await Promise.all([
           fetchUsuarios(),
-          cargaInicial
-            ? fetchPerfis()
-            : Promise.resolve(),
+          cargaInicial ? fetchPerfis() : Promise.resolve(),
+          cargaInicial ? fetchFuncoes() : Promise.resolve(),
         ]);
       } catch {
         if (montado) {
@@ -228,6 +237,11 @@ const GestaoUsuarios: React.FC = () => {
     }
   };
 
+  const fetchFuncoes = async () => {
+    const { data } = await api.get<Funcao[]>('/users/funcoes-disponiveis');
+    setFuncoesDisponiveis(data);
+  };
+
   // const fetchUsuarios = async () => {
   //   try {
   //     const params = new URLSearchParams();
@@ -305,7 +319,7 @@ const GestaoUsuarios: React.FC = () => {
 
   const handleNovoUsuario = () => {
     const perfilInicial = perfis[0]?.id || 0;
-    setFormData({id: 0, name: "", email: "", empresa: "", password: "", perfil_id: perfilInicial, e_condutor: false });
+    setFormData({id: 0, name: "", email: "", empresa: "", password: "", perfil_id: perfilInicial, e_condutor: false, funcao_codigos: [] });
     setModalAberto(true);
     setEditingUser(null);
   };
@@ -332,6 +346,7 @@ const GestaoUsuarios: React.FC = () => {
       password: "",
       perfil_id: typeof user.perfil === 'object' ? user.perfil.id : user.perfil,
       e_condutor: user.e_condutor,
+      funcao_codigos: (user.funcoes || []).map((funcao) => funcao.codigo),
     });
     console.log('formData.perfil_id:', formData.perfil_id, typeof formData.perfil_id);
     setIsEditing(true);
@@ -353,7 +368,8 @@ const GestaoUsuarios: React.FC = () => {
           email: formData.email,
           empresa: formData.empresa,
           perfil_id: formData.perfil_id,
-          e_condutor: formData.e_condutor,
+          e_condutor: formData.funcao_codigos.includes("CONDUTOR"),
+          funcao_codigos: formData.funcao_codigos,
         });
       } else {
         await api.post('/users/', {
@@ -362,7 +378,8 @@ const GestaoUsuarios: React.FC = () => {
           empresa: formData.empresa,
           password: formData.password,
           perfil_id: formData.perfil_id,
-          e_condutor: formData.e_condutor,
+          e_condutor: formData.funcao_codigos.includes("CONDUTOR"),
+          funcao_codigos: formData.funcao_codigos,
         });
       }
 
@@ -380,7 +397,7 @@ const GestaoUsuarios: React.FC = () => {
   };
 
   const resetForm = () => {
-    setFormData({ id: 0, name: '', email: '', empresa: '', password: '', perfil_id: perfis[0]?.id || 0 , e_condutor: false});
+    setFormData({ id: 0, name: '', email: '', empresa: '', password: '', perfil_id: perfis[0]?.id || 0 , e_condutor: false, funcao_codigos: []});
     setEditingUser(null);
     setIsEditing(false);
     setModalAberto(false);
@@ -611,36 +628,43 @@ const GestaoUsuarios: React.FC = () => {
                 </select>
               </div>
               <div className="md:col-span-2">
-                <label
-                  className={[
-                    "flex cursor-pointer items-start gap-3",
-                    "rounded-lg border border-gray-200",
-                    "bg-gray-50 p-4",
-                  ].join(" ")}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.e_condutor}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        e_condutor: e.target.checked,
-                      })
-                    }
-                    className="mt-1 h-4 w-4 accent-red-600"
-                  />
-
-                  <span>
-                    <span className="block font-medium text-gray-800">
-                      Condutor
-                    </span>
-
-                    <span className="block text-sm text-gray-500">
-                      Este usuário pode conduzir carrinhas e viaturas.
-                      Esta opção não altera o perfil de acesso.
-                    </span>
-                  </span>
-                </label>
+                <Label className="mb-2 block">Funções operacionais</Label>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {funcoesDisponiveis.map((funcao) => {
+                    const checked = formData.funcao_codigos.includes(funcao.codigo);
+                    return (
+                      <label key={funcao.codigo} className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            const codigos = e.target.checked
+                              ? [...formData.funcao_codigos, funcao.codigo]
+                              : formData.funcao_codigos.filter((codigo) => codigo !== funcao.codigo);
+                            setFormData({
+                              ...formData,
+                              funcao_codigos: codigos,
+                              e_condutor: codigos.includes("CONDUTOR"),
+                            });
+                          }}
+                          className="mt-1 h-4 w-4 accent-blue-600"
+                        />
+                        <span>
+                          <span className="block font-medium text-gray-800">{funcao.nome}</span>
+                          <span className="block text-xs text-gray-500">
+                            {funcao.codigo === "CHEFE_EQUIPE" && "Pode solicitar materiais e exercer funções de chefe de equipa."}
+                            {funcao.codigo === "RESPONSAVEL_ESTALEIRO" && "Pode gerir pedidos, preparação e estoque do estaleiro."}
+                            {funcao.codigo === "CONDUTOR" && "Pode conduzir carrinhas e viaturas."}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  As funções operacionais são independentes do perfil de acesso e um utilizador pode ter várias funções.
+                </p>
+              </div>
               </div>
             </div>
 
@@ -710,7 +734,7 @@ const GestaoUsuarios: React.FC = () => {
                   <th className="px-4 py-2">Email</th>
                   <th className="px-4 py-2">Empresa</th>
                   <th className="px-4 py-2">Perfil</th>
-                  <th className="px-4 py-2 text-left">Condutor</th>
+                  <th className="px-4 py-2 text-left">Funções</th>
                   <th className="px-4 py-2">Status</th>
                   <th colSpan={2} className="px-4 py-2">Ações</th>
                 </tr>
@@ -762,16 +786,18 @@ const GestaoUsuarios: React.FC = () => {
                       <td className="px-4 py-2">{user.email}</td>
                       <td className="px-4 py-2">{user.empresa}</td>
                       <td className="px-4 py-2">{user.perfil?.nome || 'Sem perfil'}</td>
-                      <td className="px-4 py-2"><span className={[
-                            "inline-flex rounded-full px-2.5 py-1",
-                            "text-xs font-medium",
-                            user.e_condutor
-                              ? "bg-green-100 text-green-700"
-                              : "bg-gray-100 text-gray-600",
-                          ].join(" ")}
-                        >
-                          {user.e_condutor ? "Sim" : "Não"}
-                        </span>
+                      <td className="px-4 py-2">
+                        <div className="flex flex-wrap gap-1">
+                          {(user.funcoes || []).length > 0 ? (
+                            user.funcoes.map((funcao) => (
+                              <span key={funcao.codigo} className="inline-flex rounded-full bg-blue-100 px-2.5 py-1 text-xs font-medium text-blue-700">
+                                {funcao.nome}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-gray-400">—</span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-2">
                         <span
