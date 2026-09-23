@@ -19,6 +19,14 @@ class OcorrenciaBase(BaseModel):
     descricao: str = Field(min_length=3, max_length=5000)
     testemunha_ids: List[int] = Field(default_factory=list)
 
+    @field_validator("descricao")
+    @classmethod
+    def descricao_valida(cls, value: str) -> str:
+        value = value.strip()
+        if len(value) < 3:
+            raise ValueError("A descrição deve ter pelo menos 3 caracteres.")
+        return value
+
     @field_validator("testemunha_ids")
     @classmethod
     def testemunhas_sem_duplicados(cls, value: List[int]) -> List[int]:
