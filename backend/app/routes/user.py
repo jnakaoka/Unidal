@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserOut, UserUpdate
+from app.schemas.user import FuncaoOut, UserCreate, UserOut, UserUpdate
 from app.services import user as user_service
 from app.dependencies.auth import verificar_permissao
 from app.dependencies.auth import require_role
@@ -11,7 +11,7 @@ from sqlalchemy.orm import joinedload
 from typing import Optional
 from fastapi import Query
 
-router = APIRouter()
+router = APIRouter()\n\n@router.get("/funcoes-disponiveis", response_model=list[FuncaoOut])\ndef get_funcoes_disponiveis(db: Session = Depends(get_db)):\n    return user_service.get_funcoes(db)
 
 @router.post("/", response_model=UserOut)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
