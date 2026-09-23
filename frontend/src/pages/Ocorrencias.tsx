@@ -76,6 +76,12 @@ const Ocorrencias: React.FC = () => {
 
   useEffect(() => { carregar(); }, []);
 
+  useEffect(() => {
+    if (!isAdmin && user?.id) {
+      setForm((atual) => ({ ...atual, chefe_equipe_id: String(user.id) }));
+    }
+  }, [isAdmin, user?.id]);
+
   const testemunhasDisponiveis = useMemo(() => {
     const termo = buscaTestemunha.trim().toLowerCase();
     return usuarios.filter((u) =>
@@ -94,7 +100,10 @@ const Ocorrencias: React.FC = () => {
   };
 
   const limpar = () => {
-    setForm(vazio());
+    setForm({
+      ...vazio(),
+      chefe_equipe_id: !isAdmin && user?.id ? String(user.id) : "",
+    });
     setEditandoId(null);
     setBuscaTestemunha("");
   };
@@ -179,7 +188,7 @@ const Ocorrencias: React.FC = () => {
           </label>
           <label className="text-sm font-medium text-gray-700">
             Chefe de equipa
-            <select required value={form.chefe_equipe_id} onChange={(e) => setForm({ ...form, chefe_equipe_id: e.target.value })} className="mt-1 w-full rounded-md border p-2">
+            <select required disabled={!isAdmin} value={form.chefe_equipe_id} onChange={(e) => setForm({ ...form, chefe_equipe_id: e.target.value })} className="mt-1 w-full rounded-md border p-2 disabled:bg-gray-100 disabled:text-gray-600">
               <option value="">Selecionar...</option>
               {usuarios.map((u) => <option key={u.id} value={u.id}>{u.name} — {u.empresa}</option>)}
             </select>
