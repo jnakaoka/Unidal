@@ -97,7 +97,7 @@ def criar_ocorrencia(payload: OcorrenciaCreate, db: Session = Depends(get_db), c
     ids = {payload.chefe_equipe_id, payload.funcionario_id, *payload.testemunha_ids}
     usuarios = _carregar_usuarios_ativos(db, ids)
     chefe = usuarios[payload.chefe_equipe_id]
-    if not _is_admin(current_user) and not _is_chefe_equipe(chefe):
+    if not _is_chefe_equipe(chefe):
         raise HTTPException(status_code=400, detail="O utilizador selecionado não possui a função Chefe de equipa.")
 
     ocorrencia = Ocorrencia(
