@@ -11,7 +11,11 @@ from sqlalchemy.orm import joinedload
 from typing import Optional
 from fastapi import Query
 
-router = APIRouter()\n\n@router.get("/funcoes-disponiveis", response_model=list[FuncaoOut])\ndef get_funcoes_disponiveis(db: Session = Depends(get_db)):\n    return user_service.get_funcoes(db)
+router = APIRouter()
+
+@router.get("/funcoes-disponiveis", response_model=list[FuncaoOut])
+def get_funcoes_disponiveis(db: Session = Depends(get_db)):
+    return user_service.get_funcoes(db)
 
 @router.post("/", response_model=UserOut)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
