@@ -20,8 +20,20 @@ def _is_admin(user: User) -> bool:
     return _perfil(user) in {"admin", "administrador"}
 
 
+def _tem_funcao(user: User, codigo: str) -> bool:
+    codigo = codigo.strip().upper()
+    return any(
+        (funcao.codigo or "").strip().upper() == codigo and funcao.is_active
+        for funcao in (user.funcoes or [])
+    )
+
+
+def _is_chefe_equipe(user: User) -> bool:
+    return _tem_funcao(user, "CHEFE_EQUIPE")
+
+
 def _pode_usar_ocorrencias(user: User) -> bool:
-    return _is_admin(user) or _perfil(user) == "operador"
+    return _is_admin(user) or _is_chefe_equipe(user)
 
 
 def _carregar_usuarios_ativos(db: Session, ids: set[int]) -> dict[int, User]:
@@ -79,11 +91,14 @@ def criar_ocorrencia(payload: OcorrenciaCreate, db: Session = Depends(get_db), c
     if not _is_admin(current_user) and payload.chefe_equipe_id != current_user.id:
         raise HTTPException(
             status_code=403,
-            detail="O operador só pode registar ocorrências como chefe da própria equipa.",
+            detail="O chefe de equipa só pode registar ocorrências como chefe da própria equipa.",
         )
 
     ids = {payload.chefe_equipe_id, payload.funcionario_id, *payload.testemunha_ids}
     usuarios = _carregar_usuarios_ativos(db, ids)
+    chefe = usuarios[payload.chefe_equipe_id]
+    if not _is_admin(current_user) and not _is_chefe_equipe(chefe):
+        raise HTTPException(status_code=400, detail="O utilizador selecionado não possui a função Chefe de equipa.")
 
     ocorrencia = Ocorrencia(
         data=payload.data,
@@ -106,6 +121,9 @@ def atualizar_ocorrencia(ocorrencia_id: int, payload: OcorrenciaUpdate, db: Sess
     ocorrencia = _obter_visivel(db, ocorrencia_id, current_user)
     ids = {payload.chefe_equipe_id, payload.funcionario_id, *payload.testemunha_ids}
     usuarios = _carregar_usuarios_ativos(db, ids)
+    chefe = usuarios[payload.chefe_equipe_id]
+    if not _is_chefe_equipe(chefe):
+        raise HTTPException(status_code=400, detail="O utilizador selecionado não possui a função Chefe de equipa.")
 
     ocorrencia.data = payload.data
     ocorrencia.chefe_equipe_id = payload.chefe_equipe_id
