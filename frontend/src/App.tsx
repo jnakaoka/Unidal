@@ -19,6 +19,7 @@ import ChangePassword from "./pages/ChangePassword";
 import ControleCartoes from "./pages/ControleCartoes";
 import Maquinas from "./pages/Maquinas";
 import Ocorrencias from "./pages/Ocorrencias";
+import Estaleiro from "./pages/Estaleiro";
 
 const App: React.FC = () => {
   return (
@@ -54,6 +55,7 @@ const App: React.FC = () => {
         <Route path="controle-cartoes" element={<PrivateRoute allowedProfiles={["admin"]}><ControleCartoes /></PrivateRoute>}/>
         <Route path="maquinas" element={<PrivateRoute allowedProfiles={["admin"]}><Maquinas /></PrivateRoute>}/>
         <Route path="ocorrencias" element={<PrivateRoute allowedProfiles={["admin", "operador"]}><Ocorrencias /></PrivateRoute>}/>
+        <Route path="estaleiro" element={<PrivateRoute allowedProfiles={["admin", "operador"]}><Estaleiro /></PrivateRoute>}/>
       </Route>
 
       <Route path="*" element={<NotFound />} />
