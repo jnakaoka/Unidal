@@ -29,6 +29,8 @@ class MaterialOut(BaseModel):
     estoque_fisico: Decimal
     estoque_minimo: Decimal
     is_active: bool
+    estoque_reservado: Decimal = Decimal("0")
+    estoque_disponivel: Decimal = Decimal("0")
     model_config = {"from_attributes": True}
 
 class PedidoItemCreate(BaseModel):
@@ -71,3 +73,15 @@ class AtenderItem(BaseModel):
 
 class ConcluirPedido(BaseModel):
     motivo_parcial: Optional[str] = None
+
+class MovimentoEstoqueOut(BaseModel):
+    id: int
+    material_id: int
+    pedido_id: Optional[int]
+    usuario_id: int
+    usuario_nome: Optional[str] = None
+    tipo: str
+    quantidade: Decimal
+    observacao: Optional[str]
+    criado_em: object
+    model_config = {"from_attributes": True}
