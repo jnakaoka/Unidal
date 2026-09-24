@@ -8,6 +8,20 @@ class MaterialCreate(BaseModel):
     estoque_inicial: Decimal = Field(default=0, ge=0)
     estoque_minimo: Decimal = Field(default=0, ge=0)
 
+class MaterialUpdate(BaseModel):
+    nome: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    unidade: Optional[str] = Field(default=None, min_length=1, max_length=30)
+    estoque_minimo: Optional[Decimal] = Field(default=None, ge=0)
+    is_active: Optional[bool] = None
+
+class MovimentoEstoqueCreate(BaseModel):
+    quantidade: Decimal = Field(gt=0)
+    observacao: Optional[str] = None
+
+class AjusteEstoqueCreate(BaseModel):
+    estoque_fisico: Decimal = Field(ge=0)
+    motivo: str = Field(min_length=3, max_length=500)
+
 class MaterialOut(BaseModel):
     id: int
     nome: str
