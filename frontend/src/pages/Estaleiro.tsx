@@ -3,6 +3,7 @@ import { Boxes, ClipboardList, PackagePlus, Warehouse } from "lucide-react";
 import api from "@/services/api";
 import { useAuth } from "@/context/AuthContext";
 import Modal from "@/components/ui/modal";
+import MaterialSearch from "@/components/MaterialSearch";
 
 type Material = { id:number; nome:string; unidade:string; estoque_fisico:number|string; estoque_reservado:number|string; estoque_disponivel:number|string; estoque_minimo:number|string; is_active:boolean };\ntype Movimento = { id:number; material_id:number; pedido_id?:number|null; usuario_nome?:string|null; tipo:string; quantidade:number|string; observacao?:string|null; criado_em:string };
 type Item = { id:number; material_solicitado_id:number; material_enviado_id?:number|null; quantidade_solicitada:number|string; quantidade_enviada:number|string; motivo_substituicao?:string|null };
@@ -51,7 +52,7 @@ const Estaleiro=()=>{
   {responsavel&&alertas.length>0&&<div className="rounded-lg border border-amber-200 bg-amber-50 p-4"><b>Estoque baixo:</b> {alertas.map(m=>`${m.nome} (${m.estoque_fisico} ${m.unidade})`).join(", ")}</div>}
   <div className="grid gap-6 xl:grid-cols-2">
    {chefe&&<form onSubmit={criarPedido} className="rounded-lg bg-white p-5 shadow"><h2 className="mb-4 font-semibold flex gap-2"><ClipboardList size={20}/>Novo pedido</h2>
-    {pedidoItens.map((it,idx)=><div key={idx} className="mb-3 grid grid-cols-[1fr_120px_40px] gap-2"><select className="border rounded px-3 py-2" value={it.material_id} onChange={e=>setPedidoItens(v=>v.map((x,j)=>j===idx?{...x,material_id:e.target.value}:x))}><option value="">Selecione o material</option>{materiais.map(m=><option key={m.id} value={m.id}>{m.nome} — disponível {m.estoque_fisico} {m.unidade}</option>)}</select><input className="border rounded px-3 py-2" type="number" min=".001" step=".001" value={it.quantidade} onChange={e=>setPedidoItens(v=>v.map((x,j)=>j===idx?{...x,quantidade:e.target.value}:x))}/><button type="button" className="text-red-500" onClick={()=>setPedidoItens(v=>v.filter((_,j)=>j!==idx))}>×</button></div>)}
+    {pedidoItens.map((it,idx)=><div key={idx} className="mb-3 grid grid-cols-[1fr_120px_40px] gap-2"><MaterialSearch materiais={materiais} value={it.material_id} onChange={id=>setPedidoItens(v=>v.map((x,j)=>j===idx?{...x,material_id:id}:x))}/><input className="border rounded px-3 py-2" type="number" min=".001" step=".001" value={it.quantidade} onChange={e=>setPedidoItens(v=>v.map((x,j)=>j===idx?{...x,quantidade:e.target.value}:x))}/><button type="button" className="text-red-500" onClick={()=>setPedidoItens(v=>v.filter((_,j)=>j!==idx))}>×</button></div>)}
     <button type="button" className="text-indigo-600 text-sm" onClick={()=>setPedidoItens(v=>[...v,{material_id:"",quantidade:"1"}])}>+ Adicionar item</button>
     <textarea className="mt-3 w-full border rounded p-2" placeholder="Observação do pedido (opcional)" value={observacao} onChange={e=>setObservacao(e.target.value)}/>
     <button className="mt-3 rounded bg-indigo-600 px-4 py-2 text-white">Enviar pedido</button>
