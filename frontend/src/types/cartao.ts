@@ -23,6 +23,10 @@ export interface Veiculo {
   matricula: string;
   tipo: TipoVeiculo;
   descricao: string | null;
+  seguradora: string | null;
+  numero_apolice: string | null;
+  seguro_inicio: string | null;
+  seguro_vencimento: string | null;
   ativo: boolean;
   criado_em: string;
   atualizado_em: string;
@@ -32,12 +36,20 @@ export interface VeiculoCreate {
   matricula: string;
   tipo: TipoVeiculo;
   descricao?: string | null;
+  seguradora?: string | null;
+  numero_apolice?: string | null;
+  seguro_inicio?: string | null;
+  seguro_vencimento?: string | null;
 }
 
 export interface VeiculoUpdate {
   matricula?: string;
   tipo?: TipoVeiculo;
   descricao?: string | null;
+  seguradora?: string | null;
+  numero_apolice?: string | null;
+  seguro_inicio?: string | null;
+  seguro_vencimento?: string | null;
   ativo?: boolean;
 }
 
