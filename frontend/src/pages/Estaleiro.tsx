@@ -20,7 +20,8 @@ const Estaleiro=()=>{
  const [buscaEstoque,setBuscaEstoque]=useState("");
  const [paginaEstoque,setPaginaEstoque]=useState(1);
  const [estoqueModal,setEstoqueModal]=useState<{tipo:"entrada"|"editar"|"ajustar";material:Material}|null>(null);
- const [estoqueForm,setEstoqueForm]=useState({quantidade:"",observacao:"",nome:"",unidade:"",minimo:"",motivo:""});\n const [estoqueErro,setEstoqueErro]=useState("");
+ const [estoqueForm,setEstoqueForm]=useState({quantidade:"",observacao:"",nome:"",unidade:"",minimo:"",motivo:""});
+ const [estoqueErro,setEstoqueErro]=useState("");
  const porPagina=20;
  const funcoes=user?.funcoes||[];
  const admin=user?.perfil==="admin";
