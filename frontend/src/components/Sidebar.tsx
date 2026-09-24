@@ -1,7 +1,7 @@
 // Sidebar.tsx
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Clock, BarChartBig, UserCog, LogOut, CreditCard, ChevronDown, Wrench, ClipboardList } from "lucide-react";
+import { Clock, BarChartBig, UserCog, LogOut, CreditCard, ChevronDown, Wrench, ClipboardList, Warehouse } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLayout } from "@/context/LayoutContext";
 import clsx from "clsx";
@@ -11,6 +11,8 @@ const Sidebar = () => {
   const { isSidebarOpen, closeSidebar } = useLayout();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const temFuncao = (codigo: string) => (user?.funcoes || []).some((f) => f.codigo === codigo && f.is_active);
+  const podeEstaleiro = user?.perfil === "admin" || temFuncao("CHEFE_EQUIPE") || temFuncao("RESPONSAVEL_ESTALEIRO");
   const reportsRouteActive = location.pathname.toLowerCase().startsWith("/relatorios");
   const [reportsOpen, setReportsOpen] = useState(reportsRouteActive);
 
@@ -45,6 +47,12 @@ const Sidebar = () => {
       icon: <ClipboardList size={18} />,
       showFor: ["admin", "operador"],
     },
+    ...(podeEstaleiro ? [{
+      label: "Estaleiro",
+      to: "/estaleiro",
+      icon: <Warehouse size={18} />,
+      showFor: ["admin", "operador"],
+    }] : []),
     {
       label: "Usuários",
       to: "/usuarios",
