@@ -20,6 +20,7 @@ from app.routes.veiculo_condutor_associacao import (
     router as veiculo_condutor_associacao_router,
 )
 from app.routes.ocorrencia import router as ocorrencia_router
+from app.routes.material import router as material_router
 
 app = FastAPI()
 
@@ -56,6 +57,7 @@ app.include_router(cartao_router, prefix="/cartoes", tags=["Cartões"])
 app.include_router(cartao_veiculo_associacao_router, prefix="/cartao-veiculo-associacoes", tags=["Cartões por Veículo"])
 app.include_router(veiculo_condutor_associacao_router, prefix="/veiculo-condutor-associacoes", tags=["Condutores por Veículo"])
 app.include_router(ocorrencia_router, prefix="/ocorrencias", tags=["Ocorrências"])
+app.include_router(material_router, prefix="/materiais", tags=["Materiais / Estaleiro"])
 
 # from fastapi import FastAPI
 # from app.routes.user import router as user_router
