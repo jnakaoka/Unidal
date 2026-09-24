@@ -16,7 +16,11 @@ from app.utils.security import hash_password
 SENHA_TESTE = "TesteSeguro#2026"
 
 TABELAS_LIMPAS = [
-    "usuario_funcoes",
+    "movimentos_estoque",
+        "pedido_material_itens",
+        "pedidos_materiais",
+        "materiais",
+        "usuario_funcoes",
     "veiculo_condutor_associacoes",
     "cartao_veiculo_associacoes",
     "cartoes",
