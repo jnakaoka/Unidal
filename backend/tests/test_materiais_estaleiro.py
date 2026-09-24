@@ -51,3 +51,33 @@ def test_permite_concluir_parcial_com_motivo(client,db):
 def test_operador_comum_nao_acessa(client,db):
     comum=user(db,"comum@t.pt")
     assert client.get("/materiais/catalogo",headers=headers(client,comum)).status_code==403
+
+
+def test_entrada_soma_estoque_sem_duplicar_material(client, db):
+    est=user(db,"entrada@t.pt",funcao="RESPONSAVEL_ESTALEIRO")
+    h=headers(client,est)
+    m=client.post("/materiais/catalogo",json={"nome":"Luvas","unidade":"par","estoque_inicial":20,"estoque_minimo":10},headers=h).json()
+    r=client.post(f"/materiais/catalogo/{m['id']}/entrada",json={"quantidade":30,"observacao":"Receção de fornecedor"},headers=h)
+    assert r.status_code==200
+    assert Decimal(str(r.json()["estoque_fisico"]))==Decimal("50")
+    catalogo=client.get("/materiais/catalogo",headers=h).json()
+    assert len([x for x in catalogo if x["nome"]=="Luvas"])==1
+
+def test_edita_dados_sem_alterar_estoque_diretamente(client, db):
+    est=user(db,"edita@t.pt",funcao="RESPONSAVEL_ESTALEIRO")
+    h=headers(client,est)
+    m=client.post("/materiais/catalogo",json={"nome":"Luva nitrilo","unidade":"cx","estoque_inicial":20,"estoque_minimo":5},headers=h).json()
+    r=client.put(f"/materiais/catalogo/{m['id']}",json={"nome":"Luvas nitrilo","unidade":"caixa","estoque_minimo":8},headers=h)
+    assert r.status_code==200
+    assert Decimal(str(r.json()["estoque_fisico"]))==Decimal("20")
+    assert r.json()["nome"]=="Luvas nitrilo"
+
+def test_ajuste_estoque_exige_motivo(client, db):
+    est=user(db,"ajuste@t.pt",funcao="RESPONSAVEL_ESTALEIRO")
+    h=headers(client,est)
+    m=client.post("/materiais/catalogo",json={"nome":"Capacete","estoque_inicial":12},headers=h).json()
+    bad=client.post(f"/materiais/catalogo/{m['id']}/ajuste",json={"estoque_fisico":10,"motivo":""},headers=h)
+    assert bad.status_code==422
+    ok=client.post(f"/materiais/catalogo/{m['id']}/ajuste",json={"estoque_fisico":10,"motivo":"Contagem física"},headers=h)
+    assert ok.status_code==200
+    assert Decimal(str(ok.json()["estoque_fisico"]))==Decimal("10")
