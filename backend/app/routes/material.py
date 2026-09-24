@@ -6,7 +6,7 @@ from app.dependencies.auth import get_current_user
 from app.models.funcao import Funcao
 from app.models.material import Material, MovimentoEstoque, PedidoMaterial, PedidoMaterialItem
 from app.models.user import User
-from app.schemas.material import MaterialCreate, MaterialOut, PedidoCreate, PedidoOut, AtenderItem, ConcluirPedido
+from app.schemas.material import MaterialCreate, MaterialUpdate, MaterialOut, MovimentoEstoqueCreate, AjusteEstoqueCreate, PedidoCreate, PedidoOut, AtenderItem, ConcluirPedido
 
 router = APIRouter()
 
@@ -42,6 +42,43 @@ def criar_material(payload: MaterialCreate, db: Session = Depends(get_db), curre
     db.add(material); db.flush()
     if payload.estoque_inicial > 0:
         db.add(MovimentoEstoque(material_id=material.id, usuario_id=current_user.id, tipo="ENTRADA", quantidade=payload.estoque_inicial, observacao="Estoque inicial"))
+    db.commit(); db.refresh(material); return material
+
+@router.put("/catalogo/{material_id}", response_model=MaterialOut)
+def editar_material(material_id: int, payload: MaterialUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not _pode_gerir(current_user): raise HTTPException(403, "Sem permissão para gerir materiais.")
+    material = db.query(Material).filter(Material.id == material_id).first()
+    if not material: raise HTTPException(404, "Material não encontrado.")
+    if payload.nome is not None:
+        nome = payload.nome.strip()
+        duplicado = db.query(Material).filter(Material.nome == nome, Material.id != material_id).first()
+        if duplicado: raise HTTPException(409, "Já existe outro material com este nome.")
+        material.nome = nome
+    if payload.unidade is not None: material.unidade = payload.unidade.strip()
+    if payload.estoque_minimo is not None: material.estoque_minimo = payload.estoque_minimo
+    if payload.is_active is not None: material.is_active = payload.is_active
+    db.commit(); db.refresh(material); return material
+
+@router.post("/catalogo/{material_id}/entrada", response_model=MaterialOut)
+def entrada_estoque(material_id: int, payload: MovimentoEstoqueCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not _pode_gerir(current_user): raise HTTPException(403, "Sem permissão para gerir estoque.")
+    material = db.query(Material).filter(Material.id == material_id, Material.is_active.is_(True)).with_for_update().first()
+    if not material: raise HTTPException(404, "Material não encontrado ou inativo.")
+    material.estoque_fisico = Decimal(material.estoque_fisico) + payload.quantidade
+    db.add(MovimentoEstoque(material_id=material.id, usuario_id=current_user.id, tipo="ENTRADA", quantidade=payload.quantidade, observacao=(payload.observacao or "").strip() or "Entrada de estoque"))
+    db.commit(); db.refresh(material); return material
+
+@router.post("/catalogo/{material_id}/ajuste", response_model=MaterialOut)
+def ajustar_estoque(material_id: int, payload: AjusteEstoqueCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not _pode_gerir(current_user): raise HTTPException(403, "Sem permissão para gerir estoque.")
+    material = db.query(Material).filter(Material.id == material_id).with_for_update().first()
+    if not material: raise HTTPException(404, "Material não encontrado.")
+    anterior = Decimal(material.estoque_fisico)
+    novo = payload.estoque_fisico
+    diferenca = novo - anterior
+    material.estoque_fisico = novo
+    if diferenca != 0:
+        db.add(MovimentoEstoque(material_id=material.id, usuario_id=current_user.id, tipo="AJUSTE_ENTRADA" if diferenca > 0 else "AJUSTE_SAIDA", quantidade=abs(diferenca), observacao=f"Ajuste de inventário: {payload.motivo.strip()} (anterior: {anterior}; novo: {novo})"))
     db.commit(); db.refresh(material); return material
 
 @router.get("/pedidos", response_model=list[PedidoOut])
