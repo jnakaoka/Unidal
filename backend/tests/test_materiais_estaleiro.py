@@ -2,19 +2,19 @@ from decimal import Decimal
 from app.models.funcao import Funcao
 from app.models.user import User
 from app.models.perfil import Perfil
-from app.core.security import get_password_hash
+from app.utils.security import hash_password
 
 def user(db, email, perfil="operador", funcao=None):
     p=db.query(Perfil).filter(Perfil.nome==perfil).first()
     if not p:
         p=Perfil(nome=perfil,is_active=True); db.add(p); db.flush()
-    u=User(name=email,email=email,empresa="UNIDAL",hashed_password=get_password_hash("Teste123!"),perfil_id=p.id,is_active=True)
+    u=User(name=email,email=email,empresa="UNIDAL",hashed_password=hash_password("Teste123!"),perfil_id=p.id,is_active=True)
     if funcao:
         f=db.query(Funcao).filter(Funcao.codigo==funcao).first(); u.funcoes.append(f)
     db.add(u); db.commit(); db.refresh(u); return u
 
 def headers(client,email):
-    r=client.post("/auth/login",data={"username":email,"password":"Teste123!"})
+    r=client.post("/auth/login/",data={"username":email,"password":"Teste123!"})
     return {"Authorization":f"Bearer {r.json()['access_token']}"}
 
 def test_chefe_cria_pedido_e_ve_apenas_proprios(client,db):
