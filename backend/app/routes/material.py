@@ -1,12 +1,13 @@
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.funcao import Funcao
 from app.models.material import Material, MovimentoEstoque, PedidoMaterial, PedidoMaterialItem
 from app.models.user import User
-from app.schemas.material import MaterialCreate, MaterialUpdate, MaterialOut, MovimentoEstoqueCreate, AjusteEstoqueCreate, PedidoCreate, PedidoOut, AtenderItem, ConcluirPedido
+from app.schemas.material import MaterialCreate, MaterialUpdate, MaterialOut, MovimentoEstoqueCreate, AjusteEstoqueCreate, PedidoCreate, PedidoOut, AtenderItem, ConcluirPedido, MovimentoEstoqueOut
 
 router = APIRouter()
 
@@ -31,7 +32,13 @@ def _pode_gerir(u: User) -> bool:
 @router.get("/catalogo", response_model=list[MaterialOut])
 def catalogo(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     if not _pode_ver(current_user): raise HTTPException(403, "Sem acesso ao estaleiro.")
-    return db.query(Material).filter(Material.is_active.is_(True)).order_by(Material.nome).all()
+    materiais = db.query(Material).filter(Material.is_active.is_(True)).order_by(Material.nome).all()
+    reservas = dict(db.query(PedidoMaterialItem.material_solicitado_id, func.coalesce(func.sum(PedidoMaterialItem.quantidade_solicitada - PedidoMaterialItem.quantidade_enviada), 0)).join(PedidoMaterial).filter(PedidoMaterial.status != "CONCLUIDO").group_by(PedidoMaterialItem.material_solicitado_id).all())
+    for material in materiais:
+        reservado = max(Decimal("0"), Decimal(reservas.get(material.id, 0)))
+        material.estoque_reservado = reservado
+        material.estoque_disponivel = max(Decimal("0"), Decimal(material.estoque_fisico) - reservado)
+    return materiais
 
 @router.post("/catalogo", response_model=MaterialOut)
 def criar_material(payload: MaterialCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -110,19 +117,33 @@ def atender_item(pedido_id: int, item_id: int, payload: AtenderItem, db: Session
     item = next((i for i in pedido.itens if i.id == item_id), None)
     if not item: raise HTTPException(404, "Item não encontrado.")
     material_id = payload.material_enviado_id or item.material_solicitado_id
-    material = db.query(Material).filter(Material.id == material_id, Material.is_active.is_(True)).with_for_update().first()
-    if not material: raise HTTPException(400, "Material de envio inválido.")
     if payload.quantidade_enviada > item.quantidade_solicitada: raise HTTPException(400, "Quantidade enviada não pode superar a solicitada.")
     if material_id != item.material_solicitado_id and not (payload.motivo_substituicao or "").strip(): raise HTTPException(400, "Informe o motivo da substituição.")
     anterior = Decimal(item.quantidade_enviada or 0)
-    delta = payload.quantidade_enviada - anterior
-    if delta > 0 and Decimal(material.estoque_fisico) < delta: raise HTTPException(409, "Estoque insuficiente.")
-    material.estoque_fisico = Decimal(material.estoque_fisico) - delta
+    material_anterior_id = item.material_enviado_id or item.material_solicitado_id
+    ids_bloqueio = sorted({material_anterior_id, material_id})
+    bloqueados = {m.id: m for m in db.query(Material).filter(Material.id.in_(ids_bloqueio), Material.is_active.is_(True)).order_by(Material.id).with_for_update().all()}
+    material = bloqueados.get(material_id)
+    material_anterior = bloqueados.get(material_anterior_id)
+    if not material: raise HTTPException(400, "Material de envio inválido.")
+    if anterior > 0 and not material_anterior: raise HTTPException(409, "Material anteriormente enviado não está disponível para estorno.")
+    if material_id == material_anterior_id:
+        delta = payload.quantidade_enviada - anterior
+        if delta > 0 and Decimal(material.estoque_fisico) < delta: raise HTTPException(409, "Estoque insuficiente.")
+        material.estoque_fisico = Decimal(material.estoque_fisico) - delta
+        if delta != 0:
+            db.add(MovimentoEstoque(material_id=material_id, pedido_id=pedido.id, usuario_id=current_user.id, tipo="SAIDA" if delta > 0 else "ESTORNO", quantidade=abs(delta), observacao=f"Atendimento do pedido #{pedido.id}"))
+    else:
+        if Decimal(material.estoque_fisico) < payload.quantidade_enviada: raise HTTPException(409, "Estoque insuficiente para a substituição.")
+        if anterior > 0:
+            material_anterior.estoque_fisico = Decimal(material_anterior.estoque_fisico) + anterior
+            db.add(MovimentoEstoque(material_id=material_anterior_id, pedido_id=pedido.id, usuario_id=current_user.id, tipo="ESTORNO", quantidade=anterior, observacao=f"Troca de material do pedido #{pedido.id}"))
+        material.estoque_fisico = Decimal(material.estoque_fisico) - payload.quantidade_enviada
+        if payload.quantidade_enviada > 0:
+            db.add(MovimentoEstoque(material_id=material_id, pedido_id=pedido.id, usuario_id=current_user.id, tipo="SAIDA", quantidade=payload.quantidade_enviada, observacao=f"Substituição no pedido #{pedido.id}"))
     item.material_enviado_id = material_id
     item.quantidade_enviada = payload.quantidade_enviada
-    item.motivo_substituicao = payload.motivo_substituicao.strip() if payload.motivo_substituicao else None
-    if delta != 0:
-        db.add(MovimentoEstoque(material_id=material_id, pedido_id=pedido.id, usuario_id=current_user.id, tipo="SAIDA" if delta > 0 else "ESTORNO", quantidade=abs(delta), observacao=f"Atendimento do pedido #{pedido.id}"))
+    item.motivo_substituicao = payload.motivo_substituicao.strip() if material_id != item.material_solicitado_id and payload.motivo_substituicao else None
     pedido.status = "EM_PREPARACAO"
     db.commit(); db.refresh(pedido); return pedido
 
@@ -137,3 +158,16 @@ def concluir(pedido_id: int, payload: ConcluirPedido, db: Session = Depends(get_
     pedido.resultado = "PARCIAL" if parcial else "TOTAL"
     pedido.motivo_conclusao_parcial = payload.motivo_parcial.strip() if parcial else None
     db.commit(); db.refresh(pedido); return pedido
+
+@router.get("/movimentos", response_model=list[MovimentoEstoqueOut])
+def listar_movimentos(material_id: int | None = None, limite: int = 100, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    if not _pode_gerir(current_user): raise HTTPException(403, "Sem permissão para consultar movimentações.")
+    limite = max(1, min(limite, 500))
+    q = db.query(MovimentoEstoque, User.name.label("usuario_nome")).join(User, User.id == MovimentoEstoque.usuario_id)
+    if material_id is not None: q = q.filter(MovimentoEstoque.material_id == material_id)
+    rows = q.order_by(MovimentoEstoque.id.desc()).limit(limite).all()
+    saida = []
+    for movimento, usuario_nome in rows:
+        movimento.usuario_nome = usuario_nome
+        saida.append(movimento)
+    return saida
