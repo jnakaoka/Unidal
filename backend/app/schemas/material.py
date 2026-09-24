@@ -1,6 +1,7 @@
 from decimal import Decimal
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional
+from datetime import datetime
 
 class MaterialCreate(BaseModel):
     nome: str = Field(min_length=1, max_length=255)
@@ -83,5 +84,5 @@ class MovimentoEstoqueOut(BaseModel):
     tipo: str
     quantidade: Decimal
     observacao: Optional[str]
-    criado_em: object
+    criado_em: datetime
     model_config = {"from_attributes": True}
