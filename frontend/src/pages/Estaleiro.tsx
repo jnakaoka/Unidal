@@ -5,7 +5,8 @@ import { useAuth } from "@/context/AuthContext";
 import Modal from "@/components/ui/modal";
 import MaterialSearch from "@/components/MaterialSearch";
 
-type Material = { id:number; nome:string; unidade:string; estoque_fisico:number|string; estoque_reservado:number|string; estoque_disponivel:number|string; estoque_minimo:number|string; is_active:boolean };\ntype Movimento = { id:number; material_id:number; pedido_id?:number|null; usuario_nome?:string|null; tipo:string; quantidade:number|string; observacao?:string|null; criado_em:string };
+type Material = { id:number; nome:string; unidade:string; estoque_fisico:number|string; estoque_reservado:number|string; estoque_disponivel:number|string; estoque_minimo:number|string; is_active:boolean };
+type Movimento = { id:number; material_id:number; pedido_id?:number|null; usuario_nome?:string|null; tipo:string; quantidade:number|string; observacao?:string|null; criado_em:string };
 type Item = { id:number; material_solicitado_id:number; material_enviado_id?:number|null; quantidade_solicitada:number|string; quantidade_enviada:number|string; motivo_substituicao?:string|null };
 type Pedido = { id:number; solicitante_id:number; status:string; resultado?:string|null; observacao?:string|null; motivo_conclusao_parcial?:string|null; itens:Item[] };
 
@@ -22,7 +23,13 @@ const Estaleiro=()=>{
  const [paginaEstoque,setPaginaEstoque]=useState(1);
  const [estoqueModal,setEstoqueModal]=useState<{tipo:"entrada"|"editar"|"ajustar";material:Material}|null>(null);
  const [estoqueForm,setEstoqueForm]=useState({quantidade:"",observacao:"",nome:"",unidade:"",minimo:"",motivo:""});
- const [estoqueErro,setEstoqueErro]=useState("");\n const [movimentos,setMovimentos]=useState<Movimento[]>([]);\n const [pedidoErro,setPedidoErro]=useState("");\n const [atenderModal,setAtenderModal]=useState<{pedido:Pedido;item:Item}|null>(null);\n const [atenderForm,setAtenderForm]=useState({quantidade:"",material_id:"",motivo:""});\n const [concluirModal,setConcluirModal]=useState<Pedido|null>(null);\n const [motivoParcial,setMotivoParcial]=useState("");
+ const [estoqueErro,setEstoqueErro]=useState("");
+ const [movimentos,setMovimentos]=useState<Movimento[]>([]);
+ const [pedidoErro,setPedidoErro]=useState("");
+ const [atenderModal,setAtenderModal]=useState<{pedido:Pedido;item:Item}|null>(null);
+ const [atenderForm,setAtenderForm]=useState({quantidade:"",material_id:"",motivo:""});
+ const [concluirModal,setConcluirModal]=useState<Pedido|null>(null);
+ const [motivoParcial,setMotivoParcial]=useState("");
  const porPagina=20;
  const funcoes=user?.funcoes||[];
  const admin=user?.perfil==="admin";
