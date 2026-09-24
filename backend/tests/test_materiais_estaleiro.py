@@ -13,9 +13,11 @@ def user(db, email, perfil="operador", funcao=None):
         f=db.query(Funcao).filter(Funcao.codigo==funcao).first(); u.funcoes.append(f)
     db.add(u); db.commit(); db.refresh(u); return u
 
-def headers(client,email):
-    r=client.post("/auth/login/",data={"username":email,"password":"Teste123!"})
-    return {"Authorization":f"Bearer {r.json()['access_token']}"}
+def headers(client, user_or_email):
+    email = user_or_email.email if isinstance(user_or_email, User) else user_or_email
+    r = client.post("/auth/login/", data={"username": email, "password": "Teste123!"})
+    assert r.status_code == 200, r.text
+    return {"Authorization": f"Bearer {r.json()['access_token']}"}
 
 def test_chefe_cria_pedido_e_ve_apenas_proprios(client,db):
     est=user(db,"est@t.pt",funcao="RESPONSAVEL_ESTALEIRO")
