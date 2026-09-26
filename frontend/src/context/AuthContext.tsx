@@ -14,12 +14,20 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
+interface AuthFuncao {
+  id: number;
+  codigo: string;
+  nome: string;
+  is_active: boolean;
+}
+
 interface AuthUser {
   id?: number;
   email: string;
   perfil?: string;
   name?: string;
   perfil_id?: number;
+  funcoes?: AuthFuncao[];
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -60,10 +68,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const name = localStorage.getItem('userName') ?? undefined;
     const email = localStorage.getItem('userEmail') ?? undefined;
     const perfil = localStorage.getItem('userPerfil') ?? undefined;
+    let funcoes: AuthFuncao[] = [];
+    try {
+      funcoes = JSON.parse(localStorage.getItem('userFuncoes') || '[]');
+    } catch {
+      funcoes = [];
+    }
 
     if (token && email) {
       setAccessToken(token);
-      setUser({ id, email, name, perfil });
+      setUser({ id, email, name, perfil, funcoes });
     }
     setIsLoading(false);
   }, []);
@@ -114,15 +128,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const id = me.data?.id;
       const name = me.data?.name ?? me.data?.nome ?? "";
       const emailReal = me.data?.email ?? email;
+      const funcoes: AuthFuncao[] = Array.isArray(me.data?.funcoes) ? me.data.funcoes : [];
 
       // salva user
       localStorage.setItem("userEmail", emailReal);
       localStorage.setItem("userName", name);
       localStorage.setItem("userPerfil", perfil);
       if (id != null) localStorage.setItem("userId", String(id));
+      localStorage.setItem("userFuncoes", JSON.stringify(funcoes));
 
       setAccessToken(access_token);
-      setUser({ id, email: emailReal, name, perfil });
+      setUser({ id, email: emailReal, name, perfil, funcoes });
 
       // redireciona conforme perfil (normalizado)
       const parametros = new URLSearchParams(
@@ -249,6 +265,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('userName');
     localStorage.removeItem('userPerfil');
     localStorage.removeItem('userId');
+    localStorage.removeItem('userFuncoes');
     setAccessToken(null);
     setUser(null);
     navigate('/login');
