@@ -10,12 +10,14 @@ down_revision = "e42a7c1d9b30"
 branch_labels = None
 depends_on = None
 
+
 def upgrade():
     op.add_column("veiculos", sa.Column("seguradora", sa.String(120), nullable=True))
     op.add_column("veiculos", sa.Column("numero_apolice", sa.String(100), nullable=True))
     op.add_column("veiculos", sa.Column("seguro_inicio", sa.Date(), nullable=True))
     op.add_column("veiculos", sa.Column("seguro_vencimento", sa.Date(), nullable=True))
     op.create_index("ix_veiculos_seguro_vencimento", "veiculos", ["seguro_vencimento"])
+
 
 def downgrade():
     op.drop_index("ix_veiculos_seguro_vencimento", table_name="veiculos")
