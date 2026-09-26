@@ -1,13 +1,13 @@
 """add tamanhos materiais
 
 Revision ID: f19a6c4e2b71
-Revises: e42a7c1d9b30
+Revises: f7c3a91d2e44
 """
 from alembic import op
 import sqlalchemy as sa
 
 revision = "f19a6c4e2b71"
-down_revision = "e42a7c1d9b30"
+down_revision = "f7c3a91d2e44"
 branch_labels = None
 depends_on = None
 
