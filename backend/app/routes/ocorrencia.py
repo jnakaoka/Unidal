@@ -32,8 +32,12 @@ def _is_chefe_equipe(user: User) -> bool:
     return _tem_funcao(user, "CHEFE_EQUIPE")
 
 
+def _is_responsavel_estaleiro(user: User) -> bool:
+    return _tem_funcao(user, "RESPONSAVEL_ESTALEIRO")
+
+
 def _pode_usar_ocorrencias(user: User) -> bool:
-    return _is_admin(user) or _is_chefe_equipe(user)
+    return _is_admin(user) or _is_chefe_equipe(user) or _is_responsavel_estaleiro(user)
 
 
 def _carregar_usuarios_ativos(db: Session, ids: set[int]) -> dict[int, User]:
@@ -88,7 +92,7 @@ def criar_ocorrencia(payload: OcorrenciaCreate, db: Session = Depends(get_db), c
     if not _pode_usar_ocorrencias(current_user):
         raise HTTPException(status_code=403, detail="Permissão negada")
 
-    if not _is_admin(current_user) and payload.chefe_equipe_id != current_user.id:
+    if _is_chefe_equipe(current_user) and not _is_admin(current_user) and payload.chefe_equipe_id != current_user.id:
         raise HTTPException(
             status_code=403,
             detail="O chefe de equipa só pode registar ocorrências como chefe da própria equipa.",
