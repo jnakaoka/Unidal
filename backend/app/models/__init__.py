@@ -15,5 +15,4 @@ from .registro_hora import RegistroHoraEquipa
 from app.models.cartao_veiculo_associacao import CartaoVeiculoAssociacao
 from app.models.veiculo_condutor_associacao import VeiculoCondutorAssociacao
 from .ocorrencia import Ocorrencia, ocorrencia_testemunhas
-
-from .material import Material, PedidoMaterial, PedidoMaterialItem, MovimentoEstoque
+from .material import Material, MaterialTamanho, PedidoMaterial, PedidoMaterialItem, MovimentoEstoque
