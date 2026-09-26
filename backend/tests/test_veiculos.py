@@ -125,3 +125,33 @@ def test_veiculo_inexistente_retorna_404(
     )
 
     assert response.status_code == 404
+
+def test_criar_e_atualizar_dados_seguro(
+    client: TestClient,
+    headers_admin: dict[str, str],
+) -> None:
+    response = client.post(
+        "/veiculos/",
+        headers=headers_admin,
+        json={
+            "matricula": "SE-10-GU",
+            "tipo": "carrinha",
+            "seguradora": "Seguradora Teste",
+            "numero_apolice": "AP-123",
+            "seguro_inicio": "2026-09-01",
+            "seguro_vencimento": "2027-09-01",
+        },
+    )
+    assert response.status_code == 201, response.text
+    veiculo = response.json()
+    assert veiculo["seguradora"] == "Seguradora Teste"
+    assert veiculo["numero_apolice"] == "AP-123"
+    assert veiculo["seguro_vencimento"] == "2027-09-01"
+
+    atualizado = client.put(
+        f"/veiculos/{veiculo['id']}",
+        headers=headers_admin,
+        json={"seguro_vencimento": "2027-10-01"},
+    )
+    assert atualizado.status_code == 200, atualizado.text
+    assert atualizado.json()["seguro_vencimento"] == "2027-10-01"

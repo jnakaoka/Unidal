@@ -193,11 +193,22 @@ import {
         ),
       );
 
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const limiteSeguro = new Date(hoje);
+      limiteSeguro.setDate(limiteSeguro.getDate() + 30);
+      const segurosAtencao = veiculos.filter((veiculo) => {
+        if (!veiculo.seguro_vencimento) return true;
+        const vencimento = new Date(`${veiculo.seguro_vencimento}T00:00:00`);
+        return vencimento <= limiteSeguro;
+      });
+
       return {
         cartoesDisponiveis,
         cartoesAtencao,
         veiculosSemCartao,
         veiculosSemCondutor,
+        segurosAtencao,
       };
     }, [
       associacoesCartoes,
@@ -261,6 +272,14 @@ import {
             aba: "veiculos",
             filtro: "todos",
           },
+      },
+      {
+        nome: "Seguros em atenção",
+        valor: dadosResumo.segurosAtencao.length,
+        descricao: "Vencidos, até 30 dias ou sem data",
+        cor: "border-amber-200 bg-amber-50 text-amber-700",
+        Icone: AlertTriangle,
+        destino: { aba: "veiculos", filtro: "todos" },
       },
       {
         nome: "Sem cartão",
@@ -431,7 +450,7 @@ import {
                   </h3>
 
                   <p className="mt-1 text-xs text-gray-500">
-                    Veículos sem cartões ou sem condutor.
+                    Veículos sem cartões, sem condutor ou com seguro a exigir atenção.
                   </p>
                 </div>
 
@@ -444,6 +463,9 @@ import {
                       || dadosResumo.veiculosSemCondutor.some(
                         (item) => item.id === veiculo.id,
                       )
+                      || dadosResumo.segurosAtencao.some(
+                        (item) => item.id === veiculo.id,
+                      )
                     ))
                     .map((veiculo) => {
                       const semCartao =
@@ -454,6 +476,7 @@ import {
                         dadosResumo.veiculosSemCondutor.some(
                           (item) => item.id === veiculo.id,
                         );
+                      const seguroAtencao = dadosResumo.segurosAtencao.some((item) => item.id === veiculo.id);
 
                       return (
                         <div
@@ -479,10 +502,9 @@ import {
                             )}
 
                             {semCondutor && (
-                              <span className="rounded-full bg-rose-100 px-2 py-1 text-xs text-rose-700">
-                                Sem condutor
-                              </span>
+                              <span className="rounded-full bg-rose-100 px-2 py-1 text-xs text-rose-700">Sem condutor</span>
                             )}
+                            {seguroAtencao && <span className="rounded-full bg-amber-100 px-2 py-1 text-xs text-amber-700">{!veiculo.seguro_vencimento ? "Seguro sem data" : new Date(`${veiculo.seguro_vencimento}T00:00:00`) < new Date() ? "Seguro vencido" : "Seguro vence em breve"}</span>}
                           </div>
                         </div>
                       );
@@ -492,6 +514,7 @@ import {
                     === 0
                     && dadosResumo.veiculosSemCondutor.length
                     === 0
+                    && dadosResumo.segurosAtencao.length === 0
                     && (
                       <p className="px-5 py-6 text-center text-sm text-gray-500">
                         Nenhum veículo possui pendências.
