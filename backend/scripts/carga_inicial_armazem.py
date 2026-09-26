@@ -11,9 +11,17 @@ Novos registros começam com estoque físico e mínimo iguais a zero.
 from __future__ import annotations
 
 import argparse
-import re
+import sys
 import unicodedata
 from collections import defaultdict
+from pathlib import Path
+
+# Quando executado como `python scripts/carga_inicial_armazem.py`, o Python coloca
+# /app/scripts em sys.path. Incluímos a raiz do backend (/app) para que `app.*`
+# seja importável tanto no laptop quanto no servidor, sem depender do diretório atual.
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 from app.database import SessionLocal
 from app.models.material import Material, MaterialTamanho
