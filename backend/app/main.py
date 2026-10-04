@@ -108,3 +108,8 @@ app.include_router(material_router, prefix="/materiais", tags=["Materiais / Esta
 # #     while True:
 # #         data = await websocket.receive_text()
 # #         await websocket.send_text(f"Recebido: {data}")
+
+from app.routes.documento import router as documento_router
+from app.routes.notificacao import router as notificacao_router
+app.include_router(documento_router)
+app.include_router(notificacao_router)

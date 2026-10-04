@@ -20,6 +20,8 @@ import ControleCartoes from "./pages/ControleCartoes";
 import Maquinas from "./pages/Maquinas";
 import Ocorrencias from "./pages/Ocorrencias";
 import Estaleiro from "./pages/Estaleiro";
+import Documentos from "./pages/Documentos";
+import Notificacoes from "./pages/Notificacoes";
 
 const App: React.FC = () => {
   return (
@@ -35,6 +37,8 @@ const App: React.FC = () => {
           </PrivateRoute>
         }
       >
+        <Route path="documentos" element={<Documentos />} />
+        <Route path="notificacoes" element={<PrivateRoute allowedProfiles={["admin"]}><Notificacoes /></PrivateRoute>} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="operador-dashboard" element={<OperadorDashboard />} />
         <Route path="relatorios" element={<Relatorio />} />

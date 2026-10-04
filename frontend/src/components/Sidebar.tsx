@@ -1,7 +1,7 @@
 // Sidebar.tsx
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Clock, BarChartBig, UserCog, LogOut, CreditCard, ChevronDown, Wrench, ClipboardList, Warehouse } from "lucide-react";
+import { Clock, BarChartBig, UserCog, LogOut, CreditCard, ChevronDown, Wrench, ClipboardList, Warehouse, FolderOpen, Bell } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLayout } from "@/context/LayoutContext";
 import clsx from "clsx";
@@ -22,6 +22,8 @@ const Sidebar = () => {
 
   const menuItems = [
     { label: "Registro de Horas", to: "/registro-horas", icon: <Clock size={18} />, showFor: ["admin", "operador", "motorista"] },
+    { label: "Documentos", to: "/documentos", icon: <FolderOpen size={18} />, showFor: ["admin", "operador", "motorista"] },
+    { label: "Notificações", to: "/notificacoes", icon: <Bell size={18} />, showFor: ["admin"] },
     ...(podeOcorrencias ? [{ label: "Ocorrências", to: "/ocorrencias", icon: <ClipboardList size={18} />, showFor: ["admin", "operador"] }] : []),
     ...(podeEstaleiro ? [{ label: "Armazém", to: "/estaleiro", icon: <Warehouse size={18} />, showFor: ["admin", "operador"] }] : []),
     { label: "Usuários", to: "/usuarios", icon: <UserCog size={18} />, showFor: ["admin"] },

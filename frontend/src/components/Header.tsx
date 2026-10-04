@@ -1,3 +1,4 @@
+import NotificationBell from "./NotificationBell";
 import { Menu } from "lucide-react";
 
 import { useAuth } from "@/context/AuthContext";
@@ -61,6 +62,7 @@ export default function Header() {
       </div>
 
       <div className="flex items-center gap-3">
+        {user?.perfil === "admin" && <NotificationBell />}
         <span className="hidden text-sm text-white md:inline">
           Olá, {user?.name || "Utilizador"}
         </span>

@@ -182,7 +182,8 @@ class RegistroHoraUpdate(BaseModel):
 
     equipa: List[MembroEquipa] = Field(default_factory=list)
 
-    modificado_por: int
+    # Compatibilidade com clientes antigos; o autor é obtido da autenticação.
+    modificado_por: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
