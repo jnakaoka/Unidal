@@ -95,6 +95,7 @@ interface RegistroHoras {
   projeto_id: number;
   data: string;
   horas: string;
+  observacao?: string;
 
   cliente_id: number | null;
   obra_id: number | null;
@@ -150,6 +151,7 @@ const RegistroHoras: React.FC = () => {
     projeto_id: number;
     data: string;
     horas: string;
+  observacao?: string;
     cliente_id: number | null;
     obra_id: number | null;
     metros_quadrados: string;
@@ -244,6 +246,7 @@ const RegistroHoras: React.FC = () => {
     projeto_id: 1,
     data: '',
     horas: '',
+    observacao: '',
     cliente_id: null,   // <- ok ser null
     obra_id: null,      // <- ok ser null
     metros_quadrados: '',
@@ -716,6 +719,7 @@ const RegistroHoras: React.FC = () => {
       usuario_id: regHora.usuario_id,
       data: regHora.data,
       horas: regHora?.horas ?? '',
+      observacao: regHora.observacao ?? '',
       origem: regHora.origem ?? "",
       destino: regHora.destino ?? "",
       matricula: regHora.matricula ?? "",
@@ -901,6 +905,7 @@ const RegistroHoras: React.FC = () => {
       };
 
       const basePayload = {
+        observacao: formData.observacao?.trim() || null,
         projeto_id: 1,
         data: formData.data,
         horas: parseFloat(formData.horas || "0") || 0,
@@ -2403,6 +2408,14 @@ const RegistroHoras: React.FC = () => {
             )} */}
 
 
+            <div className="clear-both mb-4">
+              <Label htmlFor="observacao">Observação (opcional)</Label>
+              <Textarea id="observacao" value={formData.observacao ?? ""} maxLength={5000} rows={4}
+                placeholder="Informações adicionais sobre este apontamento"
+                onChange={(e) => setFormData({ ...formData, observacao: e.target.value })} />
+              <p className="text-sm text-gray-500">{(formData.observacao ?? "").length}/5000 caracteres</p>
+            </div>
+
             <div className="flex justify-end gap-2 div-form-btn">
               <Button
                 className="btn-bg-blue-500"
@@ -2508,6 +2521,7 @@ const RegistroHoras: React.FC = () => {
               <th className="px-4 py-2">Equipa</th>
               <th className="px-4 py-2">Etapas</th>
               <th className="px-4 py-2">Interv. Máq. (detalhes)</th>
+              <th className="px-4 py-2">Observação</th>
               <th className="px-4 py-2">Modificado por</th>
               <th className="px-4 py-2">Modificado em</th>
               <th className="px-4 py-2">Ações</th>
@@ -2558,7 +2572,7 @@ const RegistroHoras: React.FC = () => {
             )} */}
             {pageItems.length === 0 ? (
               <tr>
-                <td colSpan={11} className="text-center text-gray-500">
+                <td colSpan={12} className="text-center text-gray-500">
                   Nenhum registo encontrado
                 </td>
               </tr>
@@ -2649,6 +2663,8 @@ const RegistroHoras: React.FC = () => {
                     <td className="px-4 py-2 whitespace-pre-wrap">
                       {renderIntervencoes(reg)}
                     </td>
+
+                    <td className="max-w-xs whitespace-pre-wrap break-words px-4 py-2">{reg.observacao || "—"}</td>
 
                     <td className="px-4 py-2 text-[11px] leading-snug text-gray-700">
                       {reg.modificado_por ? (

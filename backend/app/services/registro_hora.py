@@ -303,6 +303,9 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
     from app.services.notificacao import snapshot, registar_edicao
     antes = snapshot(reg)
     data = registro.model_dump(exclude_none=True)
+    # Campo omitido preserva o texto; null explícito permite limpar a observação.
+    if "observacao" in registro.model_fields_set:
+        data["observacao"] = registro.observacao
     equipa_payload = data.pop("equipa", None)
     _validar_transporte(db, data)
     manobradores_payload = _validar_manobradores(

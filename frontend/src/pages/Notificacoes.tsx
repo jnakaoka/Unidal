@@ -4,7 +4,7 @@ import api from "../services/api";
 type Evento = { id: number; registro_id: number; autor_nome: string; resumo: string; criado_em: string; lida_em: string | null; alteracoes: Record<string, { antes: unknown; depois: unknown }> };
 type Resultado = { items: Evento[]; nao_lidas: number; total: number };
 function valor(v: unknown): string { return v === null ? "—" : typeof v === "object" ? JSON.stringify(v, null, 2) : String(v); }
-const campos: Record<string, string> = { horas: "Horas", data: "Data", equipa: "Equipa", obra_id: "Obra (ID)", cliente_id: "Cliente (ID)", metros_quadrados: "Metros quadrados", intervencao_maquinas_opcoes: "Intervenção de máquinas", double_journey_lider: "Double Journey do chefe", transporte_maquina_ids: "Máquinas transportadas (IDs)" };
+const campos: Record<string, string> = { observacao: "Observação", horas: "Horas", data: "Data", equipa: "Equipa", obra_id: "Obra (ID)", cliente_id: "Cliente (ID)", metros_quadrados: "Metros quadrados", intervencao_maquinas_opcoes: "Intervenção de máquinas", double_journey_lider: "Double Journey do chefe", transporte_maquina_ids: "Máquinas transportadas (IDs)" };
 export default function Notificacoes() {
   const [dados, setDados] = useState<Resultado>({ items: [], nao_lidas: 0, total: 0 });
   const [offset, setOffset] = useState(0);

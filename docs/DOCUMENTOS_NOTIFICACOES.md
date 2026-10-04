@@ -55,3 +55,9 @@ npm run build --prefix frontend
 Cobertura: categorias públicas/restritas, permissões por perfil e funcionário, revogação de acesso, downloads diretos, utilizadores inativos, uploads e versões, arquivo, limites e limpeza de ficheiros após falha, autoria real via JWT, leitura individual, alterações de equipa, gravação sem mudanças e migração upgrade/downgrade e compilação SQL MySQL.
 
 Os testes de integração preexistentes em `backend/tests` exigem o MySQL dedicado `db-test`; não executá-los sobre produção.
+
+## Observação no apontamento
+
+O formulário web tem o campo opcional Observação, até 5.000 caracteres, disponível na criação, edição e listagem para os perfis que já utilizam os apontamentos. O texto é guardado no banco, devolvido pela API e incluído no histórico e nas notificações quando alterado. Limpar o campo remove a observação; clientes antigos que não enviam o campo preservam o valor existente.
+
+A migração `a72c4e9b6100`, posterior a `f83a2d6c9100`, adiciona uma coluna nullable, sem modificar os dados anteriores. Depois do pull, executar novamente `docker compose exec api alembic upgrade head` e reconstruir API/frontend. Este incremento não adiciona o campo às telas do aplicativo móvel.

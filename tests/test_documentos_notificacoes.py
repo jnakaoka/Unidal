@@ -210,3 +210,27 @@ def test_migracao_upgrade_downgrade_e_sql_mysql():
     with Operations.context(MigrationContext.configure(dialect_name="mysql", opts={"as_sql": True, "output_buffer": output})):
         migration.upgrade()
     assert "CREATE TABLE documento_categorias" in output.getvalue()
+
+
+def test_observacao_criacao_edicao_preservacao_e_limpeza(ctx):
+    c, db, users, atual, _ = ctx
+    reg, payload = criar_registo(db, users[2])
+    atual["user"] = users[2]
+    payload["observacao"] = "Atraso na entrega.\nChuva durante a tarde."
+    r = c.put(f"/registro-horas/{reg.id}", json=payload)
+    assert r.status_code == 200, r.text
+    assert r.json()["observacao"] == payload["observacao"]
+    assert db.query(EdicaoApontamento).one().alteracoes["observacao"]["depois"] == payload["observacao"]
+    payload.pop("observacao")
+    assert c.put(f"/registro-horas/{reg.id}", json=payload).json()["observacao"] == "Atraso na entrega.\nChuva durante a tarde."
+    assert db.query(EdicaoApontamento).count() == 1
+    payload["observacao"] = None
+    assert c.put(f"/registro-horas/{reg.id}", json=payload).json()["observacao"] is None
+    assert db.query(EdicaoApontamento).count() == 2
+    payload["observacao"] = "x" * 5001
+    assert c.put(f"/registro-horas/{reg.id}", json=payload).status_code == 422
+    payload.update(usuario_id=users[2].id, observacao="Visita técnica")
+    r = c.post("/registro-horas/", json=payload)
+    assert r.status_code == 200, r.text
+    assert r.json()["observacao"] == "Visita técnica"
+    assert any(item["observacao"] == "Visita técnica" for item in c.get("/registro-horas/").json())
