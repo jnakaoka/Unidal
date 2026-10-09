@@ -16,3 +16,6 @@ from app.models.cartao_veiculo_associacao import CartaoVeiculoAssociacao
 from app.models.veiculo_condutor_associacao import VeiculoCondutorAssociacao
 from .ocorrencia import Ocorrencia, ocorrencia_testemunhas
 from .material import Material, MaterialTamanho, PedidoMaterial, PedidoMaterialItem, MovimentoEstoque
+
+from .documento import CategoriaDocumento, Documento, DocumentoVersao
+from .notificacao import EdicaoApontamento, Notificacao

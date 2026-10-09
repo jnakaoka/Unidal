@@ -107,6 +107,7 @@ class RegistroHoraCreate(BaseModel):
     usuario_id: int              # <- criador (fixo na criação)
     data: date
     horas: int = 0
+    observacao: Optional[str] = Field(default=None, max_length=5000)
 
     cliente_id: int | None = None
     obra_id: int | None = None
@@ -152,6 +153,7 @@ class RegistroHoraUpdate(BaseModel):
     projeto_id: int
     data: date
     horas: int = 0
+    observacao: Optional[str] = Field(default=None, max_length=5000)
 
     cliente_id: int | None = None
     obra_id: int | None = None
@@ -183,7 +185,8 @@ class RegistroHoraUpdate(BaseModel):
 
     equipa: List[MembroEquipa] = Field(default_factory=list)
 
-    modificado_por: int
+    # Compatibilidade com clientes antigos; o autor é obtido da autenticação.
+    modificado_por: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -223,6 +226,7 @@ class RegistroHoraResponse(BaseModel):
     projeto_id: int
     data: date
     horas: int = 0
+    observacao: Optional[str] = Field(default=None, max_length=5000)
 
     cliente_id: int | None = None
     obra_id: int | None = None
