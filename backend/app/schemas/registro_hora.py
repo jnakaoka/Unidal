@@ -41,6 +41,7 @@ class ManobradorMaquina(BaseModel):
     double_journey: bool = False
 
 class IntervencaoMaquinasOpcoes(BaseModel):
+    manobradorApenas: M2Opt = M2Opt()
     laserComManobrador: M2Opt = M2Opt()
     poComManobrador:    M2Opt = M2Opt()
     manobrador:         ManoOpt = ManoOpt()

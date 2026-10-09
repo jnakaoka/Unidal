@@ -20,6 +20,7 @@ def _manobradores_opcoes(opcoes) -> list[dict]:
         return []
     manobradores = [m for m in opcoes.get("manobradores", []) if isinstance(m, dict)]
     for chave in (
+        "manobradorApenas",
         "laserComManobrador",
         "poComManobrador",
         "laserWS940CComManobrador",
@@ -39,6 +40,9 @@ def _manobradores_opcoes(opcoes) -> list[dict]:
 def _validar_manobradores(db: Session, opcoes) -> list[dict]:
     manobradores = _manobradores_opcoes(opcoes)
     opcoes_dict = opcoes.model_dump() if hasattr(opcoes, "model_dump") else (opcoes or {})
+    apenas = opcoes_dict.get("manobradorApenas") or {}
+    if apenas.get("checked") and not apenas.get("manobrador_user_id"):
+        raise HTTPException(status_code=422, detail="Selecione o manobrador de máquina apenas.")
     vinculos: set[tuple[int, str]] = set()
     for item in manobradores:
         user_id = item.get("user_id")
@@ -58,6 +62,8 @@ def _validar_manobradores(db: Session, opcoes) -> list[dict]:
         funcionario = db.get(User, user_id)
         if not funcionario or not funcionario.is_active:
             raise HTTPException(status_code=422, detail="Manobrador inválido ou inativo.")
+        if opcao == "manobradorApenas":
+            opcoes_dict[opcao]["empresa"] = funcionario.empresa or ""
     return manobradores
 
 

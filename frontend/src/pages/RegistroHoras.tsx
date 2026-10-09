@@ -49,6 +49,7 @@ interface RegistroEquipa {
 }
 
 type IntervencaoMaquinasOpcoes = {
+  manobradorApenas?: M2ComManobrador;
   laserComManobrador?: M2ComManobrador;
   poComManobrador?: M2ComManobrador;
   manobrador?:         { checked?: boolean; qtd?: number; empresa?: string }; // 1 ou 2
@@ -70,6 +71,7 @@ type M2ComManobrador = {
 };
 
 type OpcaoComManobrador =
+  | 'manobradorApenas'
   | 'laserComManobrador'
   | 'poComManobrador'
   | 'laserWS940CComManobrador'
@@ -266,6 +268,7 @@ const RegistroHoras: React.FC = () => {
       lazerYZ30ComManobrador: { checked: false,  m2: '', empresa: '' },
       soMaqLaserWS940C: { checked: false,  m2: '', empresa: '' },
       soMaqLazerYZ30: { checked: false,  m2: '', empresa: '' }, //Só  Maq Lazer YZ30
+      manobradorApenas: { checked: false, m2: "", empresa: "" },
       manobradores: [],
     },
     origem: "",
@@ -710,6 +713,7 @@ const RegistroHoras: React.FC = () => {
                           m2: regHora?.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.m2 ?? '',
                           empresa: regHora.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.empresa ?? ''
                         },
+        manobradorApenas: regHora.intervencao_maquinas_opcoes?.manobradorApenas ?? { checked: false, m2: "", empresa: "" },
         manobradores: regHora.intervencao_maquinas_opcoes?.manobradores ?? [],
       },
       projeto_id: 1,
@@ -816,6 +820,11 @@ const RegistroHoras: React.FC = () => {
         return;
       }
 
+      if (formData.intervencao_maquinas_opcoes.manobradorApenas?.checked &&
+          !formData.intervencao_maquinas_opcoes.manobradorApenas.manobrador_user_id) {
+        showNotice('error', 'Selecione o manobrador de máquina apenas.');
+        return;
+      }
       const manobradores = formData.intervencao_maquinas_opcoes.manobradores || [];
       if (manobradores.some(item => !item.user_id || !item.opcao)) {
         showNotice('error', 'Selecione o funcionário e a opção de máquina de cada manobrador.');
@@ -1017,7 +1026,8 @@ const RegistroHoras: React.FC = () => {
         lazerYZ30ComManobrador: { checked: false, m2: '', empresa: '' },
         soMaqLaserWS940C: { checked: false, m2: '', empresa: '' },
         soMaqLazerYZ30: { checked: false, m2: '', empresa: '' },
-        manobradores: [],
+        manobradorApenas: { checked: false, m2: "", empresa: "" },
+      manobradores: [],
       } as IntervencaoMaquinasOpcoes,
       origem: '', destino: '', matricula: '', km_rodados: '', maquinas_transportadas: '',
       transporte_veiculo_id: null,
@@ -1285,6 +1295,9 @@ const RegistroHoras: React.FC = () => {
     }
     if (o.poComManobrador?.checked) {
       parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || '0'} m² — ${manobradorInicial(o.poComManobrador)}`);
+    }
+    if (o.manobradorApenas?.checked) {
+      parts.push(`Manobrador de máquina apenas: ${manobradorInicial(o.manobradorApenas)}`);
     }
     if (o.manobrador?.checked) {
       parts.push(`Manobrador: ${o.manobrador.qtd ?? 1} (${o.manobrador.empresa||'-'})`);
@@ -2001,6 +2014,20 @@ const RegistroHoras: React.FC = () => {
                         {empresasLista.map(emp => <option key={emp} value={emp}>{emp}</option>)}
                       </select>
                     </label>
+                  </div>
+
+                  <div className="mt-4 rounded-lg border p-4">
+                    <label className="flex items-center gap-2 mb-2">
+                      <input type="checkbox"
+                        checked={!!formData.intervencao_maquinas_opcoes.manobradorApenas?.checked}
+                        onChange={e => atualizarManobradorInicial('manobradorApenas', {
+                          checked: e.target.checked,
+                          ...(!e.target.checked ? { manobrador_user_id: null, empresa: '', double_journey: false } : {}),
+                        })}
+                      />
+                      <span>Manobrador de máquina apenas</span>
+                    </label>
+                    {camposManobradorInicial('manobradorApenas')}
                   </div>
 
                   <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4">

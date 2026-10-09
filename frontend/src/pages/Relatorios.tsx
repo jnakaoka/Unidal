@@ -21,6 +21,7 @@ type M2ComManobrador = {
 
 // Opções de máquinas (mantém alinhado com RegistroHoras.tsx)
 type IntervencaoMaquinasOpcoes = {
+  manobradorApenas?: M2ComManobrador;
   laserComManobrador?: M2ComManobrador;
   poComManobrador?: M2ComManobrador;
   manobrador?: { checked?: boolean; qtd?: number; empresa?: string };
@@ -273,6 +274,7 @@ const Relatorios: React.FC = () => {
     const opcoes = r.intervencao_maquinas_opcoes;
     const itens = [...(opcoes?.manobradores || [])];
     ([
+      "manobradorApenas",
       "laserComManobrador",
       "poComManobrador",
       "laserWS940CComManobrador",
@@ -292,6 +294,7 @@ const Relatorios: React.FC = () => {
   };
 
   const nomeOpcaoManobrador = (opcao: string) => ({
+    manobradorApenas: "Manobrador de máquina apenas",
     laserComManobrador: "Máq Laser",
     poComManobrador: "Máq Pó",
     laserWS940CComManobrador: "Laser WS940C",
@@ -301,7 +304,7 @@ const Relatorios: React.FC = () => {
   const resumoManobradores = (r: RegistroHoras): string => {
     const novos = manobradoresDoRegistro(r).map(item => {
       const utilizador = leaders.find(user => user.id === item.user_id);
-      return `${utilizador?.name || `#${item.user_id}`} (${utilizador?.empresa || "Sem Empresa"}) — ${nomeOpcaoManobrador(item.opcao)}: ${item.m2 || "0"} m²${item.double_journey ? " [Double Journey]" : ""}`;
+      return `${utilizador?.name || `#${item.user_id}`} (${utilizador?.empresa || "Sem Empresa"}) — ${nomeOpcaoManobrador(item.opcao)}${item.opcao === "manobradorApenas" ? "" : `: ${item.m2 || "0"} m²`}${item.double_journey ? " [Double Journey]" : ""}`;
     });
     const legado = r.intervencao_maquinas_opcoes?.manobrador;
     if (legado?.checked) {
@@ -478,6 +481,7 @@ const Relatorios: React.FC = () => {
           [
             "laserComManobrador",
             "poComManobrador",
+            "manobradorApenas",
             "manobrador",
             "soLaser",
             "soPo",
@@ -985,6 +989,7 @@ const Relatorios: React.FC = () => {
             <option value="sem">Sem intervenção</option>
             <option value="laserComManobrador">Laser c/ manobrador</option>
             <option value="poComManobrador">Pó c/ manobrador</option>
+            <option value="manobradorApenas">Manobrador de máquina apenas</option>
             <option value="manobrador">Manobrador</option>
             <option value="soLaser">Só Laser</option>
             <option value="soPo">Só Pó</option>
