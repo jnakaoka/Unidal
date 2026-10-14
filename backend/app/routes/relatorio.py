@@ -76,22 +76,25 @@ def relatorio_dias_trabalhados(
             {
                 "double_journey": False,
                 "intemperie": False,
-                "obras": set(),
+                "obras_double_journey": set(),
+                "obras_intemperie": set(),
             },
         )
         grupo["double_journey"] = grupo["double_journey"] or double_journey
         grupo["intemperie"] = grupo["intemperie"] or intemperie
-        grupo["obras"].add(
-            registro.obra.nome if registro.obra else "Obra não informada"
-        )
+        obra_nome = registro.obra.nome if registro.obra else "Obra não informada"
+        if double_journey:
+            grupo["obras_double_journey"].add(obra_nome)
+        if intemperie:
+            grupo["obras_intemperie"].add(obra_nome)
 
     double_journeys = [
-        DoubleJourneyOut(data=data_registro, obras=sorted(info["obras"]))
+        DoubleJourneyOut(data=data_registro, obras=sorted(info["obras_double_journey"]))
         for data_registro, info in sorted(por_data.items())
-        if info["double_journey"] and len(info["obras"]) > 1
+        if info["double_journey"]
     ]
     intemperies = [
-        IntemperieOut(data=data_registro, obras=sorted(info["obras"]))
+        IntemperieOut(data=data_registro, obras=sorted(info["obras_intemperie"]))
         for data_registro, info in sorted(por_data.items())
         if info["intemperie"]
     ]

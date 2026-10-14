@@ -2250,7 +2250,8 @@ const RegistroHoras: React.FC = () => {
                           }
                         >
                           {lista.map((u) => (
-                            <label key={u.id} className="block text-sm text-gray-800">
+                            <div key={u.id} className="block text-sm text-gray-800">
+                              <label>
                               <input
                                 type="checkbox"
                                 value={u.id}
@@ -2259,6 +2260,7 @@ const RegistroHoras: React.FC = () => {
                                 className="mr-2"
                               />
                               {u.name}
+                              </label>
                               {selectedUsers.includes(u.id) && (
                                 <span className="ml-2 inline-flex flex-wrap items-center gap-3 text-xs">
                                   <label className="inline-flex items-center gap-1">
@@ -2283,7 +2285,7 @@ const RegistroHoras: React.FC = () => {
                                   </label>
                                 </span>
                               )}
-                            </label>
+                            </div>
                           ))}
                         </div>
                       </div>
