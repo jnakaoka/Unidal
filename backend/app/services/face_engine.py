@@ -96,7 +96,7 @@ class OpenCVFaceEngine(FaceEngine):
         self.np = np
         try:
             self.detector = cv2.FaceDetectorYN.create(
-                detector_path, "", (320, 320), score_threshold=0.9
+                detector_path, "", (320, 320), score_threshold=0.7
             )
             self.recognizer = cv2.FaceRecognizerSF.create(recognizer_path, "")
         except (cv2.error, AttributeError) as exc:
