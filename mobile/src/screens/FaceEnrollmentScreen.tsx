@@ -26,11 +26,13 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
   const [userId, setUserId] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [capturing, setCapturing] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [feedback, setFeedback] = useState("Posicione o rosto na moldura e mantenha boa iluminação.");
   const [sending, setSending] = useState(false);
   const [retakeIndex, setRetakeIndex] = useState<number | null>(null);
 
   async function capture() {
-    if (!cameraRef.current || !cameraReady || capturing || (photos.length >= 3 && retakeIndex === null)) return;
+    if (!cameraRef.current || !cameraReady || capturing || checking || (photos.length >= 3 && retakeIndex === null)) return;
 
     try {
       setCapturing(true);
@@ -40,6 +42,20 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
       });
 
       if (picture?.uri) {
+        setChecking(true);
+        setFeedback("A verificar a fotografia...");
+        try {
+          await biometricsApi.checkCapture(picture.uri);
+          setFeedback("Fotografia aceite. Pode continuar.");
+        } catch (error: any) {
+          const detail = error?.response?.data?.detail;
+          const message = typeof detail === "string" ? detail : "Não foi possível validar a fotografia. Verifique a ligação à API de testes.";
+          setFeedback(message);
+          Alert.alert("Repita a fotografia", message);
+          return;
+        } finally {
+          setChecking(false);
+        }
         setPhotos((current) => {
           if (retakeIndex !== null) {
             return current.map((uri, index) => index === retakeIndex ? picture.uri : uri);
@@ -151,14 +167,15 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
       <View style={styles.controls}>
         <Text style={styles.instruction}>{instruction}</Text>
         <Text style={styles.counter}>{photos.length}/3 capturas</Text>
+        <Text style={styles.feedback}>{feedback}</Text>
 
         {(photos.length < 3 || retakeIndex !== null) ? (
           <TouchableOpacity
-            style={[styles.captureButton, (!cameraReady || capturing) && styles.disabled]}
+            style={[styles.captureButton, (!cameraReady || capturing || checking) && styles.disabled]}
             onPress={capture}
-            disabled={!cameraReady || capturing}
+            disabled={!cameraReady || capturing || checking}
           >
-            {capturing ? (
+            {capturing || checking ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.primaryButtonText}>Capturar</Text>
@@ -192,6 +209,7 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  feedback: { textAlign: "center", color: "#374151", fontSize: 13, marginBottom: 10 },
   retakeRow: { flexDirection: "row", gap: 6, marginTop: 10 },
   retakeButton: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: 8, backgroundColor: "#e5e7eb" },
   retakeText: { color: "#374151", fontSize: 12, fontWeight: "600" },
