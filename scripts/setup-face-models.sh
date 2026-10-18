@@ -15,7 +15,14 @@ download() {
   tmp="$(mktemp "$DEST/.download.XXXXXXXX")"
   trap 'rm -f "$tmp"' RETURN
   echo "A descarregar $name..."
-  curl --fail --location --retry 3 --connect-timeout 15 --max-time 180 --silent --show-error "$url" -o "$tmp"
+  local curl_bin="curl"
+  # Em Git Bash, preferir curl.exe com Schannel quando disponível.
+  if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]]; then
+    if command -v curl.exe >/dev/null 2>&1 && curl.exe --version | grep -qi Schannel; then
+      curl_bin="curl.exe"
+    fi
+  fi
+  "$curl_bin" --fail --location --retry 3 --connect-timeout 15 --max-time 180 --silent --show-error "$url" -o "$tmp"
   if [[ ! -s "$tmp" ]] || [[ "$(head -c 4 "$tmp")" == "vers" ]]; then
     echo "Erro: $name não parece ser um modelo ONNX válido." >&2
     return 1
