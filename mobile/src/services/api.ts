@@ -240,6 +240,19 @@ export const registrosHorasApi = {
 };
 
 export const biometricsApi = {
+  async checkCapture(uri: string) {
+    const formData = new FormData();
+    formData.append("image", {
+      uri,
+      name: "capture.jpg",
+      type: "image/jpeg",
+    } as any);
+    const res = await api.post("/biometrics/capture/check", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 30000,
+    });
+    return res.data as { valid: boolean; message: string };
+  },
   async enroll(userId: number, photoUris: string[]) {
     const formData = new FormData();
 
