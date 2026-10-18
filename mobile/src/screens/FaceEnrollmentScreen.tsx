@@ -7,8 +7,12 @@ import {
   Text,
   TouchableOpacity,
   View,
+  TextInput,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { biometricsApi } from "../services/api";
+
+const LIVE_FACE_ENABLED = process.env.EXPO_PUBLIC_FACE_BIOMETRICS_ENABLED === "true";
 
 
 const INSTRUCTIONS = [
@@ -22,12 +26,14 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraReady, setCameraReady] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [userId, setUserId] = useState("");
+  const [busy, setBusy] = useState(false);
   const [capturing, setCapturing] = useState(false);
   const [feedback, setFeedback] = useState("Posicione o rosto na moldura e mantenha boa iluminação.");
   const [retakeIndex, setRetakeIndex] = useState<number | null>(null);
 
   async function capture() {
-    if (!cameraRef.current || !cameraReady || capturing || (photos.length >= 3 && retakeIndex === null)) return;
+    if (!cameraRef.current || !cameraReady || capturing || busy || (photos.length >= 3 && retakeIndex === null)) return;
 
     try {
       setCapturing(true);
@@ -37,7 +43,21 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
       });
 
       if (picture?.uri) {
-        setFeedback("Fotografia capturada localmente. Verifique o enquadramento antes de continuar.");
+        if (LIVE_FACE_ENABLED) {
+          setBusy(true);
+          try {
+            await biometricsApi.checkCapture(picture.uri);
+            setFeedback("Rosto validado. Captura aceite.");
+          } catch (error: any) {
+            const detail = error?.response?.data?.detail;
+            Alert.alert("Captura rejeitada", typeof detail === "string" ? detail : "Não foi possível validar a fotografia.");
+            return;
+          } finally {
+            setBusy(false);
+          }
+        } else {
+          setFeedback("Fotografia capturada localmente. Sem envio à API.");
+        }
         setPhotos((current) => {
           if (retakeIndex !== null) {
             return current.map((uri, index) => index === retakeIndex ? picture.uri : uri);
@@ -62,6 +82,30 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
         { text: "Recomeçar", onPress: () => { setPhotos([]); setRetakeIndex(null); setFeedback("Posicione o rosto na moldura e mantenha boa iluminação."); } },
       ]
     );
+  }
+
+  async function finishEnrollment() {
+    if (!LIVE_FACE_ENABLED) {
+      finishDemo();
+      return;
+    }
+    const id = Number(userId);
+    if (!Number.isInteger(id) || id <= 0 || photos.length !== 3) {
+      Alert.alert("Atenção", "Indique um ID válido e capture três fotografias.");
+      return;
+    }
+    try {
+      setBusy(true);
+      await biometricsApi.enroll(id, photos);
+      Alert.alert("Cadastro concluído", "Template facial registado.", [
+        { text: "OK", onPress: () => { setPhotos([]); setUserId(""); } },
+      ]);
+    } catch (error: any) {
+      const detail = error?.response?.data?.detail;
+      Alert.alert("Falha no cadastro", typeof detail === "string" ? detail : "Não foi possível cadastrar o rosto.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   if (!permission) {
@@ -92,12 +136,18 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.form}>
-        <Text style={styles.title}>Demonstração facial local</Text>
+        <Text style={styles.title}>{LIVE_FACE_ENABLED ? "Cadastro facial experimental" : "Demonstração facial local"}</Text>
         <Text style={styles.subtitle}>
-          Teste da câmara e das três fotografias no Samsung. Não há deteção automática de rostos nem envio de imagens à API. Use luz uniforme e mantenha apenas um rosto na moldura.
+          {LIVE_FACE_ENABLED ? "As fotografias serão enviadas à API para validação. Utilize apenas participantes autorizados." : "Teste da câmara e das três fotografias no Samsung. Não há deteção automática de rostos nem envio de imagens à API."}
         </Text>
       </View>
 
+      {LIVE_FACE_ENABLED && (
+        <View style={styles.form}>
+          <Text style={styles.label}>ID do funcionário autorizado</Text>
+          <TextInput style={styles.input} keyboardType="number-pad" value={userId} onChangeText={setUserId} editable={!busy} placeholder="ID do utilizador" />
+        </View>
+      )}
       <View style={styles.cameraContainer}>
         <CameraView
           ref={cameraRef}
@@ -116,9 +166,9 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
 
         {(photos.length < 3 || retakeIndex !== null) ? (
           <TouchableOpacity
-            style={[styles.captureButton, (!cameraReady || capturing) && styles.disabled]}
+            style={[styles.captureButton, (!cameraReady || capturing || busy) && styles.disabled]}
             onPress={capture}
-            disabled={!cameraReady || capturing}
+            disabled={!cameraReady || capturing || busy}
           >
             {capturing ? (
               <ActivityIndicator color="#fff" />
@@ -136,9 +186,10 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.primaryButton}
-              onPress={finishDemo}
+              onPress={finishEnrollment}
+              disabled={busy}
             >
-              <Text style={styles.primaryButtonText}>Concluir demonstração</Text>
+              <Text style={styles.primaryButtonText}>{busy ? "A processar..." : LIVE_FACE_ENABLED ? "Enviar cadastro" : "Concluir demonstração"}</Text>
             </TouchableOpacity>
           </View>
         )}
