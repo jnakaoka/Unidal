@@ -5,13 +5,11 @@ import {
   SafeAreaView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 
-import { biometricsApi } from "../services/api";
 
 const INSTRUCTIONS = [
   "Olhe diretamente para a câmera",
@@ -23,16 +21,13 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
   const cameraRef = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraReady, setCameraReady] = useState(false);
-  const [userId, setUserId] = useState("");
   const [photos, setPhotos] = useState<string[]>([]);
   const [capturing, setCapturing] = useState(false);
-  const [checking, setChecking] = useState(false);
   const [feedback, setFeedback] = useState("Posicione o rosto na moldura e mantenha boa iluminação.");
-  const [sending, setSending] = useState(false);
   const [retakeIndex, setRetakeIndex] = useState<number | null>(null);
 
   async function capture() {
-    if (!cameraRef.current || !cameraReady || capturing || checking || (photos.length >= 3 && retakeIndex === null)) return;
+    if (!cameraRef.current || !cameraReady || capturing || (photos.length >= 3 && retakeIndex === null)) return;
 
     try {
       setCapturing(true);
@@ -42,20 +37,7 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
       });
 
       if (picture?.uri) {
-        setChecking(true);
-        setFeedback("A verificar a fotografia...");
-        try {
-          await biometricsApi.checkCapture(picture.uri);
-          setFeedback("Fotografia aceite. Pode continuar.");
-        } catch (error: any) {
-          const detail = error?.response?.data?.detail;
-          const message = typeof detail === "string" ? detail : "Não foi possível validar a fotografia. Verifique a ligação à API de testes.";
-          setFeedback(message);
-          Alert.alert("Repita a fotografia", message);
-          return;
-        } finally {
-          setChecking(false);
-        }
+        setFeedback("Fotografia capturada localmente. Verifique o enquadramento antes de continuar.");
         setPhotos((current) => {
           if (retakeIndex !== null) {
             return current.map((uri, index) => index === retakeIndex ? picture.uri : uri);
@@ -71,42 +53,15 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
     }
   }
 
-  async function submit() {
-    const parsedUserId = Number(userId);
-    if (!Number.isInteger(parsedUserId) || parsedUserId <= 0) {
-      Alert.alert("Atenção", "Informe um ID de utilizador válido.");
-      return;
-    }
-    if (photos.length !== 3) {
-      Alert.alert("Atenção", "Faça as 3 capturas antes de enviar.");
-      return;
-    }
-
-    try {
-      setSending(true);
-      await biometricsApi.enroll(parsedUserId, photos);
-      Alert.alert("Sucesso", "Cadastro facial enviado com sucesso.", [
-        {
-          text: "OK",
-          onPress: () => {
-            setPhotos([]);
-            setRetakeIndex(null);
-            setUserId("");
-            navigation.goBack();
-          },
-        },
-      ]);
-    } catch (error: any) {
-      const detail = error?.response?.data?.detail;
-      Alert.alert(
-        "Cadastro facial",
-        typeof detail === "string"
-          ? detail
-          : "Não foi possível concluir o cadastro facial."
-      );
-    } finally {
-      setSending(false);
-    }
+  function finishDemo() {
+    Alert.alert(
+      "Demonstração concluída",
+      "As três fotografias foram capturadas no dispositivo. Não foram enviadas para a API nem foi criado um cadastro biométrico.",
+      [
+        { text: "Continuar a testar", style: "cancel" },
+        { text: "Recomeçar", onPress: () => { setPhotos([]); setRetakeIndex(null); setFeedback("Posicione o rosto na moldura e mantenha boa iluminação."); } },
+      ]
+    );
   }
 
   if (!permission) {
@@ -137,20 +92,10 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.form}>
-        <Text style={styles.title}>Cadastro facial</Text>
+        <Text style={styles.title}>Demonstração facial local</Text>
         <Text style={styles.subtitle}>
-          Informe o funcionário e faça três capturas quase frontais. Use luz uniforme, retire óculos escuros e mantenha apenas um rosto na imagem.
+          Teste da câmara e das três fotografias no Samsung. Não há deteção automática de rostos nem envio de imagens à API. Use luz uniforme e mantenha apenas um rosto na moldura.
         </Text>
-
-        <Text style={styles.label}>ID do funcionário</Text>
-        <TextInput
-          value={userId}
-          onChangeText={setUserId}
-          keyboardType="number-pad"
-          placeholder="Ex.: 25"
-          editable={!sending}
-          style={styles.input}
-        />
       </View>
 
       <View style={styles.cameraContainer}>
@@ -171,11 +116,11 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
 
         {(photos.length < 3 || retakeIndex !== null) ? (
           <TouchableOpacity
-            style={[styles.captureButton, (!cameraReady || capturing || checking) && styles.disabled]}
+            style={[styles.captureButton, (!cameraReady || capturing) && styles.disabled]}
             onPress={capture}
-            disabled={!cameraReady || capturing || checking}
+            disabled={!cameraReady || capturing}
           >
-            {capturing || checking ? (
+            {capturing ? (
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.primaryButtonText}>Capturar</Text>
@@ -186,20 +131,14 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
             <TouchableOpacity
               style={styles.secondaryButton}
               onPress={() => { setPhotos([]); setRetakeIndex(null); }}
-              disabled={sending}
             >
               <Text style={styles.secondaryButtonText}>Refazer</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.primaryButton, sending && styles.disabled]}
-              onPress={submit}
-              disabled={sending}
+              style={styles.primaryButton}
+              onPress={finishDemo}
             >
-              {sending ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.primaryButtonText}>Enviar cadastro</Text>
-              )}
+              <Text style={styles.primaryButtonText}>Concluir demonstração</Text>
             </TouchableOpacity>
           </View>
         )}
