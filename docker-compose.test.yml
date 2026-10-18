@@ -38,9 +38,13 @@ services:
       DB_PORT: 3306
       JWT_SECRET_KEY: test-secret-not-for-production
       PYTHONPATH: /app
+      FACE_YUNET_MODEL: /face-models/yunet.onnx
+      FACE_SFACE_MODEL: /face-models/sface.onnx
+      FACE_EMBEDDING_KEY: ${FACE_EMBEDDING_KEY:-}
     volumes:
       - ./backend:/app
       - ./alembic.ini:/app/alembic.ini:ro
+      - ./face-models:/face-models:ro
     command:
       [
         "sh",
