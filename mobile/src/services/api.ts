@@ -239,8 +239,15 @@ export const registrosHorasApi = {
   },
 };
 
+function requireFaceTestApi() {
+  if (!process.env.EXPO_PUBLIC_API_BASE_URL || /(^|\\/)api\\.unidal\\.pt(\\/|$)/i.test(process.env.EXPO_PUBLIC_API_BASE_URL.replace(/^https?:\\/\\//, ""))) {
+    throw new Error("Configure EXPO_PUBLIC_API_BASE_URL para uma API de testes antes de utilizar o cadastro facial.");
+  }
+}
+
 export const biometricsApi = {
   async checkCapture(uri: string) {
+    requireFaceTestApi();
     const formData = new FormData();
     formData.append("image", {
       uri,
@@ -254,6 +261,7 @@ export const biometricsApi = {
     return res.data as { valid: boolean; message: string };
   },
   async enroll(userId: number, photoUris: string[]) {
+    requireFaceTestApi();
     const formData = new FormData();
 
     photoUris.forEach((uri, index) => {
