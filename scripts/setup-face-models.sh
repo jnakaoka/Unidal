@@ -15,14 +15,18 @@ download() {
   tmp="$(mktemp "$DEST/.download.XXXXXXXX")"
   trap 'rm -f "$tmp"' RETURN
   echo "A descarregar $name..."
-  local curl_bin="curl"
-  # Em Git Bash, preferir curl.exe com Schannel quando disponível.
-  if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]]; then
-    if command -v curl.exe >/dev/null 2>&1 && curl.exe --version | grep -qi Schannel; then
-      curl_bin="curl.exe"
-    fi
+  # No Git Bash do Windows, PowerShell pode usar a cadeia TLS do sistema
+  # mesmo quando o curl do Git falha ao localizar a CA.
+  if [[ "$OSTYPE" == msys* || "$OSTYPE" == cygwin* ]] && command -v powershell.exe >/dev/null 2>&1; then
+    local win_tmp
+    win_tmp="$(cygpath -w "$tmp")"
+    # URL e caminho são argumentos, não interpolados no código PowerShell.
+    powershell.exe -NoProfile -NonInteractive -Command \
+      '& { param($Uri,$OutFile) $ErrorActionPreference = "Stop"; [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing }' \
+      "$url" "$win_tmp"
+  else
+    curl --fail --location --retry 3 --connect-timeout 15 --max-time 180 --silent --show-error "$url" -o "$tmp"
   fi
-  "$curl_bin" --fail --location --retry 3 --connect-timeout 15 --max-time 180 --silent --show-error "$url" -o "$tmp"
   if [[ ! -s "$tmp" ]] || [[ "$(head -c 4 "$tmp")" == "vers" ]]; then
     echo "Erro: $name não parece ser um modelo ONNX válido." >&2
     return 1
