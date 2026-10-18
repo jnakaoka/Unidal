@@ -7,11 +7,11 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Dockerfile (dentro de /backend)
-# Copia o start.sh da raiz do projeto para o /app do container
+# O contexto de build é backend/; start.sh encontra-se nesta pasta.
 
 COPY . .
 
-COPY ../start.sh /app/start.sh
+COPY start.sh /app/start.sh
 RUN chmod +x /app/start.sh
 
 CMD ["bash", "/app/start.sh"]
