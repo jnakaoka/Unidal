@@ -117,8 +117,11 @@ class OpenCVFaceEngine(FaceEngine):
         try:
             self.detector.setInputSize((width, height))
             _, faces = self.detector.detect(image)
-            if faces is None or len(faces) != 1:
-                raise FaceEngineError("A imagem deve conter exatamente um rosto.")
+            face_count = 0 if faces is None else len(faces)
+            if face_count == 0:
+                raise FaceEngineError("Nenhum rosto detetado. Verifique enquadramento, iluminação e resolução.")
+            if face_count > 1:
+                raise FaceEngineError(f"Foram detetados {face_count} rostos. Envie uma fotografia individual.")
             face = faces[0]
             if min(float(face[2]), float(face[3])) < 100:
                 raise FaceEngineError("Aproxime o rosto da câmara.")
