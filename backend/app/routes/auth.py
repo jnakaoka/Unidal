@@ -134,7 +134,17 @@ def get_me(current_user: User = Depends(get_current_user)):
         "id": current_user.id,
         "email": current_user.email,
         "name": current_user.name,
-        "perfil": current_user.perfil
+        "perfil": current_user.perfil,
+        "funcoes": [
+            {
+                "id": funcao.id,
+                "codigo": funcao.codigo,
+                "nome": funcao.nome,
+                "is_active": funcao.is_active,
+            }
+            for funcao in (current_user.funcoes or [])
+            if funcao.is_active
+        ],
     }
 
 @router.get("/admin-area")

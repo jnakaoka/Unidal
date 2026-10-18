@@ -40,7 +40,7 @@ def get_current_user(
 
         user = (
             db.query(User)
-            .options(joinedload(User.perfil))
+            .options(joinedload(User.perfil), joinedload(User.funcoes))
             .filter(User.email == email)
             .first()
         )

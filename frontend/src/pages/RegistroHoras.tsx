@@ -49,6 +49,7 @@ interface RegistroEquipa {
 }
 
 type IntervencaoMaquinasOpcoes = {
+  manobradorApenas?: M2ComManobrador;
   laserComManobrador?: M2ComManobrador;
   poComManobrador?: M2ComManobrador;
   manobrador?:         { checked?: boolean; qtd?: number; empresa?: string }; // 1 ou 2
@@ -70,6 +71,7 @@ type M2ComManobrador = {
 };
 
 type OpcaoComManobrador =
+  | 'manobradorApenas'
   | 'laserComManobrador'
   | 'poComManobrador'
   | 'laserWS940CComManobrador'
@@ -95,6 +97,7 @@ interface RegistroHoras {
   projeto_id: number;
   data: string;
   horas: string;
+  observacao?: string;
 
   cliente_id: number | null;
   obra_id: number | null;
@@ -150,6 +153,7 @@ const RegistroHoras: React.FC = () => {
     projeto_id: number;
     data: string;
     horas: string;
+  observacao?: string;
     cliente_id: number | null;
     obra_id: number | null;
     metros_quadrados: string;
@@ -244,6 +248,7 @@ const RegistroHoras: React.FC = () => {
     projeto_id: 1,
     data: '',
     horas: '',
+    observacao: '',
     cliente_id: null,   // <- ok ser null
     obra_id: null,      // <- ok ser null
     metros_quadrados: '',
@@ -266,6 +271,7 @@ const RegistroHoras: React.FC = () => {
       lazerYZ30ComManobrador: { checked: false,  m2: '', empresa: '' },
       soMaqLaserWS940C: { checked: false,  m2: '', empresa: '' },
       soMaqLazerYZ30: { checked: false,  m2: '', empresa: '' }, //Só  Maq Lazer YZ30
+      manobradorApenas: { checked: false, m2: "", empresa: "" },
       manobradores: [],
     },
     origem: "",
@@ -710,12 +716,14 @@ const RegistroHoras: React.FC = () => {
                           m2: regHora?.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.m2 ?? '',
                           empresa: regHora.intervencao_maquinas_opcoes?.soMaqLazerYZ30?.empresa ?? ''
                         },
+        manobradorApenas: regHora.intervencao_maquinas_opcoes?.manobradorApenas ?? { checked: false, m2: "", empresa: "" },
         manobradores: regHora.intervencao_maquinas_opcoes?.manobradores ?? [],
       },
       projeto_id: 1,
       usuario_id: regHora.usuario_id,
       data: regHora.data,
       horas: regHora?.horas ?? '',
+      observacao: regHora.observacao ?? '',
       origem: regHora.origem ?? "",
       destino: regHora.destino ?? "",
       matricula: regHora.matricula ?? "",
@@ -816,6 +824,11 @@ const RegistroHoras: React.FC = () => {
         return;
       }
 
+      if (formData.intervencao_maquinas_opcoes.manobradorApenas?.checked &&
+          !formData.intervencao_maquinas_opcoes.manobradorApenas.manobrador_user_id) {
+        showNotice('error', 'Selecione o manobrador de máquina apenas.');
+        return;
+      }
       const manobradores = formData.intervencao_maquinas_opcoes.manobradores || [];
       if (manobradores.some(item => !item.user_id || !item.opcao)) {
         showNotice('error', 'Selecione o funcionário e a opção de máquina de cada manobrador.');
@@ -901,6 +914,7 @@ const RegistroHoras: React.FC = () => {
       };
 
       const basePayload = {
+        observacao: formData.observacao?.trim() || null,
         projeto_id: 1,
         data: formData.data,
         horas: parseFloat(formData.horas || "0") || 0,
@@ -1017,7 +1031,8 @@ const RegistroHoras: React.FC = () => {
         lazerYZ30ComManobrador: { checked: false, m2: '', empresa: '' },
         soMaqLaserWS940C: { checked: false, m2: '', empresa: '' },
         soMaqLazerYZ30: { checked: false, m2: '', empresa: '' },
-        manobradores: [],
+        manobradorApenas: { checked: false, m2: "", empresa: "" },
+      manobradores: [],
       } as IntervencaoMaquinasOpcoes,
       origem: '', destino: '', matricula: '', km_rodados: '', maquinas_transportadas: '',
       transporte_veiculo_id: null,
@@ -1285,6 +1300,9 @@ const RegistroHoras: React.FC = () => {
     }
     if (o.poComManobrador?.checked) {
       parts.push(`Pó c/ manobr.: ${o.poComManobrador.m2 || '0'} m² — ${manobradorInicial(o.poComManobrador)}`);
+    }
+    if (o.manobradorApenas?.checked) {
+      parts.push(`Manobrador de máquina apenas: ${manobradorInicial(o.manobradorApenas)}`);
     }
     if (o.manobrador?.checked) {
       parts.push(`Manobrador: ${o.manobrador.qtd ?? 1} (${o.manobrador.empresa||'-'})`);
@@ -2003,6 +2021,20 @@ const RegistroHoras: React.FC = () => {
                     </label>
                   </div>
 
+                  <div className="mt-4 rounded-lg border p-4">
+                    <label className="flex items-center gap-2 mb-2">
+                      <input type="checkbox"
+                        checked={!!formData.intervencao_maquinas_opcoes.manobradorApenas?.checked}
+                        onChange={e => atualizarManobradorInicial('manobradorApenas', {
+                          checked: e.target.checked,
+                          ...(!e.target.checked ? { manobrador_user_id: null, empresa: '', double_journey: false } : {}),
+                        })}
+                      />
+                      <span>Manobrador de máquina apenas</span>
+                    </label>
+                    {camposManobradorInicial('manobradorApenas')}
+                  </div>
+
                   <div className="mt-5 rounded-lg border border-blue-200 bg-blue-50 p-4">
                     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                       <div>
@@ -2403,6 +2435,14 @@ const RegistroHoras: React.FC = () => {
             )} */}
 
 
+            <div className="clear-both mb-4">
+              <Label htmlFor="observacao">Observação (opcional)</Label>
+              <Textarea id="observacao" value={formData.observacao ?? ""} maxLength={5000} rows={4}
+                placeholder="Informações adicionais sobre este apontamento"
+                onChange={(e) => setFormData({ ...formData, observacao: e.target.value })} />
+              <p className="text-sm text-gray-500">{(formData.observacao ?? "").length}/5000 caracteres</p>
+            </div>
+
             <div className="flex justify-end gap-2 div-form-btn">
               <Button
                 className="btn-bg-blue-500"
@@ -2508,6 +2548,7 @@ const RegistroHoras: React.FC = () => {
               <th className="px-4 py-2">Equipa</th>
               <th className="px-4 py-2">Etapas</th>
               <th className="px-4 py-2">Interv. Máq. (detalhes)</th>
+              <th className="px-4 py-2">Observação</th>
               <th className="px-4 py-2">Modificado por</th>
               <th className="px-4 py-2">Modificado em</th>
               <th className="px-4 py-2">Ações</th>
@@ -2558,7 +2599,7 @@ const RegistroHoras: React.FC = () => {
             )} */}
             {pageItems.length === 0 ? (
               <tr>
-                <td colSpan={11} className="text-center text-gray-500">
+                <td colSpan={12} className="text-center text-gray-500">
                   Nenhum registo encontrado
                 </td>
               </tr>
@@ -2649,6 +2690,8 @@ const RegistroHoras: React.FC = () => {
                     <td className="px-4 py-2 whitespace-pre-wrap">
                       {renderIntervencoes(reg)}
                     </td>
+
+                    <td className="max-w-xs whitespace-pre-wrap break-words px-4 py-2">{reg.observacao || "—"}</td>
 
                     <td className="px-4 py-2 text-[11px] leading-snug text-gray-700">
                       {reg.modificado_por ? (

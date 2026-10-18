@@ -36,6 +36,10 @@ import {
     matricula: string;
     tipo: TipoVeiculo;
     descricao: string;
+    seguradora: string;
+    numero_apolice: string;
+    seguro_inicio: string;
+    seguro_vencimento: string;
     ativo: boolean;
   }
 
@@ -48,6 +52,10 @@ import {
     matricula: "",
     tipo: "carrinha",
     descricao: "",
+    seguradora: "",
+    numero_apolice: "",
+    seguro_inicio: "",
+    seguro_vencimento: "",
     ativo: true,
   };
 
@@ -185,6 +193,10 @@ import {
         matricula: veiculo.matricula,
         tipo: veiculo.tipo,
         descricao: veiculo.descricao ?? "",
+        seguradora: veiculo.seguradora ?? "",
+        numero_apolice: veiculo.numero_apolice ?? "",
+        seguro_inicio: veiculo.seguro_inicio ?? "",
+        seguro_vencimento: veiculo.seguro_vencimento ?? "",
         ativo: veiculo.ativo,
       });
 
@@ -217,6 +229,10 @@ import {
           tipo: formulario.tipo,
           descricao:
             formulario.descricao.trim() || null,
+          seguradora: formulario.seguradora.trim() || null,
+          numero_apolice: formulario.numero_apolice.trim() || null,
+          seguro_inicio: formulario.seguro_inicio || null,
+          seguro_vencimento: formulario.seguro_vencimento || null,
         };
 
         if (veiculoEmEdicao !== null) {
@@ -383,6 +399,11 @@ import {
                 />
               </div>
 
+              <div className="space-y-2"><Label htmlFor="veiculo-seguradora">Seguradora</Label><Input id="veiculo-seguradora" value={formulario.seguradora} placeholder="Ex.: Fidelidade" onChange={event=>setFormulario(anterior=>({...anterior,seguradora:event.target.value}))}/></div>
+              <div className="space-y-2"><Label htmlFor="veiculo-apolice">N.º da apólice</Label><Input id="veiculo-apolice" value={formulario.numero_apolice} placeholder="Número da apólice" onChange={event=>setFormulario(anterior=>({...anterior,numero_apolice:event.target.value}))}/></div>
+              <div className="space-y-2"><Label htmlFor="veiculo-seguro-inicio">Início do seguro</Label><Input id="veiculo-seguro-inicio" type="date" value={formulario.seguro_inicio} onChange={event=>setFormulario(anterior=>({...anterior,seguro_inicio:event.target.value}))}/></div>
+              <div className="space-y-2"><Label htmlFor="veiculo-seguro-vencimento">Vencimento do seguro</Label><Input id="veiculo-seguro-vencimento" type="date" value={formulario.seguro_vencimento} onChange={event=>setFormulario(anterior=>({...anterior,seguro_vencimento:event.target.value}))}/></div>
+
               {veiculoEmEdicao !== null && (
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -475,6 +496,7 @@ import {
                 <th className="px-4 py-3">
                   Descrição
                 </th>
+                <th className="px-4 py-3">Seguro</th>
                 <th className="px-4 py-3">
                   Estado
                 </th>
@@ -498,6 +520,8 @@ import {
                   <td className="px-4 py-3 text-gray-600">
                     {veiculo.descricao || "—"}
                   </td>
+
+                  <td className="px-4 py-3 text-gray-600">{veiculo.seguro_vencimento ? new Date(`${veiculo.seguro_vencimento}T00:00:00`).toLocaleDateString("pt-PT") : "Não informado"}</td>
 
                   <td className="px-4 py-3">
                     <span
@@ -543,7 +567,7 @@ import {
                 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-4 py-8 text-center text-gray-500"
                     >
                       Nenhum veículo encontrado.

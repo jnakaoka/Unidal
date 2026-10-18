@@ -1,6 +1,7 @@
 from sqlalchemy import (
     Boolean,
     Column,
+    Date,
     DateTime,
     Integer,
     String,
@@ -44,6 +45,11 @@ class Veiculo(Base):
         String(255),
         nullable=True,
     )
+
+    seguradora = Column(String(120), nullable=True)
+    numero_apolice = Column(String(100), nullable=True)
+    seguro_inicio = Column(Date, nullable=True)
+    seguro_vencimento = Column(Date, nullable=True)
 
     ativo = Column(
         Boolean,

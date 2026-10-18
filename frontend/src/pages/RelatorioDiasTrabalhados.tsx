@@ -20,6 +20,8 @@ type Relatorio = {
   datas_trabalhadas: string[];
   total_double_journeys: number;
   double_journeys: { data: string; obras: string[] }[];
+  total_intemperies: number;
+  intemperies: { data: string; obras: string[] }[];
 };
 
 type DateMode = "month" | "range";
@@ -120,6 +122,9 @@ const RelatorioDiasTrabalhados: React.FC = () => {
     const ocorrencias = relatorio.double_journeys
       .map((item) => `<li><strong>${formatarData(item.data)}:</strong> ${item.obras.join(" • ")}</li>`)
       .join("");
+    const intemperies = relatorio.intemperies
+      .map((item) => `<li><strong>${formatarData(item.data)}:</strong> ${item.obras.join(" • ")}</li>`)
+      .join("");
     const janela = window.open("", "_blank", "width=850,height=700");
     if (!janela) return;
     janela.document.write(`<!doctype html><html><head><title>Dias trabalhados</title>
@@ -130,7 +135,9 @@ const RelatorioDiasTrabalhados: React.FC = () => {
       <p><strong>Período:</strong> ${formatarData(relatorio.data_inicio)} a ${formatarData(relatorio.data_fim)}</p>
       <div class="resumo"><strong>Total de dias trabalhados: ${relatorio.total_dias}</strong></div>
       <div class="resumo"><strong>Double journeys identificados: ${relatorio.total_double_journeys}</strong></div>
-      ${ocorrencias ? `<h2>Ocorrências para conferência</h2><ul>${ocorrencias}</ul>` : ""}
+      <div class="resumo"><strong>Intempéries identificadas: ${relatorio.total_intemperies}</strong></div>
+      ${ocorrencias ? `<h2>Double journeys para conferência</h2><ul>${ocorrencias}</ul>` : ""}
+      ${intemperies ? `<h2>Intempéries para conferência</h2><ul>${intemperies}</ul>` : ""}
       <table><thead><tr><th>#</th><th>Data</th></tr></thead><tbody>${datas || '<tr><td colspan="2">Nenhum dia trabalhado no período.</td></tr>'}</tbody></table>
       <script>window.onload=()=>window.print()</script></body></html>`);
     janela.document.close();
@@ -144,7 +151,7 @@ const RelatorioDiasTrabalhados: React.FC = () => {
     <div className="mx-auto max-w-5xl space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-800">Dias Trabalhados</h1>
-        <p className="mt-1 text-sm text-gray-500">Conta cada data uma única vez, como chefe de equipa ou membro da equipa.</p>
+        <p className="mt-1 text-sm text-gray-500">Conta cada data uma única vez para o funcionário efetivamente apontado na equipa ou como manobrador.</p>
       </div>
 
       <div className="space-y-4 rounded-2xl bg-white p-4 shadow md:p-6">
@@ -192,15 +199,26 @@ const RelatorioDiasTrabalhados: React.FC = () => {
             <div><h2 className="text-xl font-semibold text-gray-800">{relatorio.funcionario_nome}</h2><p className="text-sm text-gray-500">{relatorio.empresa}</p></div>
             <Button variant="outline" onClick={imprimir}>Imprimir</Button>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-xl bg-indigo-50 p-5 text-indigo-900"><p className="text-sm">Dias trabalhados</p><p className="text-3xl font-bold">{relatorio.total_dias} {relatorio.total_dias === 1 ? "dia" : "dias"}</p></div>
             <div className="rounded-xl bg-amber-50 p-5 text-amber-900"><p className="text-sm">Double journeys identificados</p><p className="text-3xl font-bold">{relatorio.total_double_journeys}</p></div>
+            <div className="rounded-xl bg-sky-50 p-5 text-sky-900"><p className="text-sm">Intempéries identificadas</p><p className="text-3xl font-bold">{relatorio.total_intemperies}</p></div>
           </div>
           {relatorio.double_journeys.length > 0 && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-              <h3 className="font-semibold text-amber-900">Ocorrências para conferência administrativa</h3>
+              <h3 className="font-semibold text-amber-900">Double journeys para conferência administrativa</h3>
               <ul className="mt-2 space-y-2 text-sm text-amber-900">
                 {relatorio.double_journeys.map((ocorrencia) => (
+                  <li key={ocorrencia.data}><b className="capitalize">{formatarData(ocorrencia.data)}:</b> {ocorrencia.obras.join(" • ")}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {relatorio.intemperies.length > 0 && (
+            <div className="rounded-xl border border-sky-200 bg-sky-50 p-4">
+              <h3 className="font-semibold text-sky-900">Intempéries para conferência administrativa</h3>
+              <ul className="mt-2 space-y-2 text-sm text-sky-900">
+                {relatorio.intemperies.map((ocorrencia) => (
                   <li key={ocorrencia.data}><b className="capitalize">{formatarData(ocorrencia.data)}:</b> {ocorrencia.obras.join(" • ")}</li>
                 ))}
               </ul>

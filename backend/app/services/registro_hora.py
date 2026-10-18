@@ -20,6 +20,7 @@ def _manobradores_opcoes(opcoes) -> list[dict]:
         return []
     manobradores = [m for m in opcoes.get("manobradores", []) if isinstance(m, dict)]
     for chave in (
+        "manobradorApenas",
         "laserComManobrador",
         "poComManobrador",
         "laserWS940CComManobrador",
@@ -39,6 +40,9 @@ def _manobradores_opcoes(opcoes) -> list[dict]:
 def _validar_manobradores(db: Session, opcoes) -> list[dict]:
     manobradores = _manobradores_opcoes(opcoes)
     opcoes_dict = opcoes.model_dump() if hasattr(opcoes, "model_dump") else (opcoes or {})
+    apenas = opcoes_dict.get("manobradorApenas") or {}
+    if apenas.get("checked") and not apenas.get("manobrador_user_id"):
+        raise HTTPException(status_code=422, detail="Selecione o manobrador de máquina apenas.")
     vinculos: set[tuple[int, str]] = set()
     for item in manobradores:
         user_id = item.get("user_id")
@@ -58,6 +62,8 @@ def _validar_manobradores(db: Session, opcoes) -> list[dict]:
         funcionario = db.get(User, user_id)
         if not funcionario or not funcionario.is_active:
             raise HTTPException(status_code=422, detail="Manobrador inválido ou inativo.")
+        if opcao == "manobradorApenas":
+            opcoes_dict[opcao]["empresa"] = funcionario.empresa or ""
     return manobradores
 
 
@@ -293,19 +299,27 @@ def listar_registros_horas(db: Session, usuario_id: Optional[int] = None):
 #         ).all()
 
 
-def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHoraUpdate):
-    reg = db.get(RegistroHora, registro_id)
+def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHoraUpdate, autor: User):
+    reg = db.query(RegistroHora).filter_by(id=registro_id).with_for_update().first()
     if not reg:
-        raise Exception(status_code=404, detail="Registro não encontrado")
+        raise HTTPException(status_code=404, detail="Registro não encontrado")
 
+    if not autor.is_active or (autor.perfil.nome.lower() != "admin" and reg.usuario_id != autor.id):
+        raise HTTPException(403, "Sem permissão para editar este apontamento.")
+    from app.services.notificacao import snapshot, registar_edicao
+    antes = snapshot(reg)
     data = registro.model_dump(exclude_none=True)
+    # Campo omitido preserva o texto; null explícito permite limpar a observação.
+    if "observacao" in registro.model_fields_set:
+        data["observacao"] = registro.observacao
     equipa_payload = data.pop("equipa", None)
     _validar_transporte(db, data)
     manobradores_payload = _validar_manobradores(
         db, data.get("intervencao_maquinas_opcoes")
     )
 
-    mod_por = data.pop("modificado_por", None)
+    data.pop("modificado_por", None)
+    data.pop("modificado_em", None)
 
     equipa_para_validacao = equipa_payload if equipa_payload is not None else [
         {
@@ -341,8 +355,6 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
     for k, v in data.items():
         setattr(reg, k, v)
 
-    reg.modificado_por = mod_por
-    reg.modificado_em  = datetime.now(timezone.utc)
 
     # (Re)grava equipa se vier no update
     if equipa_payload is not None:
@@ -355,6 +367,12 @@ def atualizar_registro_hora(db: Session, registro_id: int, registro: RegistroHor
                 double_journey=bool(m.get("double_journey", False)),
             ))
 
+    db.flush()
+    db.expire(reg, ["equipa"])
+    depois = snapshot(reg)
+    if registar_edicao(db, reg, autor, antes, depois):
+        reg.modificado_por = autor.id
+        reg.modificado_em = datetime.now(timezone.utc)
     db.commit()
     db.refresh(reg)
     return reg

@@ -1,64 +1,115 @@
 #services/user.py
 from typing import Optional
-from sqlalchemy.orm import Session, joinedload
-from app import models
-from app.schemas.user import UserCreate
-from app.utils.security import hash_password
-from sqlalchemy.exc import IntegrityError
+
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
-from app.models.user import User  # ou o caminho correto do modelo
-from app.utils.security import hash_password, verify_password
-from app.utils.passwords import generate_temp_password, check_strength
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, joinedload
+
+from app import models
+from app.models.funcao import Funcao
 from app.models.perfil import Perfil
+from app.models.user import User
+from app.schemas.user import UserCreate
+from app.utils.passwords import check_strength
+from app.utils.security import hash_password
+
 
 def get_users(db: Session, is_active: Optional[bool] = None):
-    print("flag active",is_active)
-    q = db.query(User).options(joinedload(User.perfil))
-    if is_active is not None:                # só filtra se o cliente pediu
-        q = q.filter(User.is_active.is_(is_active))  # .is_ para booleano no SQLAlchemy
+    q = db.query(User).options(joinedload(User.perfil), joinedload(User.funcoes))
+    if is_active is not None:
+        q = q.filter(User.is_active.is_(is_active))
     return q.all()
 
+
+def get_funcoes(db: Session, somente_ativas: bool = True):
+    q = db.query(Funcao)
+    if somente_ativas:
+        q = q.filter(Funcao.is_active.is_(True))
+    return q.order_by(Funcao.nome).all()
+
+
 def get_user_by_email(db: Session, email: str) -> User | None:
-    print("get user",email)
     return db.query(User).filter(User.email == email).first()
 
-def get_by_id(db: Session, user_id: int):
-    return db.query(User).filter(User.id == user_id).first()
 
-def _perfil_e_motorista(db: Session, perfil_id: int) -> bool:
-    perfil = (
-        db.query(Perfil)
-        .filter(Perfil.id == perfil_id)
+def get_by_id(db: Session, user_id: int):
+    return (
+        db.query(User)
+        .options(joinedload(User.perfil), joinedload(User.funcoes))
+        .filter(User.id == user_id)
         .first()
     )
 
-    return bool(
-        perfil
-        and (perfil.nome or "").strip().lower() == "motorista"
+
+def _perfil_e_motorista(db: Session, perfil_id: int) -> bool:
+    perfil = db.query(Perfil).filter(Perfil.id == perfil_id).first()
+    return bool(perfil and (perfil.nome or "").strip().lower() == "motorista")
+
+
+def _resolver_funcoes(db: Session, codigos: list[str]) -> list[Funcao]:
+    codigos_normalizados = sorted({(codigo or "").strip().upper() for codigo in codigos if codigo})
+    if not codigos_normalizados:
+        return []
+
+    funcoes = (
+        db.query(Funcao)
+        .filter(Funcao.codigo.in_(codigos_normalizados), Funcao.is_active.is_(True))
+        .all()
     )
+    encontrados = {funcao.codigo for funcao in funcoes}
+    invalidos = sorted(set(codigos_normalizados) - encontrados)
+    if invalidos:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Funções operacionais inválidas: {', '.join(invalidos)}",
+        )
+    return funcoes
+
+
+def _sincronizar_funcoes(
+    db: Session,
+    db_user: User,
+    codigos: list[str],
+    perfil_id: int,
+    e_condutor: bool,
+) -> None:
+    codigos_finais = {(codigo or "").strip().upper() for codigo in codigos if codigo}
+    if e_condutor or _perfil_e_motorista(db, perfil_id):
+        codigos_finais.add("CONDUTOR")
+
+    db_user.funcoes = _resolver_funcoes(db, list(codigos_finais))
+    db_user.e_condutor = "CONDUTOR" in codigos_finais
+
 
 def create_user(db: Session, user: UserCreate):
     db_user = models.User(
         name=user.name,
         email=user.email,
         empresa=user.empresa,
-        hashed_password = hash_password(user.password),
+        hashed_password=hash_password(user.password),
         perfil_id=user.perfil_id,
         is_active=True,
-        e_condutor=(
-            user.e_condutor
-            or _perfil_e_motorista(db, user.perfil_id)
-        ),
+        e_condutor=False,
     )
     db.add(db_user)
     try:
+        _sincronizar_funcoes(
+            db,
+            db_user,
+            user.funcao_codigos,
+            user.perfil_id,
+            user.e_condutor,
+        )
         db.commit()
         db.refresh(db_user)
-        return db_user
+        return get_by_id(db, db_user.id)
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=400, detail="E-mail já está em uso.")
+    except Exception:
+        db.rollback()
+        raise
+
 
 def delete(db: Session, user_id: int):
     db_user = get_by_id(db, user_id)
@@ -67,68 +118,58 @@ def delete(db: Session, user_id: int):
         db.commit()
     return db_user
 
+
 def update(db: Session, user_id: int, user_in) -> Optional[User]:
-    """
-    Aceita UserUpdate (ou UserCreate, se você quiser reutilizar). 
-    Atualiza campos parciais e, se 'password' vier preenchida, faz o hash.
-    """
     db_user = get_by_id(db, user_id)
     if not db_user:
         return None
 
-    # Pydantic v2: model_dump; v1: dict
-    data = user_in.model_dump(exclude_unset=True) if hasattr(user_in, "model_dump") else user_in.dict(exclude_unset=True)
+    data = (
+        user_in.model_dump(exclude_unset=True)
+        if hasattr(user_in, "model_dump")
+        else user_in.dict(exclude_unset=True)
+    )
 
-    # senha?
     pwd = data.pop("password", None)
     if pwd:
-        # opcional: validar força, se quiser aplicar política
         ok, reason = check_strength(pwd)
         if not ok:
             raise HTTPException(status_code=400, detail=f"Senha fraca: {reason}")
         db_user.hashed_password = hash_password(pwd)
-        db_user.must_change_password = False  # ao atualizar explicitamente, não obriga troca
+        db_user.must_change_password = False
 
-    perfil_final_id = data.get(
-        "perfil_id",
-        db_user.perfil_id,
-    )
+    funcao_codigos = data.pop("funcao_codigos", None)
+    perfil_final_id = data.get("perfil_id", db_user.perfil_id)
+    e_condutor_informado = data.pop("e_condutor", None)
 
-    # Quem possui perfil motorista obrigatoriamente é condutor.
-    if _perfil_e_motorista(db, perfil_final_id):
-        data["e_condutor"] = True
+    for key, value in data.items():
+        setattr(db_user, key, value)
 
-    # demais campos
-    for k, v in data.items():
-        setattr(db_user, k, v)
+    if funcao_codigos is not None:
+        _sincronizar_funcoes(
+            db,
+            db_user,
+            funcao_codigos,
+            perfil_final_id,
+            bool(e_condutor_informado),
+        )
+    elif e_condutor_informado is not None:
+        codigos_atuais = [funcao.codigo for funcao in db_user.funcoes if funcao.codigo != "CONDUTOR"]
+        _sincronizar_funcoes(
+            db,
+            db_user,
+            codigos_atuais,
+            perfil_final_id,
+            e_condutor_informado,
+        )
+    elif _perfil_e_motorista(db, perfil_final_id):
+        codigos_atuais = [funcao.codigo for funcao in db_user.funcoes]
+        _sincronizar_funcoes(db, db_user, codigos_atuais, perfil_final_id, True)
 
-    db.commit()
-    db.refresh(db_user)
-    return db_user
-
-# def update(db: Session, user_id: int, user: UserCreate):
-#     print("usuario update", user)
-#     db_user = get_by_id(db, user_id)
-#     if not db_user:
-#         return None
-
-#     data = user.dict(exclude_unset=True)
-#     if "password" in data and data["password"]:
-#         db_user.hashed_password = hash_password(data["password"])
-#         data.pop("password")
-
-#     for k, v in data.items():
-#         setattr(db_user, k, v)
-
-#     db.commit()
-#     db.refresh(db_user)
-#     return db_user
-    
-    # db_user = get_by_id(db, user_id)
-    # if db_user:
-    #     for key, value in user.dict().items():
-    #         setattr(db_user, key, value)
-    #     db.commit()
-    #     db.refresh(db_user)
-    # return db_user
-
+    try:
+        db.commit()
+        db.refresh(db_user)
+        return get_by_id(db, db_user.id)
+    except Exception:
+        db.rollback()
+        raise

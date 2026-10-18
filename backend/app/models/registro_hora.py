@@ -1,5 +1,5 @@
 #models/registro_hora.py
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date, DateTime, Float
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Date, DateTime, Float, Text
 from sqlalchemy.orm import relationship
 from app.database import Base
 from sqlalchemy import JSON as SAJSON
@@ -13,6 +13,7 @@ class RegistroHora(Base):
     projeto_id = Column(Integer, ForeignKey("projetos.id"), nullable=False)
     data = Column(Date, nullable=False)
     horas = Column(Float, nullable=False)
+    observacao = Column(Text, nullable=True)
 
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=True)
     obra_id    = Column(Integer, ForeignKey("obras.id"), nullable=True)

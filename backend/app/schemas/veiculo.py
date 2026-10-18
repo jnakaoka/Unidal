@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -18,6 +18,10 @@ class VeiculoBase(BaseModel):
     matricula: str = Field(min_length=1, max_length=20)
     tipo: TipoVeiculo = "carrinha"
     descricao: Optional[str] = Field(default=None, max_length=255)
+    seguradora: Optional[str] = Field(default=None, max_length=120)
+    numero_apolice: Optional[str] = Field(default=None, max_length=100)
+    seguro_inicio: Optional[date] = None
+    seguro_vencimento: Optional[date] = None
 
     @field_validator("matricula")
     @classmethod
@@ -57,6 +61,10 @@ class VeiculoUpdate(BaseModel):
     )
     tipo: Optional[TipoVeiculo] = None
     descricao: Optional[str] = Field(default=None, max_length=255)
+    seguradora: Optional[str] = Field(default=None, max_length=120)
+    numero_apolice: Optional[str] = Field(default=None, max_length=100)
+    seguro_inicio: Optional[date] = None
+    seguro_vencimento: Optional[date] = None
     ativo: Optional[bool] = None
 
     @field_validator("matricula")
@@ -102,6 +110,10 @@ class VeiculoOut(BaseModel):
     matricula: str
     tipo: str
     descricao: Optional[str]
+    seguradora: Optional[str]
+    numero_apolice: Optional[str]
+    seguro_inicio: Optional[date]
+    seguro_vencimento: Optional[date]
     ativo: bool
     criado_em: datetime
     atualizado_em: datetime

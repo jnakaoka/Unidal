@@ -14,9 +14,17 @@ class RegistroHoraOut(BaseModel):
         orm_mode = True
 
 
-class DoubleJourneyOut(BaseModel):
+class OcorrenciaOut(BaseModel):
     data: date
     obras: List[str]
+
+
+class DoubleJourneyOut(OcorrenciaOut):
+    pass
+
+
+class IntemperieOut(OcorrenciaOut):
+    pass
 
 
 class DiasTrabalhadosOut(BaseModel):
@@ -29,3 +37,5 @@ class DiasTrabalhadosOut(BaseModel):
     datas_trabalhadas: List[date]
     total_double_journeys: int
     double_journeys: List[DoubleJourneyOut]
+    total_intemperies: int
+    intemperies: List[IntemperieOut]

@@ -1,3 +1,5 @@
+name: unidal-test
+
 services:
   db-test:
     image: mysql:8

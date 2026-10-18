@@ -1,6 +1,7 @@
 # tables to create on db
 #classes
 from .perfil import Perfil
+from .funcao import Funcao, usuario_funcoes
 from .user import User
 from .projeto import Projeto
 from .cliente import Cliente
@@ -12,10 +13,10 @@ from .cartao import Cartao
 from .registro_hora import RegistroHora
 #tables
 from .registro_hora import RegistroHoraEquipa
-from app.models.cartao_veiculo_associacao import (
-    CartaoVeiculoAssociacao,
-)
-from app.models.veiculo_condutor_associacao import (
-    VeiculoCondutorAssociacao,
-)
+from app.models.cartao_veiculo_associacao import CartaoVeiculoAssociacao
+from app.models.veiculo_condutor_associacao import VeiculoCondutorAssociacao
+from .ocorrencia import Ocorrencia, ocorrencia_testemunhas
+from .material import Material, MaterialTamanho, PedidoMaterial, PedidoMaterialItem, MovimentoEstoque
 
+from .documento import CategoriaDocumento, Documento, DocumentoVersao
+from .notificacao import EdicaoApontamento, Notificacao

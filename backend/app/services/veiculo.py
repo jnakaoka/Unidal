@@ -57,6 +57,10 @@ def create(
         matricula_normalizada=matricula_normalizada,
         tipo=data.tipo,
         descricao=data.descricao,
+        seguradora=data.seguradora,
+        numero_apolice=data.numero_apolice,
+        seguro_inicio=data.seguro_inicio,
+        seguro_vencimento=data.seguro_vencimento,
         ativo=True,
     )
 

@@ -7,6 +7,7 @@ from typing import List, Optional
 from app.models.user import User
 
 from app.database import get_db
+from app.dependencies.auth import get_current_user
 from app.schemas.registro_hora import RegistroHoraCreate, RegistroHoraResponse, RegistroHoraUpdate
 from app.services.registro_hora import (
     criar_registro_hora,
@@ -40,8 +41,8 @@ def listar(usuario_id: Optional[int] = Query(None), db: Session = Depends(get_db
 
 
 @router.put("/{registro_id}", response_model=RegistroHoraResponse)
-def atualizar(registro_id: int, registro: RegistroHoraUpdate, db: Session = Depends(get_db)):
-    return atualizar_registro_hora(db, registro_id, registro)
+def atualizar(registro_id: int, registro: RegistroHoraUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    return atualizar_registro_hora(db, registro_id, registro, autor=current_user)
 
 @router.delete("/{registro_id}", status_code=status.HTTP_204_NO_CONTENT)
 def deletar(registro_id: int, db: Session = Depends(get_db)):
