@@ -1,3 +1,5 @@
+import os
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -26,6 +28,12 @@ MIN_ENROLLMENT_IMAGES = 3
 MAX_ENROLLMENT_IMAGES = 5
 
 
+def require_face_feature_enabled():
+    """Desativada por defeito, incluindo em produção."""
+    if os.getenv("FACE_BIOMETRICS_ENABLED", "").lower() not in {"1", "true", "yes"}:
+        raise HTTPException(status_code=503, detail="Biometria facial experimental desativada.")
+
+
 async def _read_face_image(image: UploadFile) -> bytes:
     if image.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
@@ -50,6 +58,7 @@ def face_profile_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin")),
 ):
+    require_face_feature_enabled()
     return face_profile_service.get_status(db, user_id)
 
 
@@ -60,6 +69,7 @@ async def check_face_capture(
     face_engine: FaceEngine = Depends(get_face_engine),
 ):
     """Validação prévia de uma fotografia; não grava biometria nem imagem."""
+    require_face_feature_enabled()
     image_bytes = await _read_face_image(image)
     try:
         face_engine.extract_embedding(image_bytes)
@@ -78,6 +88,7 @@ async def enroll_face_profile(
     current_user: User = Depends(require_role("admin")),
     face_engine: FaceEngine = Depends(get_face_engine),
 ):
+    require_face_feature_enabled()
     if not MIN_ENROLLMENT_IMAGES <= len(images) <= MAX_ENROLLMENT_IMAGES:
         raise HTTPException(
             status_code=422,
@@ -110,4 +121,5 @@ def revoke_face_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role("admin")),
 ):
+    require_face_feature_enabled()
     return face_profile_service.revoke(db, user_id)
