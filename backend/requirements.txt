@@ -15,3 +15,7 @@ pandas
 openpyxl
 
 
+
+# YuNet/SFace (OpenCV DNN); versões fixadas para reprodutibilidade
+numpy>=1.26,<3
+opencv-contrib-python-headless>=4.10,<5
