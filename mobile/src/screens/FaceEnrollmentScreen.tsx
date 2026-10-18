@@ -15,8 +15,8 @@ import { biometricsApi } from "../services/api";
 
 const INSTRUCTIONS = [
   "Olhe diretamente para a câmera",
-  "Vire levemente o rosto para a esquerda",
-  "Vire levemente o rosto para a direita",
+  "Mantenha o rosto quase de frente e mude ligeiramente a posição",
+  "Olhe novamente para a câmera, com uma pequena variação natural",
 ];
 
 export default function FaceEnrollmentScreen({ navigation }: any) {
@@ -27,9 +27,10 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
   const [photos, setPhotos] = useState<string[]>([]);
   const [capturing, setCapturing] = useState(false);
   const [sending, setSending] = useState(false);
+  const [retakeIndex, setRetakeIndex] = useState<number | null>(null);
 
   async function capture() {
-    if (!cameraRef.current || !cameraReady || capturing || photos.length >= 3) return;
+    if (!cameraRef.current || !cameraReady || capturing || (photos.length >= 3 && retakeIndex === null)) return;
 
     try {
       setCapturing(true);
@@ -39,7 +40,13 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
       });
 
       if (picture?.uri) {
-        setPhotos((current) => [...current, picture.uri].slice(0, 3));
+        setPhotos((current) => {
+          if (retakeIndex !== null) {
+            return current.map((uri, index) => index === retakeIndex ? picture.uri : uri);
+          }
+          return [...current, picture.uri].slice(0, 3);
+        });
+        setRetakeIndex(null);
       }
     } catch {
       Alert.alert("Erro", "Não foi possível capturar a fotografia.");
@@ -67,6 +74,7 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
           text: "OK",
           onPress: () => {
             setPhotos([]);
+            setRetakeIndex(null);
             setUserId("");
             navigation.goBack();
           },
@@ -108,14 +116,14 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
   }
 
   const instruction =
-    photos.length < 3 ? INSTRUCTIONS[photos.length] : "Capturas concluídas";
+    retakeIndex !== null ? INSTRUCTIONS[retakeIndex] : photos.length < 3 ? INSTRUCTIONS[photos.length] : "Capturas concluídas";
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.form}>
         <Text style={styles.title}>Cadastro facial</Text>
         <Text style={styles.subtitle}>
-          Informe o funcionário e faça três capturas com a câmera frontal.
+          Informe o funcionário e faça três capturas quase frontais. Use luz uniforme, retire óculos escuros e mantenha apenas um rosto na imagem.
         </Text>
 
         <Text style={styles.label}>ID do funcionário</Text>
@@ -144,7 +152,7 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
         <Text style={styles.instruction}>{instruction}</Text>
         <Text style={styles.counter}>{photos.length}/3 capturas</Text>
 
-        {photos.length < 3 ? (
+        {(photos.length < 3 || retakeIndex !== null) ? (
           <TouchableOpacity
             style={[styles.captureButton, (!cameraReady || capturing) && styles.disabled]}
             onPress={capture}
@@ -160,7 +168,7 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={styles.secondaryButton}
-              onPress={() => setPhotos([])}
+              onPress={() => { setPhotos([]); setRetakeIndex(null); }}
               disabled={sending}
             >
               <Text style={styles.secondaryButtonText}>Refazer</Text>
@@ -184,6 +192,10 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  retakeRow: { flexDirection: "row", gap: 6, marginTop: 10 },
+  retakeButton: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: 8, backgroundColor: "#e5e7eb" },
+  retakeText: { color: "#374151", fontSize: 12, fontWeight: "600" },
+  hint: { fontSize: 12, color: "#6b7280", marginTop: 10, textAlign: "center" },
   container: { flex: 1, backgroundColor: "#f9fafb" },
   center: {
     flex: 1,
