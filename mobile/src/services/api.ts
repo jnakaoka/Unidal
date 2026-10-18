@@ -240,8 +240,18 @@ export const registrosHorasApi = {
 };
 
 function requireFaceTestApi() {
-  if (!process.env.EXPO_PUBLIC_API_BASE_URL || /(^|\\/)api\\.unidal\\.pt(\\/|$)/i.test(process.env.EXPO_PUBLIC_API_BASE_URL.replace(/^https?:\\/\\//, ""))) {
-    throw new Error("Configure EXPO_PUBLIC_API_BASE_URL para uma API de testes antes de utilizar o cadastro facial.");
+  const configuredUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
+  if (!configuredUrl) {
+    throw new Error("Configure EXPO_PUBLIC_API_BASE_URL para a API de testes antes do cadastro facial.");
+  }
+  let hostname: string;
+  try {
+    hostname = new URL(configuredUrl).hostname.toLowerCase();
+  } catch {
+    throw new Error("EXPO_PUBLIC_API_BASE_URL deve ser uma URL válida da API de testes.");
+  }
+  if (hostname === "api.unidal.pt") {
+    throw new Error("O cadastro facial está bloqueado na API de produção.");
   }
 }
 
