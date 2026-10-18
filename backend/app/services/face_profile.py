@@ -1,4 +1,6 @@
+import os
 import struct
+from cryptography.fernet import Fernet, InvalidToken
 from datetime import datetime, timezone
 from typing import Iterable
 
@@ -18,7 +20,14 @@ def _serialize_embedding(values: Iterable[float]) -> bytes:
     vector = [float(value) for value in values]
     if not vector:
         raise HTTPException(status_code=422, detail="Embedding facial vazio.")
-    return struct.pack(f"<{len(vector)}f", *vector)
+    key = os.getenv("FACE_EMBEDDING_KEY")
+    if not key:
+        raise HTTPException(status_code=503, detail="Chave de proteção biométrica não configurada.")
+    try:
+        cipher = Fernet(key.encode("ascii"))
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=503, detail="Chave de proteção biométrica inválida.") from exc
+    return cipher.encrypt(struct.pack(f"<{len(vector)}f", *vector))
 
 
 def get_status(db: Session, user_id: int) -> dict:
