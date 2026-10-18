@@ -31,7 +31,12 @@ class FaceEngine(ABC):
         if len(images) < 3:
             raise FaceEngineError("São necessárias pelo menos 3 capturas faciais.")
 
-        embeddings = [self.extract_embedding(image) for image in images]
+        embeddings = []
+        for index, image in enumerate(images, start=1):
+            try:
+                embeddings.append(self.extract_embedding(image))
+            except FaceEngineError as exc:
+                raise FaceEngineError(f"Fotografia {index}: {exc}") from exc
         versions = {item.model_version for item in embeddings}
         if len(versions) != 1:
             raise FaceEngineError("As capturas foram processadas por modelos diferentes.")
@@ -46,10 +51,13 @@ class FaceEngine(ABC):
         # Capturas da mesma pessoa devem produzir vetores semelhantes.
         # Este limiar é conservador e deve ser calibrado com dados consentidos.
         for i, first in enumerate(embeddings):
-            for second in embeddings[i + 1:]:
+            for j, second in enumerate(embeddings[i + 1:], start=i + 1):
                 similarity = sum(float(a) * float(b) for a, b in zip(first.vector, second.vector))
                 if similarity < 0.55:
-                    raise FaceEngineError("As capturas não parecem pertencer à mesma pessoa.")
+                    raise FaceEngineError(
+                        f"Fotografias {i + 1} e {j + 1} têm baixa semelhança. "
+                        "Repita uma das capturas com o rosto de frente e boa iluminação."
+                    )
 
         averaged = [
             sum(float(item.vector[index]) for item in embeddings) / len(embeddings)
@@ -125,6 +133,10 @@ class OpenCVFaceEngine(FaceEngine):
             face = faces[0]
             if min(float(face[2]), float(face[3])) < 100:
                 raise FaceEngineError("Aproxime o rosto da câmara.")
+            # Evita capturas com face parcialmente fora do enquadramento.
+            x, y, face_width, face_height = map(float, face[:4])
+            if x < 0 or y < 0 or x + face_width > width or y + face_height > height:
+                raise FaceEngineError("Mantenha o rosto inteiro dentro da moldura.")
             aligned = self.recognizer.alignCrop(image, face)
             vector = self.recognizer.feature(aligned).flatten().astype("float64")
         except self.cv2.error as exc:
