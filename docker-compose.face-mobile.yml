@@ -1,0 +1,58 @@
+name: unidal-face-mobile
+
+services:
+  db-mobile:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: unidal_face_mobile
+      MYSQL_USER: unidal_face_mobile
+      MYSQL_PASSWORD: ${FACE_MOBILE_DB_PASSWORD:?Defina FACE_MOBILE_DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${FACE_MOBILE_DB_ROOT_PASSWORD:?Defina FACE_MOBILE_DB_ROOT_PASSWORD}
+    volumes:
+      - face-mobile-mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks:
+      - face-mobile-internal
+
+  api-mobile:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.test
+    restart: unless-stopped
+    depends_on:
+      db-mobile:
+        condition: service_healthy
+    environment:
+      DB_USER: unidal_face_mobile
+      DB_PASSWORD: ${FACE_MOBILE_DB_PASSWORD:?Defina FACE_MOBILE_DB_PASSWORD}
+      DB_NAME: unidal_face_mobile
+      DB_HOST: db-mobile
+      DB_PORT: "3306"
+      JWT_SECRET_KEY: ${FACE_MOBILE_JWT_SECRET:?Defina FACE_MOBILE_JWT_SECRET}
+      FACE_EMBEDDING_KEY: ${FACE_EMBEDDING_KEY:?Defina FACE_EMBEDDING_KEY}
+      FACE_YUNET_MODEL: /face-models/yunet.onnx
+      FACE_SFACE_MODEL: /face-models/sface.onnx
+      PYTHONPATH: /app
+    volumes:
+      - ./backend:/app
+      - ./alembic.ini:/app/alembic.ini:ro
+      - ./alembic:/app/alembic:ro
+      - ./face-models:/face-models:ro
+    ports:
+      - "127.0.0.1:8001:8000"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    networks:
+      - face-mobile-internal
+
+volumes:
+  face-mobile-mysql:
+
+networks:
+  face-mobile-internal:
+    driver: bridge
