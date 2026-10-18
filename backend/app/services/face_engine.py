@@ -55,7 +55,7 @@ class FaceEngine(ABC):
                 similarity = sum(float(a) * float(b) for a, b in zip(first.vector, second.vector))
                 if similarity < 0.55:
                     raise FaceEngineError(
-                        f"Fotografias {i + 1} e {j + 1} têm baixa semelhança. "
+                        f"Fotografias {i + 1} e {j + 1} não parecem pertencer à mesma pessoa (baixa semelhança). "
                         "Repita uma das capturas com o rosto de frente e boa iluminação."
                     )
 
