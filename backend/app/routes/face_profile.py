@@ -53,6 +53,23 @@ def face_profile_status(
     return face_profile_service.get_status(db, user_id)
 
 
+@router.post("/capture/check")
+async def check_face_capture(
+    image: UploadFile = File(...),
+    current_user: User = Depends(require_role("admin")),
+    face_engine: FaceEngine = Depends(get_face_engine),
+):
+    """Validação prévia de uma fotografia; não grava biometria nem imagem."""
+    image_bytes = await _read_face_image(image)
+    try:
+        face_engine.extract_embedding(image_bytes)
+    except FaceEngineNotConfiguredError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except FaceEngineError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return {"valid": True, "message": "Rosto detetado e captura aceite."}
+
+
 @router.post("/users/{user_id}/enroll", response_model=FaceProfileEnrollOut)
 async def enroll_face_profile(
     user_id: int,
