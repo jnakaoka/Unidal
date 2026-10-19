@@ -4,6 +4,7 @@ from app.database import get_db
 from app.models import RegistroHora, User, Projeto
 from app.schemas.relatorio import (
     DiasTrabalhadosOut,
+    ObraDiaTrabalhadoOut,
     DoubleJourneyOut,
     IntemperieOut,
     RegistroHoraOut,
@@ -38,6 +39,7 @@ def relatorio_dias_trabalhados(
         db.query(RegistroHora)
         .options(
             joinedload(RegistroHora.obra),
+            joinedload(RegistroHora.user),
             joinedload(RegistroHora.equipa),
         )
         .filter(
@@ -56,6 +58,15 @@ def relatorio_dias_trabalhados(
             registros.append(registro)
 
     datas_trabalhadas = sorted({registro.data for registro in registros})
+    obras_por_dia = [
+        ObraDiaTrabalhadoOut(
+            registro_id=registro.id,
+            data=registro.data,
+            obra=registro.obra.nome if registro.obra else "Obra não informada",
+            chefe_equipa=registro.user.name if registro.user else "Chefe não identificado",
+        )
+        for registro in sorted(registros, key=lambda r: (r.data, r.id))
+    ]
     por_data: dict[date, dict] = {}
     for registro in registros:
         membro = next(
@@ -104,6 +115,7 @@ def relatorio_dias_trabalhados(
         data_fim=data_fim,
         total_dias=len(datas_trabalhadas),
         datas_trabalhadas=datas_trabalhadas,
+        obras_por_dia=obras_por_dia,
         total_double_journeys=len(double_journeys),
         double_journeys=double_journeys,
         total_intemperies=len(intemperies),
