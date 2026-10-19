@@ -18,6 +18,7 @@ type Relatorio = {
   data_fim: string;
   total_dias: number;
   datas_trabalhadas: string[];
+  obras_por_dia: { registro_id: number; data: string; obra: string; chefe_equipa: string }[];
   total_double_journeys: number;
   double_journeys: { data: string; obras: string[] }[];
   total_intemperies: number;
@@ -46,6 +47,9 @@ const formatarData = (valor: string) =>
     weekday: "long",
     timeZone: "UTC",
   }).format(new Date(`${valor}T00:00:00Z`));
+
+const escapeHtml = (value: string) =>
+  value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
 
 const RelatorioDiasTrabalhados: React.FC = () => {
   const [funcionarios, setFuncionarios] = useState<User[]>([]);
@@ -116,8 +120,8 @@ const RelatorioDiasTrabalhados: React.FC = () => {
 
   const imprimir = () => {
     if (!relatorio) return;
-    const datas = relatorio.datas_trabalhadas
-      .map((data, indice) => `<tr><td>${indice + 1}</td><td>${formatarData(data)}</td></tr>`)
+    const obras = relatorio.obras_por_dia
+      .map((item) => `<tr><td>${formatarData(item.data)}</td><td>${escapeHtml(item.obra)}</td><td>${escapeHtml(item.chefe_equipa)}</td></tr>`)
       .join("");
     const ocorrencias = relatorio.double_journeys
       .map((item) => `<li><strong>${formatarData(item.data)}:</strong> ${item.obras.join(" • ")}</li>`)
@@ -138,7 +142,8 @@ const RelatorioDiasTrabalhados: React.FC = () => {
       <div class="resumo"><strong>Intempéries identificadas: ${relatorio.total_intemperies}</strong></div>
       ${ocorrencias ? `<h2>Double journeys para conferência</h2><ul>${ocorrencias}</ul>` : ""}
       ${intemperies ? `<h2>Intempéries para conferência</h2><ul>${intemperies}</ul>` : ""}
-      <table><thead><tr><th>#</th><th>Data</th></tr></thead><tbody>${datas || '<tr><td colspan="2">Nenhum dia trabalhado no período.</td></tr>'}</tbody></table>
+      <h2>Obras e chefes de equipa</h2>
+      <table><thead><tr><th>Data</th><th>Obra</th><th>Chefe de equipa</th></tr></thead><tbody>${obras || '<tr><td colspan="3">Nenhuma obra no período.</td></tr>'}</tbody></table>
       <script>window.onload=()=>window.print()</script></body></html>`);
     janela.document.close();
   };
@@ -225,8 +230,19 @@ const RelatorioDiasTrabalhados: React.FC = () => {
             </div>
           )}
           <div className="overflow-x-auto rounded-xl border">
-            <table className="w-full text-sm"><thead className="bg-gray-50 text-left text-xs uppercase text-gray-500"><tr><th className="px-4 py-3">#</th><th className="px-4 py-3">Data trabalhada</th></tr></thead>
-              <tbody>{relatorio.datas_trabalhadas.length ? relatorio.datas_trabalhadas.map((data, indice) => <tr key={data} className="border-t"><td className="px-4 py-3 text-gray-500">{indice + 1}</td><td className="px-4 py-3 capitalize">{formatarData(data)}</td></tr>) : <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-500">Nenhum dia trabalhado neste período.</td></tr>}</tbody>
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-left text-xs uppercase text-gray-500">
+                <tr><th className="px-4 py-3">Data</th><th className="px-4 py-3">Obra</th><th className="px-4 py-3">Chefe de equipa</th></tr>
+              </thead>
+              <tbody>
+                {relatorio.obras_por_dia.length ? relatorio.obras_por_dia.map((item) => (
+                  <tr key={item.registro_id} className="border-t">
+                    <td className="px-4 py-3 capitalize">{formatarData(item.data)}</td>
+                    <td className="px-4 py-3">{item.obra}</td>
+                    <td className="px-4 py-3">{item.chefe_equipa}</td>
+                  </tr>
+                )) : <tr><td colSpan={3} className="px-4 py-8 text-center text-gray-500">Nenhuma obra neste período.</td></tr>}
+              </tbody>
             </table>
           </div>
         </div>
