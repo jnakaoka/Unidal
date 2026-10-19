@@ -235,3 +235,46 @@ def test_mesmo_dia_conta_uma_vez_e_double_journey_eh_reportado(
     assert payload["double_journeys"] == [
         {"data": "2026-09-04", "obras": ["Obra A", "Obra B"]}
     ]
+
+
+def test_relatorio_identifica_chefe_da_obra(client, db, headers_admin):
+    chefe, jose, _, projeto, cliente, obra_a, _ = _criar_contexto(db)
+    registro = _criar_registro(
+        db, chefe=chefe, projeto=projeto, cliente=cliente, obra=obra_a,
+        data_registro=date(2026, 9, 5), membro=jose,
+    )
+    resposta = client.get(
+        "/relatorio/dias-trabalhados", headers=headers_admin,
+        params={"funcionario_id": jose.id, "data_inicio": "2026-09-01", "data_fim": "2026-09-30"},
+    )
+    assert resposta.status_code == 200, resposta.text
+    payload = resposta.json()
+    assert payload["total_dias"] == 1
+    assert payload["obras_por_dia"] == [{
+        "registro_id": registro.id, "data": "2026-09-05",
+        "obra": "Obra A", "chefe_equipa": "Chefe Relatório",
+    }]
+
+
+def test_double_journey_exibe_dois_chefes_e_um_dia(client, db, headers_admin):
+    chefe, jose, outro, projeto, cliente, obra_a, obra_b = _criar_contexto(db)
+    primeiro = _criar_registro(
+        db, chefe=chefe, projeto=projeto, cliente=cliente, obra=obra_a,
+        data_registro=date(2026, 9, 6), membro=jose, double_journey=True,
+    )
+    segundo = _criar_registro(
+        db, chefe=outro, projeto=projeto, cliente=cliente, obra=obra_b,
+        data_registro=date(2026, 9, 6), membro=jose, double_journey=True,
+    )
+    resposta = client.get(
+        "/relatorio/dias-trabalhados", headers=headers_admin,
+        params={"funcionario_id": jose.id, "data_inicio": "2026-09-01", "data_fim": "2026-09-30"},
+    )
+    assert resposta.status_code == 200, resposta.text
+    payload = resposta.json()
+    assert payload["total_dias"] == 1
+    assert payload["total_double_journeys"] == 1
+    assert payload["obras_por_dia"] == [
+        {"registro_id": primeiro.id, "data": "2026-09-06", "obra": "Obra A", "chefe_equipa": "Chefe Relatório"},
+        {"registro_id": segundo.id, "data": "2026-09-06", "obra": "Obra B", "chefe_equipa": "Outro Relatório"},
+    ]
