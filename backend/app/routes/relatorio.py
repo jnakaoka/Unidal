@@ -51,8 +51,7 @@ def relatorio_dias_trabalhados(
     for registro in registros_periodo:
         manobradores = _manobradores_opcoes(registro.intervencao_maquinas_opcoes)
         participa = (
-            registro.usuario_id == funcionario_id
-            or any(item.user_id == funcionario_id for item in registro.equipa)
+            any(item.user_id == funcionario_id for item in registro.equipa)
             or any(item.get("user_id") == funcionario_id for item in manobradores)
         )
         if participa:
@@ -77,7 +76,7 @@ def relatorio_dias_trabalhados(
             ),
             None,
         )
-        double_journey = bool(registro.usuario_id == funcionario_id and registro.double_journey_lider) or bool(membro and membro.double_journey) or any(
+        double_journey = bool(membro and membro.double_journey) or any(
             item.get("user_id") == funcionario_id
             and item.get("double_journey", False)
             for item in _manobradores_opcoes(registro.intervencao_maquinas_opcoes)
