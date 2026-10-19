@@ -4,6 +4,7 @@ from app.database import get_db
 from app.models import RegistroHora, User, Projeto
 from app.schemas.relatorio import (
     DiasTrabalhadosOut,
+    ObraDiaTrabalhadoOut,
     DoubleJourneyOut,
     IntemperieOut,
     RegistroHoraOut,
@@ -38,6 +39,7 @@ def relatorio_dias_trabalhados(
         db.query(RegistroHora)
         .options(
             joinedload(RegistroHora.obra),
+            joinedload(RegistroHora.user),
             joinedload(RegistroHora.equipa),
         )
         .filter(
@@ -49,13 +51,23 @@ def relatorio_dias_trabalhados(
     for registro in registros_periodo:
         manobradores = _manobradores_opcoes(registro.intervencao_maquinas_opcoes)
         participa = (
-            any(item.user_id == funcionario_id for item in registro.equipa)
+            registro.usuario_id == funcionario_id
+            or any(item.user_id == funcionario_id for item in registro.equipa)
             or any(item.get("user_id") == funcionario_id for item in manobradores)
         )
         if participa:
             registros.append(registro)
 
     datas_trabalhadas = sorted({registro.data for registro in registros})
+    obras_por_dia = [
+        ObraDiaTrabalhadoOut(
+            registro_id=registro.id,
+            data=registro.data,
+            obra=registro.obra.nome if registro.obra else "Obra não informada",
+            chefe_equipa=registro.user.name if registro.user else "Chefe não identificado",
+        )
+        for registro in sorted(registros, key=lambda r: (r.data, r.id))
+    ]
     por_data: dict[date, dict] = {}
     for registro in registros:
         membro = next(
@@ -65,7 +77,7 @@ def relatorio_dias_trabalhados(
             ),
             None,
         )
-        double_journey = bool(membro and membro.double_journey) or any(
+        double_journey = bool(registro.usuario_id == funcionario_id and registro.double_journey_lider) or bool(membro and membro.double_journey) or any(
             item.get("user_id") == funcionario_id
             and item.get("double_journey", False)
             for item in _manobradores_opcoes(registro.intervencao_maquinas_opcoes)
@@ -104,6 +116,7 @@ def relatorio_dias_trabalhados(
         data_fim=data_fim,
         total_dias=len(datas_trabalhadas),
         datas_trabalhadas=datas_trabalhadas,
+        obras_por_dia=obras_por_dia,
         total_double_journeys=len(double_journeys),
         double_journeys=double_journeys,
         total_intemperies=len(intemperies),
