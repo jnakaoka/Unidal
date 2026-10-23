@@ -36,6 +36,7 @@ services:
       DB_PORT: "3306"
       JWT_SECRET_KEY: ${FACE_MOBILE_JWT_SECRET:?Defina FACE_MOBILE_JWT_SECRET}
       FACE_EMBEDDING_KEY: ${FACE_EMBEDDING_KEY:?Defina FACE_EMBEDDING_KEY}
+      FACE_BIOMETRICS_ENABLED: "true"
       FACE_YUNET_MODEL: /face-models/yunet.onnx
       FACE_SFACE_MODEL: /face-models/sface.onnx
       PYTHONPATH: /app
