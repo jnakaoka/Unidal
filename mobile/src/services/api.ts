@@ -243,9 +243,6 @@ function requireFaceTestApi() {
   if (process.env.EXPO_PUBLIC_FACE_BIOMETRICS_ENABLED !== "true") {
     throw new Error("Biometria experimental desativada neste APK.");
   }
-  if (process.env.EXPO_PUBLIC_API_BASE_URL === "https://api.unidal.pt") {
-    return;
-  }
   const configuredUrl = process.env.EXPO_PUBLIC_API_BASE_URL;
   if (!configuredUrl) {
     throw new Error("Configure EXPO_PUBLIC_API_BASE_URL para a API de testes antes do cadastro facial.");
