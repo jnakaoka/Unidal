@@ -303,7 +303,13 @@ export const biometricsApi = {
   },
 
   async status(userId: number) {
+    requireFaceTestApi();
     const res = await api.get(`/biometrics/users/${userId}/status`);
+    return res.data;
+  },
+  async revoke(userId: number) {
+    requireFaceTestApi();
+    const res = await api.delete(`/biometrics/users/${userId}`);
     return res.data;
   },
 };
