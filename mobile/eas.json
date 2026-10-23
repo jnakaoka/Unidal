@@ -1,0 +1,16 @@
+{
+  "cli": {
+    "version": ">= 12.0.0"
+  },
+  "build": {
+    "faceTest": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_FACE_BIOMETRICS_ENABLED": "true"
+      }
+    }
+  }
+}
