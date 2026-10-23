@@ -28,6 +28,7 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
   const [photos, setPhotos] = useState<string[]>([]);
   const [userId, setUserId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [profileStatus, setProfileStatus] = useState("");
   const [capturing, setCapturing] = useState(false);
   const [feedback, setFeedback] = useState("Posicione o rosto na moldura e mantenha boa iluminação.");
   const [retakeIndex, setRetakeIndex] = useState<number | null>(null);
@@ -84,6 +85,46 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
     );
   }
 
+  async function checkStatus() {
+    const id = Number(userId);
+    if (!Number.isInteger(id) || id <= 0) {
+      Alert.alert("Atenção", "Indique um ID válido.");
+      return;
+    }
+    try {
+      setBusy(true);
+      const result = await biometricsApi.status(id);
+      setProfileStatus(result.is_enrolled ? "Perfil facial ativo" : "Sem perfil facial ativo");
+    } catch (error: any) {
+      Alert.alert("Erro ao consultar", error?.response?.data?.detail || "Não foi possível consultar o perfil.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function confirmRevoke() {
+    const id = Number(userId);
+    if (!Number.isInteger(id) || id <= 0) {
+      Alert.alert("Atenção", "Indique um ID válido.");
+      return;
+    }
+    Alert.alert("Revogar perfil facial", "O template biométrico será apagado. Deseja continuar?", [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Revogar", style: "destructive", onPress: async () => {
+        try {
+          setBusy(true);
+          await biometricsApi.revoke(id);
+          setProfileStatus("Perfil facial revogado");
+          Alert.alert("Concluído", "O perfil facial foi revogado.");
+        } catch (error: any) {
+          Alert.alert("Erro ao revogar", error?.response?.data?.detail || "Não foi possível revogar o perfil.");
+        } finally {
+          setBusy(false);
+        }
+      } },
+    ]);
+  }
+
   async function finishEnrollment() {
     if (!LIVE_FACE_ENABLED) {
       finishDemo();
@@ -97,6 +138,7 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
     try {
       setBusy(true);
       await biometricsApi.enroll(id, photos);
+      setProfileStatus("Perfil facial ativo");
       Alert.alert("Cadastro concluído", "Template facial registado.", [
         { text: "OK", onPress: () => { setPhotos([]); setUserId(""); } },
       ]);
@@ -145,7 +187,16 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
       {LIVE_FACE_ENABLED && (
         <View style={styles.form}>
           <Text style={styles.label}>ID do funcionário autorizado</Text>
-          <TextInput style={styles.input} keyboardType="number-pad" value={userId} onChangeText={setUserId} editable={!busy} placeholder="ID do utilizador" />
+          <TextInput style={styles.input} keyboardType="number-pad" value={userId} onChangeText={(value) => { setUserId(value); setProfileStatus(""); }} editable={!busy} placeholder="ID do utilizador" />
+          <View style={styles.profileActions}>
+            <TouchableOpacity style={styles.profileButton} onPress={checkStatus} disabled={busy}>
+              <Text style={styles.profileButtonText}>Consultar estado</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.profileButton} onPress={confirmRevoke} disabled={busy}>
+              <Text style={styles.profileButtonText}>Revogar perfil</Text>
+            </TouchableOpacity>
+          </View>
+          {!!profileStatus && <Text style={styles.feedback}>{profileStatus}</Text>}
         </View>
       )}
       <View style={styles.cameraContainer}>
@@ -199,6 +250,9 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+  profileActions: { flexDirection: "row", gap: 8, marginTop: 10 },
+  profileButton: { flex: 1, borderWidth: 1, borderColor: "#9ca3af", padding: 10, borderRadius: 8, alignItems: "center" },
+  profileButtonText: { color: "#374151", fontWeight: "600" },
   feedback: { textAlign: "center", color: "#374151", fontSize: 13, marginBottom: 10 },
   retakeRow: { flexDirection: "row", gap: 6, marginTop: 10 },
   retakeButton: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: 8, backgroundColor: "#e5e7eb" },
