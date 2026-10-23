@@ -27,3 +27,28 @@ def test_enrollment_rejeita_pessoas_diferentes():
 def test_enrollment_rejeita_poucas_fotos():
     with pytest.raises(FaceEngineError, match="pelo menos 3"):
         UnconfiguredFaceEngine().build_enrollment([b"a", b"b"])
+
+
+def test_enrollment_rejeita_dimensoes_incompativeis():
+    engine = StubEngine([[1.0, 0.0], [1.0, 0.0, 0.0], [1.0, 0.0]])
+    with pytest.raises(FaceEngineError, match="incompatíveis"):
+        engine.build_enrollment([b"a", b"b", b"c"])
+
+
+def test_enrollment_rejeita_valores_nao_finitos():
+    engine = StubEngine([[1.0, 0.0], [float("nan"), 0.0], [1.0, 0.0]])
+    with pytest.raises(FaceEngineError, match="inválido"):
+        engine.build_enrollment([b"a", b"b", b"c"])
+
+
+def test_enrollment_rejeita_modelos_diferentes():
+    class DifferentVersions(FaceEngine):
+        def __init__(self):
+            self.count = 0
+
+        def extract_embedding(self, image_bytes):
+            self.count += 1
+            return FaceEmbedding([1.0, 0.0], f"model-{self.count}")
+
+    with pytest.raises(FaceEngineError, match="modelos diferentes"):
+        DifferentVersions().build_enrollment([b"a", b"b", b"c"])
