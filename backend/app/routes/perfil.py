@@ -7,6 +7,15 @@ from app.schemas.perfil import PerfilOut, PerfilCreate, PerfilUpdate
 from app.models.perfil import Perfil as PerfilModel
 from app.services import perfil as svc_perfil  # evite sombra de nome
 
+import os
+from app.dependencies.auth import require_role
+
+FACE_TEST_WRITE_GUARD = (
+    [Depends(require_role("admin"))]
+    if os.getenv("FACE_BIOMETRICS_ENABLED", "").lower() in {"1", "true", "yes"}
+    else []
+)
+
 router = APIRouter(prefix="/perfis", tags=["Perfis"])
 
 @router.get("/", response_model=List[PerfilOut])
@@ -20,11 +29,11 @@ def obter_perfil(perfil_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Perfil não encontrado")
     return returned
 
-@router.post("/", response_model=PerfilOut, status_code=201)
+@router.post("/", response_model=PerfilOut, status_code=201, dependencies=FACE_TEST_WRITE_GUARD)
 def criar_perfil(payload: PerfilCreate, db: Session = Depends(get_db)):
     return svc_perfil.create(db, payload)
 
-@router.put("/{perfil_id}", response_model=PerfilOut)
+@router.put("/{perfil_id}", response_model=PerfilOut, dependencies=FACE_TEST_WRITE_GUARD)
 def update_perfil(perfil_id: int, payload: PerfilUpdate, db: Session = Depends(get_db)):
     obj = db.query(PerfilModel).filter(PerfilModel.id == perfil_id).first()
     if not obj:
@@ -37,7 +46,7 @@ def update_perfil(perfil_id: int, payload: PerfilUpdate, db: Session = Depends(g
     db.refresh(obj)
     return obj
 
-@router.delete("/{perfil_id}", response_model=PerfilOut)
+@router.delete("/{perfil_id}", response_model=PerfilOut, dependencies=FACE_TEST_WRITE_GUARD)
 def deletar_perfil(perfil_id: int, db: Session = Depends(get_db)):
     returned = svc_perfil.delete(db, perfil_id)
     if not returned:
