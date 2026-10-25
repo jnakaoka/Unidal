@@ -7,7 +7,16 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Dict
 
 # Ideal: puxar de settings
-SECRET_KEY = "secret_unidal"
+import os
+
+# A API facial experimental exige chave própria; produção mantém compatibilidade
+# até que a migração de segredos seja planeada separadamente.
+if os.getenv("FACE_BIOMETRICS_ENABLED", "").lower() in {"1", "true", "yes"}:
+    SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "")
+    if len(SECRET_KEY) < 32 or SECRET_KEY == "secret_unidal":
+        raise RuntimeError("JWT_SECRET_KEY experimental deve ter pelo menos 32 caracteres e ser exclusiva.")
+else:
+    SECRET_KEY = os.environ.get("JWT_SECRET_KEY") or "secret_unidal"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 REFRESH_TOKEN_EXPIRE_DAYS = 7
