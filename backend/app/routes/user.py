@@ -13,11 +13,23 @@ from fastapi import Query
 
 router = APIRouter()
 
+import os
+
+def _protect_face_test_writes(current_user: User = Depends(require_role("admin"))):
+    """Usada apenas na API facial; evita alterações no comportamento de produção."""
+    return current_user
+
+FACE_TEST_WRITE_GUARD = (
+    [Depends(_protect_face_test_writes)]
+    if os.getenv("FACE_BIOMETRICS_ENABLED", "").lower() in {"1", "true", "yes"}
+    else []
+)
+
 @router.get("/funcoes-disponiveis", response_model=list[FuncaoOut])
 def get_funcoes_disponiveis(db: Session = Depends(get_db)):
     return user_service.get_funcoes(db)
 
-@router.post("/", response_model=UserOut)
+@router.post("/", response_model=UserOut, dependencies=FACE_TEST_WRITE_GUARD)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return user_service.create_user(db, user)
 
@@ -58,7 +70,7 @@ def get_users(is_active: Optional[bool] = Query(None), db: Session = Depends(get
 #         "is_active": user.is_active
 #     }
 
-@router.put("/{user_id}", response_model=UserOut)
+@router.put("/{user_id}", response_model=UserOut, dependencies=FACE_TEST_WRITE_GUARD)
 def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get_db)):
     updated = user_service.update(db, user_id, user_update)
     if not updated:
@@ -66,7 +78,7 @@ def update_user(user_id: int, user_update: UserUpdate, db: Session = Depends(get
     return updated
 
 #@router.delete("/{user_id}", dependencies=[Depends(verificar_permissao(["admin"]))])
-@router.delete("/{user_id}")
+@router.delete("/{user_id}", dependencies=FACE_TEST_WRITE_GUARD)
 def deletar_usuario(user_id: int, db: Session = Depends(get_db)):
     user = user_service.delete(db, user_id)
     if not user:
