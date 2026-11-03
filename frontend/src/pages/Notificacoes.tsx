@@ -8,22 +8,28 @@ const campos: Record<string, string> = { observacao: "Observação", horas: "Hor
 export default function Notificacoes() {
   const [dados, setDados] = useState<Resultado>({ items: [], nao_lidas: 0, total: 0 });
   const [offset, setOffset] = useState(0);
+  const [nomesUsuarios, setNomesUsuarios] = useState<Record<number, string>>({});
   const [erro, setErro] = useState("");
   const [historico, setHistorico] = useState<{ id: number; eventos: Evento[] } | null>(null);
   async function carregar() { setDados((await api.get("/notificacoes/", { params: { offset, limite: 50 } })).data); }
+  useEffect(() => {
+    api.get<{ id: number; name: string }[]>("/users/")
+      .then(({ data }) => setNomesUsuarios(Object.fromEntries(data.map(u => [u.id, u.name]))))
+      .catch(() => setErro("Não foi possível carregar os nomes dos utilizadores."));
+  }, []);
   useEffect(() => { carregar().catch(() => setErro("Não foi possível carregar os alertas.")); const timer = setInterval(() => carregar().catch(() => {}), 30000); return () => clearInterval(timer); }, [offset]);
   async function ler(id: number) { try { await api.patch(`/notificacoes/${id}/ler`); await carregar(); window.dispatchEvent(new Event("notificacoes-atualizadas")); } catch { setErro("Não foi possível marcar a notificação como lida."); } }
   function tabela(alteracoes: Evento["alteracoes"]) {
     const linhas = Object.entries(alteracoes).filter(([campo, v]) =>
-      formatarAlteracao(campo, v.antes) !== formatarAlteracao(campo, v.depois));
+      formatarAlteracao(campo, v.antes, nomesUsuarios) !== formatarAlteracao(campo, v.depois, nomesUsuarios));
     if (!linhas.length) return <p className="my-3 text-sm text-gray-600">Sem alterações nos valores apresentados.</p>;
     return <div className="overflow-x-auto">
       <table className="my-3 w-full min-w-[560px] table-fixed text-left text-sm">
         <thead><tr><th className="w-1/4 p-2">Campo</th><th className="p-2">Antes</th><th className="p-2">Depois</th></tr></thead>
         <tbody>{linhas.map(([campo, v]) => <tr key={campo} className="border-t align-top">
           <td className="break-words p-2 font-medium">{campos[campo] || campo.replaceAll("_", " ")}</td>
-          <td className="whitespace-pre-wrap break-words p-2">{formatarAlteracao(campo, v.antes)}</td>
-          <td className="whitespace-pre-wrap break-words p-2">{formatarAlteracao(campo, v.depois)}</td>
+          <td className="whitespace-pre-wrap break-words p-2">{formatarAlteracao(campo, v.antes, nomesUsuarios)}</td>
+          <td className="whitespace-pre-wrap break-words p-2">{formatarAlteracao(campo, v.depois, nomesUsuarios)}</td>
         </tr>)}</tbody>
       </table>
     </div>;
