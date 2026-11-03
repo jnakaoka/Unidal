@@ -10,23 +10,27 @@ const nomes: Record<string, string> = {
 const nome = (chave: string) => nomes[chave] || chave.replaceAll('_', ' ');
 const objeto = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 
-export function formatarAlteracao(campo: string, valor: unknown): string {
+export function formatarAlteracao(campo: string, valor: unknown, nomesUsuarios: Record<number, string> = {}): string {
   if (valor === null || valor === undefined || valor === '') return '—';
   if (typeof valor === 'boolean') return valor ? 'Sim' : 'Não';
+  if ((campo === 'user_id' || campo === 'manobrador_user_id') && /^\d+$/.test(String(valor))) {
+    const id = Number(valor);
+    return nomesUsuarios[id] ? `${nomesUsuarios[id]} (ID ${id})` : `Utilizador ${id}`;
+  }
   if (campo === 'intervencao_maquinas_opcoes' && objeto(valor)) {
     const linhas = Object.entries(valor).flatMap(([chave, detalhe]) => {
       if (chave === 'manobradores' && Array.isArray(detalhe)) {
-        return detalhe.map(item => formatarAlteracao('manobrador', item));
+        return detalhe.map(item => formatarAlteracao('manobrador', item, nomesUsuarios));
       }
       if (!objeto(detalhe) || !detalhe.checked) return [];
       const dados = Object.entries(detalhe).filter(([k, v]) => k !== 'checked' && v !== null && v !== '' && v !== false);
-      return [`${nome(chave)}${dados.length ? ': ' + dados.map(([k, v]) => `${nome(k)}: ${formatarAlteracao(k, v)}`).join(' · ') : ''}`];
+      return [`${nome(chave)}${dados.length ? ': ' + dados.map(([k, v]) => `${nome(k)}: ${formatarAlteracao(k, v, nomesUsuarios)}`).join(' · ') : ''}`];
     });
     return linhas.join('\n') || 'Nenhuma opção selecionada';
   }
-  if (Array.isArray(valor)) return valor.map(item => formatarAlteracao(campo, item)).join('\n') || '—';
+  if (Array.isArray(valor)) return valor.map(item => formatarAlteracao(campo, item, nomesUsuarios)).join('\n') || '—';
   if (objeto(valor)) {
-    return Object.entries(valor).map(([k, v]) => `${nome(k)}: ${formatarAlteracao(k, v)}`).join(' · ') || '—';
+    return Object.entries(valor).map(([k, v]) => `${nome(k)}: ${formatarAlteracao(k, v, nomesUsuarios)}`).join(' · ') || '—';
   }
   if (campo === 'opcao') return nome(String(valor));
   if (campo === 'data' && /^\d{4}-\d{2}-\d{2}$/.test(String(valor))) return String(valor).split('-').reverse().join('/');
