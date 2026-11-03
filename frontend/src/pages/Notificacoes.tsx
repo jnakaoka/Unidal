@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import api from "../services/api";
+import { formatarAlteracao } from "../utils/alteracoes";
 
 type Evento = { id: number; registro_id: number; autor_nome: string; resumo: string; criado_em: string; lida_em: string | null; alteracoes: Record<string, { antes: unknown; depois: unknown }> };
 type Resultado = { items: Evento[]; nao_lidas: number; total: number };
-function valor(v: unknown): string { return v === null ? "—" : typeof v === "object" ? JSON.stringify(v, null, 2) : String(v); }
 const campos: Record<string, string> = { observacao: "Observação", horas: "Horas", data: "Data", equipa: "Equipa", obra_id: "Obra (ID)", cliente_id: "Cliente (ID)", metros_quadrados: "Metros quadrados", intervencao_maquinas_opcoes: "Intervenção de máquinas", double_journey_lider: "Double Journey do chefe", transporte_maquina_ids: "Máquinas transportadas (IDs)" };
 export default function Notificacoes() {
   const [dados, setDados] = useState<Resultado>({ items: [], nao_lidas: 0, total: 0 });
@@ -13,7 +13,21 @@ export default function Notificacoes() {
   async function carregar() { setDados((await api.get("/notificacoes/", { params: { offset, limite: 50 } })).data); }
   useEffect(() => { carregar().catch(() => setErro("Não foi possível carregar os alertas.")); const timer = setInterval(() => carregar().catch(() => {}), 30000); return () => clearInterval(timer); }, [offset]);
   async function ler(id: number) { try { await api.patch(`/notificacoes/${id}/ler`); await carregar(); window.dispatchEvent(new Event("notificacoes-atualizadas")); } catch { setErro("Não foi possível marcar a notificação como lida."); } }
-  function tabela(alteracoes: Evento["alteracoes"]) { return <div className="overflow-x-auto"><table className="my-3 w-full text-left text-sm"><thead><tr><th className="p-2">Campo</th><th className="p-2">Antes</th><th className="p-2">Depois</th></tr></thead><tbody>{Object.entries(alteracoes).map(([campo, v]) => <tr key={campo} className="border-t"><td className="p-2">{campos[campo] || campo.replaceAll("_", " ")}</td><td className="max-w-xs whitespace-pre-wrap break-words p-2">{valor(v.antes)}</td><td className="max-w-xs whitespace-pre-wrap break-words p-2">{valor(v.depois)}</td></tr>)}</tbody></table></div>; }
+  function tabela(alteracoes: Evento["alteracoes"]) {
+    const linhas = Object.entries(alteracoes).filter(([campo, v]) =>
+      formatarAlteracao(campo, v.antes) !== formatarAlteracao(campo, v.depois));
+    if (!linhas.length) return <p className="my-3 text-sm text-gray-600">Sem alterações nos valores apresentados.</p>;
+    return <div className="overflow-x-auto">
+      <table className="my-3 w-full min-w-[560px] table-fixed text-left text-sm">
+        <thead><tr><th className="w-1/4 p-2">Campo</th><th className="p-2">Antes</th><th className="p-2">Depois</th></tr></thead>
+        <tbody>{linhas.map(([campo, v]) => <tr key={campo} className="border-t align-top">
+          <td className="break-words p-2 font-medium">{campos[campo] || campo.replaceAll("_", " ")}</td>
+          <td className="whitespace-pre-wrap break-words p-2">{formatarAlteracao(campo, v.antes)}</td>
+          <td className="whitespace-pre-wrap break-words p-2">{formatarAlteracao(campo, v.depois)}</td>
+        </tr>)}</tbody>
+      </table>
+    </div>;
+  }
   return <div className="mx-auto max-w-5xl space-y-4"><h1 className="text-2xl font-bold">Edições de apontamentos</h1><p>{dados.nao_lidas} notificações não lidas</p>{erro && <p role="alert" className="text-red-700">{erro}</p>}
     {dados.items.map(e => <article key={e.id} className={`rounded border bg-white p-4 ${!e.lida_em ? "border-red-500" : "border-gray-200"}`}><h2 className="font-semibold">{e.resumo}</h2><p className="text-sm text-gray-600">{new Date(e.criado_em + (e.criado_em.endsWith("Z") ? "" : "Z")).toLocaleString("pt-PT")}</p><details><summary className="my-2 cursor-pointer text-red-700">Ver alterações</summary>{tabela(e.alteracoes)}</details><div className="flex gap-4">{!e.lida_em && <button className="rounded border p-2" onClick={() => ler(e.id)}>Marcar como lida</button>}<button className="text-red-700" onClick={async () => { try { setHistorico({ id: e.registro_id, eventos: (await api.get(`/notificacoes/apontamentos/${e.registro_id}/historico`)).data }); } catch { setErro("Não foi possível carregar o histórico."); } }}>Histórico do apontamento #{e.registro_id}</button></div></article>)}
     {!dados.items.length && <p>Nenhuma notificação disponível.</p>}
