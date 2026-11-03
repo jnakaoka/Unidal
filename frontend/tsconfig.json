@@ -11,6 +11,7 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsconfig.tsbuildinfo",
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
     "baseUrl": ".",
