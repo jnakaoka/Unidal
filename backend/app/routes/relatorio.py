@@ -102,10 +102,10 @@ def relatorio_dias_trabalhados(
     double_journeys = [
         DoubleJourneyOut(data=data_registro, obras=sorted(info["obras_double_journey"]))
         for data_registro, info in sorted(por_data.items())
-        if info["double_journey"] and len(info["obras"]) > 1
+        if info["double_journey"]
     ]
     intemperies = [
-        IntemperieOut(data=data_registro, obras=sorted(info["obras"]))
+        IntemperieOut(data=data_registro, obras=sorted(info["obras_intemperie"]))
         for data_registro, info in sorted(por_data.items())
         if info["intemperie"]
     ]
