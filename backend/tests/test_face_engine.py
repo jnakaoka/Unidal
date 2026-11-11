@@ -1,6 +1,6 @@
 import math
 import pytest
-from app.services.face_engine import FaceEngine, FaceEmbedding, FaceEngineError, UnconfiguredFaceEngine
+from app.services.face_engine import FaceEngine, FaceEmbedding, FaceEngineError, FaceEngineNotConfiguredError, UnconfiguredFaceEngine
 
 
 class StubEngine(FaceEngine):
@@ -24,9 +24,35 @@ def test_enrollment_rejeita_pessoas_diferentes():
         engine.build_enrollment([b"a", b"b", b"c"])
 
 
-def test_enrollment_rejeita_poucas_fotos():
-    with pytest.raises(FaceEngineError, match="pelo menos 3"):
-        UnconfiguredFaceEngine().build_enrollment([b"a", b"b"])
+def test_enrollment_rejeita_sem_fotos():
+    with pytest.raises(FaceEngineError, match="pelo menos uma"):
+        UnconfiguredFaceEngine().build_enrollment([])
+
+
+def test_enrollment_uma_foto_normaliza_vetor():
+    result = StubEngine([[3.0, 4.0]]).build_enrollment([b"a"])
+    assert result.model_version == "stub-v1"
+    assert result.vector == pytest.approx([0.6, 0.8])
+
+
+@pytest.mark.parametrize("vector", [[], [0.0, 0.0], [float("nan"), 1.0], [float("inf"), 1.0]])
+def test_enrollment_uma_foto_rejeita_vetor_invalido(vector):
+    with pytest.raises(FaceEngineError):
+        StubEngine([vector]).build_enrollment([b"a"])
+
+
+def test_enrollment_preserva_erro_de_motor_nao_configurado():
+    with pytest.raises(FaceEngineNotConfiguredError):
+        UnconfiguredFaceEngine().build_enrollment([b"a"])
+
+
+def test_enrollment_uma_foto_rejeitada():
+    class RejectedEngine(FaceEngine):
+        def extract_embedding(self, image_bytes):
+            raise FaceEngineError("Nenhum rosto detetado.")
+
+    with pytest.raises(FaceEngineError, match="Fotografia 1: Nenhum rosto"):
+        RejectedEngine().build_enrollment([b"a"])
 
 
 def test_enrollment_rejeita_dimensoes_incompativeis():

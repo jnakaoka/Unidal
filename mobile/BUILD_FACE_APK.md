@@ -28,10 +28,14 @@ npx eas-cli build --platform android --profile faceTest
 
 **Atenção:** builds remotos EAS precisam receber a variável no ambiente de build do EAS; exportar apenas no terminal pode não propagá-la. Configure-a como variável de ambiente no projeto Expo/EAS, no ambiente correto, e confirme que está presente antes de compilar. Não guardar credenciais no APK: variáveis `EXPO_PUBLIC_*` são públicas.
 
+## Atualização para uma fotografia
+
+Atualizar a API de testes antes do aplicativo: reconstruir o serviço com o compose acima e gerar/instalar um novo APK. O cadastro passa a pedir uma fotografia frontal, apresenta a imagem para confirmação e permite refazer. Não exige migração nem novo cadastro dos perfis existentes. A API ainda aceita as 3 a 5 fotografias enviadas por versões anteriores do aplicativo.
+
 ## Validação antes de usar
 
 - Confirmar API de testes ativa e `FACE_BIOMETRICS_ENABLED=true` apenas neste compose.
-- Testar login de admin, 3 capturas consentidas, validação, cadastro, consulta de estado e revogação.
+- Testar login de admin, uma captura consentida, validação, pré-visualização, refazer a fotografia, cadastro, consulta de estado e revogação.
 - Confirmar que utilizador sem papel admin recebe 403 e que a API de produção não recebe imagens.
 - O cadastro **não é reconhecimento 1:N, prova de vida, autenticação ou controlo de ponto**. Não utilizar para registar presença real ainda.
 - Se falhar qualquer verificação, não distribuir APK para uso real.

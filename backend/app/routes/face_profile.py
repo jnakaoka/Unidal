@@ -24,7 +24,7 @@ router = APIRouter()
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
-MIN_ENROLLMENT_IMAGES = 3
+MIN_ENROLLMENT_IMAGES = 1
 MAX_ENROLLMENT_IMAGES = 5
 
 

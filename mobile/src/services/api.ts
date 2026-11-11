@@ -273,20 +273,15 @@ export const biometricsApi = {
     });
     return res.data as { valid: boolean; message: string };
   },
-  async enroll(userId: number, photoUris: string[]) {
+  async enroll(userId: number, photoUri: string) {
     requireFaceTestApi();
     const formData = new FormData();
 
-    photoUris.forEach((uri, index) => {
-      formData.append(
-        "images",
-        {
-          uri,
-          name: `face-${index + 1}.jpg`,
-          type: "image/jpeg",
-        } as any
-      );
-    });
+    formData.append("images", {
+      uri: photoUri,
+      name: "face.jpg",
+      type: "image/jpeg",
+    } as any);
 
     const res = await api.post(
       `/biometrics/users/${userId}/enroll`,

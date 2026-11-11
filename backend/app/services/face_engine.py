@@ -27,14 +27,16 @@ class FaceEngine(ABC):
         raise NotImplementedError
 
     def build_enrollment(self, images: Sequence[bytes]) -> FaceEmbedding:
-        """Extrai várias capturas e cria um único template normalizado."""
-        if len(images) < 3:
-            raise FaceEngineError("São necessárias pelo menos 3 capturas faciais.")
+        """Cria um template com uma captura; aceita várias para clientes antigos."""
+        if not images:
+            raise FaceEngineError("É necessária pelo menos uma captura facial.")
 
         embeddings = []
         for index, image in enumerate(images, start=1):
             try:
                 embeddings.append(self.extract_embedding(image))
+            except FaceEngineNotConfiguredError:
+                raise
             except FaceEngineError as exc:
                 raise FaceEngineError(f"Fotografia {index}: {exc}") from exc
         versions = {item.model_version for item in embeddings}

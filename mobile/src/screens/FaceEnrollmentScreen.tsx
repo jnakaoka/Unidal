@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   Alert,
   SafeAreaView,
   StyleSheet,
@@ -14,27 +15,27 @@ import { biometricsApi } from "../services/api";
 
 const LIVE_FACE_ENABLED = process.env.EXPO_PUBLIC_FACE_BIOMETRICS_ENABLED === "true";
 
+const CAPTURE_GUIDANCE = "Posicione o rosto de frente na moldura, com boa iluminação.";
 
-const INSTRUCTIONS = [
-  "Olhe diretamente para a câmera",
-  "Mantenha o rosto quase de frente e mude ligeiramente a posição",
-  "Olhe novamente para a câmera, com uma pequena variação natural",
-];
-
-export default function FaceEnrollmentScreen({ navigation }: any) {
+export default function FaceEnrollmentScreen() {
   const cameraRef = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraReady, setCameraReady] = useState(false);
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [userId, setUserId] = useState("");
   const [busy, setBusy] = useState(false);
   const [profileStatus, setProfileStatus] = useState("");
   const [capturing, setCapturing] = useState(false);
-  const [feedback, setFeedback] = useState("Posicione o rosto na moldura e mantenha boa iluminação.");
-  const [retakeIndex, setRetakeIndex] = useState<number | null>(null);
+  const [feedback, setFeedback] = useState(CAPTURE_GUIDANCE);
+
+  function resetCapture() {
+    setCameraReady(false);
+    setPhotoUri(null);
+    setFeedback(CAPTURE_GUIDANCE);
+  }
 
   async function capture() {
-    if (!cameraRef.current || !cameraReady || capturing || busy || (photos.length >= 3 && retakeIndex === null)) return;
+    if (!cameraRef.current || !cameraReady || capturing || busy || photoUri !== null) return;
 
     try {
       setCapturing(true);
@@ -59,13 +60,7 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
         } else {
           setFeedback("Fotografia capturada localmente. Sem envio à API.");
         }
-        setPhotos((current) => {
-          if (retakeIndex !== null) {
-            return current.map((uri, index) => index === retakeIndex ? picture.uri : uri);
-          }
-          return [...current, picture.uri].slice(0, 3);
-        });
-        setRetakeIndex(null);
+        setPhotoUri(picture.uri);
       }
     } catch {
       Alert.alert("Erro", "Não foi possível capturar a fotografia.");
@@ -77,10 +72,10 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
   function finishDemo() {
     Alert.alert(
       "Demonstração concluída",
-      "As três fotografias foram capturadas no dispositivo. Não foram enviadas para a API nem foi criado um cadastro biométrico.",
+      "A fotografia foi capturada no dispositivo. Não foi enviada para a API nem foi criado um cadastro biométrico.",
       [
         { text: "Continuar a testar", style: "cancel" },
-        { text: "Recomeçar", onPress: () => { setPhotos([]); setRetakeIndex(null); setFeedback("Posicione o rosto na moldura e mantenha boa iluminação."); } },
+        { text: "Recomeçar", onPress: resetCapture },
       ]
     );
   }
@@ -131,16 +126,16 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
       return;
     }
     const id = Number(userId);
-    if (!Number.isInteger(id) || id <= 0 || photos.length !== 3) {
-      Alert.alert("Atenção", "Indique um ID válido e capture três fotografias.");
+    if (!Number.isInteger(id) || id <= 0 || !photoUri) {
+      Alert.alert("Atenção", "Indique um ID válido e capture uma fotografia.");
       return;
     }
     try {
       setBusy(true);
-      await biometricsApi.enroll(id, photos);
+      await biometricsApi.enroll(id, photoUri);
       setProfileStatus("Perfil facial ativo");
       Alert.alert("Cadastro concluído", "Template facial registado.", [
-        { text: "OK", onPress: () => { setPhotos([]); setUserId(""); } },
+        { text: "OK", onPress: () => { resetCapture(); setUserId(""); } },
       ]);
     } catch (error: any) {
       const detail = error?.response?.data?.detail;
@@ -172,15 +167,12 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
     );
   }
 
-  const instruction =
-    retakeIndex !== null ? INSTRUCTIONS[retakeIndex] : photos.length < 3 ? INSTRUCTIONS[photos.length] : "Capturas concluídas";
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.form}>
         <Text style={styles.title}>{LIVE_FACE_ENABLED ? "Cadastro facial experimental" : "Demonstração facial local"}</Text>
         <Text style={styles.subtitle}>
-          {LIVE_FACE_ENABLED ? "As fotografias serão enviadas à API para validação. Utilize apenas participantes autorizados." : "Teste da câmara e das três fotografias no Samsung. Não há deteção automática de rostos nem envio de imagens à API."}
+          {LIVE_FACE_ENABLED ? "Uma fotografia será enviada à API para validação. Utilize apenas participantes autorizados." : "Teste da câmara e de uma fotografia no dispositivo. Não há deteção automática de rostos nem envio de imagens à API."}
         </Text>
       </View>
 
@@ -200,22 +192,27 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
         </View>
       )}
       <View style={styles.cameraContainer}>
-        <CameraView
-          ref={cameraRef}
-          style={styles.camera}
-          facing="front"
-          mirror
-          onCameraReady={() => setCameraReady(true)}
-        />
-        <View style={styles.faceGuide} pointerEvents="none" />
+        {photoUri ? (
+          <Image source={{ uri: photoUri }} style={styles.camera} resizeMode="contain" accessibilityLabel="Fotografia facial capturada" />
+        ) : (
+          <>
+            <CameraView
+              ref={cameraRef}
+              style={styles.camera}
+              facing="front"
+              mirror
+              onCameraReady={() => setCameraReady(true)}
+            />
+            <View style={styles.faceGuide} pointerEvents="none" />
+          </>
+        )}
       </View>
 
       <View style={styles.controls}>
-        <Text style={styles.instruction}>{instruction}</Text>
-        <Text style={styles.counter}>{photos.length}/3 capturas</Text>
+        <Text style={styles.instruction}>{photoUri ? "Fotografia capturada. Confirme ou refaça." : "Olhe diretamente para a câmera"}</Text>
         <Text style={styles.feedback}>{feedback}</Text>
 
-        {(photos.length < 3 || retakeIndex !== null) ? (
+        {!photoUri ? (
           <TouchableOpacity
             style={[styles.captureButton, (!cameraReady || capturing || busy) && styles.disabled]}
             onPress={capture}
@@ -231,7 +228,8 @@ export default function FaceEnrollmentScreen({ navigation }: any) {
           <View style={styles.actionRow}>
             <TouchableOpacity
               style={styles.secondaryButton}
-              onPress={() => { setPhotos([]); setRetakeIndex(null); }}
+              onPress={resetCapture}
+              disabled={busy}
             >
               <Text style={styles.secondaryButtonText}>Refazer</Text>
             </TouchableOpacity>
@@ -254,10 +252,6 @@ const styles = StyleSheet.create({
   profileButton: { flex: 1, borderWidth: 1, borderColor: "#9ca3af", padding: 10, borderRadius: 8, alignItems: "center" },
   profileButtonText: { color: "#374151", fontWeight: "600" },
   feedback: { textAlign: "center", color: "#374151", fontSize: 13, marginBottom: 10 },
-  retakeRow: { flexDirection: "row", gap: 6, marginTop: 10 },
-  retakeButton: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: 8, backgroundColor: "#e5e7eb" },
-  retakeText: { color: "#374151", fontSize: 12, fontWeight: "600" },
-  hint: { fontSize: 12, color: "#6b7280", marginTop: 10, textAlign: "center" },
   container: { flex: 1, backgroundColor: "#f9fafb" },
   center: {
     flex: 1,
@@ -299,7 +293,6 @@ const styles = StyleSheet.create({
   },
   controls: { padding: 16 },
   instruction: { textAlign: "center", fontSize: 17, fontWeight: "600", color: "#111827" },
-  counter: { textAlign: "center", marginTop: 5, marginBottom: 12, color: "#6b7280" },
   permissionTitle: { fontSize: 22, fontWeight: "700", marginBottom: 8 },
   permissionText: { textAlign: "center", color: "#6b7280", marginBottom: 20 },
   primaryButton: {
