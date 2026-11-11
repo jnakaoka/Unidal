@@ -26,6 +26,12 @@ async function clearTokens() {
   await SecureStore.deleteItemAsync(REFRESH_KEY);
 }
 
+// Login e renovação não usam os interceptores da sessão autenticada.
+const authClient: AxiosInstance = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 20000,
+});
+
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 20000,
@@ -57,13 +63,13 @@ async function refreshAccessToken(): Promise<string> {
   const refresh = await getRefreshToken();
 
   if (!refresh) {
-    throw new Error("Refresh token não encontrado");
+    throw new Error("Sessão expirada. Volte a iniciar sessão.");
   }
 
   const body = new URLSearchParams();
   body.append("refresh_token", refresh);
 
-  const res = await axios.post(`${API_BASE_URL}/auth/refresh/`, body.toString(), {
+  const res = await authClient.post("/auth/refresh", body.toString(), {
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
     },
@@ -87,7 +93,7 @@ api.interceptors.response.use(
     const status = error.response?.status;
     const originalRequest: any = error.config;
 
-    if (status !== 401 || originalRequest?._retry) {
+    if (status !== 401 || !originalRequest || originalRequest._retry) {
       return Promise.reject(error);
     }
 
@@ -127,7 +133,7 @@ api.interceptors.response.use(
 
 export const authApi = {
   async login(email: string, password: string) {
-    const res = await api.post(
+    const res = await authClient.post(
       "/auth/login/",
       { email, password },
       {

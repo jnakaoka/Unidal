@@ -22,7 +22,13 @@ export default function LoginScreen() {
     try {
       await signIn(email.trim(), password);
     } catch (e: any) {
-      Alert.alert("Erro no login", e?.message || "Falha ao autenticar");
+      const detail = e?.response?.data?.detail;
+      const message = typeof detail === "string"
+        ? detail
+        : e?.response?.status === 401
+          ? "Email ou senha inválidos."
+          : e?.message || "Falha ao autenticar";
+      Alert.alert("Erro no login", message);
     } finally {
       setLoading(false);
     }
