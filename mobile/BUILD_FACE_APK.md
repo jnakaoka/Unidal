@@ -43,3 +43,10 @@ Atualizar a API de testes antes do aplicativo: reconstruir o serviço com o comp
 ## Próxima fase: localização + equipas
 
 Implementar apenas após revisão funcional e de proteção de dados: permissões de localização explícitas, precisão/idade da leitura GPS, vínculo a obra/equipa, registo auditável e tratamento de falhas de rede. Não confiar apenas em GPS ou biometria para comprovar presença.
+
+
+## Diagnóstico de captura lenta
+
+Na raiz do repositório, acompanhar `docker compose --env-file .env.face-mobile -f docker-compose.face-mobile.yml logs -f --tail 50 --timestamps api-mobile` enquanto se repete a captura. Comparar `face_detection`, `face_embedding` e `face_request` (cuja referência também aparece nos erros do aplicativo). O tempo de inferência não inclui toda a transferência nem autenticação. O verde na pré-visualização significa validação concluída, não orientação em tempo real.
+
+Verificação do aplicativo, dentro de `mobile`: `node --test tests/auth-api.test.cjs tests/face-capture.test.cjs` e `npx tsc --noEmit`.

@@ -1,7 +1,11 @@
 import os
+import logging
+from time import perf_counter
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.database import get_db
 from app.dependencies.auth import require_role
@@ -21,6 +25,7 @@ from app.services.face_engine import (
 
 
 router = APIRouter()
+logger = logging.getLogger("uvicorn.error.face")
 
 ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -52,6 +57,29 @@ async def _read_face_image(image: UploadFile) -> bytes:
     return data
 
 
+async def _run_face_engine(operation, callback, *args):
+    request_id = uuid4().hex[:12]
+    started = perf_counter()
+    try:
+        result = await run_in_threadpool(callback, *args)
+    except FaceEngineError as exc:
+        code = 503 if isinstance(exc, FaceEngineNotConfiguredError) else 422
+        logger.warning(
+            "face_request operation=%s request_id=%s status=%s duration_ms=%.1f reason=%s",
+            operation, request_id, code, (perf_counter() - started) * 1000, str(exc),
+        )
+        raise HTTPException(status_code=code, detail=str(exc), headers={"X-Face-Request-ID": request_id}) from exc
+    except Exception as exc:
+        logger.exception("face_request operation=%s request_id=%s status=500 duration_ms=%.1f",
+                         operation, request_id, (perf_counter() - started) * 1000)
+        raise HTTPException(status_code=500, detail="Erro interno ao validar o rosto. Tente novamente.",
+                            headers={"X-Face-Request-ID": request_id}) from exc
+    duration_ms = round((perf_counter() - started) * 1000, 1)
+    logger.info("face_request operation=%s request_id=%s status=200 duration_ms=%.1f",
+                operation, request_id, duration_ms)
+    return result, request_id, duration_ms
+
+
 @router.get("/users/{user_id}/status", response_model=FaceProfileStatusOut)
 def face_profile_status(
     user_id: int,
@@ -71,13 +99,9 @@ async def check_face_capture(
     """Validação prévia de uma fotografia; não grava biometria nem imagem."""
     require_face_feature_enabled()
     image_bytes = await _read_face_image(image)
-    try:
-        face_engine.extract_embedding(image_bytes)
-    except FaceEngineNotConfiguredError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except FaceEngineError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return {"valid": True, "message": "Rosto detetado e captura aceite."}
+    _, request_id, duration_ms = await _run_face_engine("capture_check", face_engine.extract_embedding, image_bytes)
+    return {"valid": True, "message": "Rosto detetado e captura aceite.",
+            "request_id": request_id, "processing_ms": duration_ms}
 
 
 @router.post("/users/{user_id}/enroll", response_model=FaceProfileEnrollOut)
@@ -100,12 +124,7 @@ async def enroll_face_profile(
 
     image_bytes = [await _read_face_image(image) for image in images]
 
-    try:
-        face_embedding = face_engine.build_enrollment(image_bytes)
-    except FaceEngineNotConfiguredError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except FaceEngineError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    face_embedding, _, _ = await _run_face_engine("enroll", face_engine.build_enrollment, image_bytes)
 
     return face_profile_service.enroll(
         db=db,

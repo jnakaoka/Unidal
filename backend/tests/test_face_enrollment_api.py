@@ -121,3 +121,55 @@ def test_validacao_previa_nao_grava(enrollment_api):
     assert response.status_code == 200
     assert response.json()["valid"] is True
     assert not enrollment_api.saved
+
+
+def test_validacao_regista_duracao_e_referencia_sem_dados_biometricos(enrollment_api, caplog):
+    import logging
+    with caplog.at_level(logging.INFO, logger='uvicorn.error.face'):
+        response = enrollment_api.client.post(
+            '/biometrics/capture/check', files={'image': ('face.jpg', b'photo', 'image/jpeg')}
+        )
+    body = response.json()
+    assert body['processing_ms'] >= 0
+    assert len(body['request_id']) == 12
+    assert body['request_id'] in caplog.text
+    assert 'duration_ms=' in caplog.text
+    assert 'photo' not in caplog.text
+    assert 'embedding' not in body
+
+
+def test_rejeicao_regista_motivo_e_referencia(enrollment_api, caplog):
+    response = enrollment_api.client.post(
+        '/biometrics/capture/check', files={'image': ('face.jpg', b'invalid', 'image/jpeg')}
+    )
+    assert response.status_code == 422
+    assert 'Nenhum rosto' in response.json()['detail']
+    assert response.headers['x-face-request-id'] in caplog.text
+    assert 'status=422' in caplog.text
+    assert not enrollment_api.saved
+
+
+def test_erro_inesperado_devolve_500_com_referencia(enrollment_api):
+    def broken(_):
+        raise RuntimeError('Internal test error')
+    enrollment_api.engine.extract_embedding = broken
+    response = enrollment_api.client.post(
+        '/biometrics/capture/check', files={'image': ('face.jpg', b'photo', 'image/jpeg')}
+    )
+    assert response.status_code == 500
+    assert len(response.headers['x-face-request-id']) == 12
+    assert 'Internal test error' not in response.text
+    assert not enrollment_api.saved
+
+
+def test_inferencia_nao_ocupa_thread_do_event_loop():
+    import asyncio
+    import threading
+    async def check():
+        loop_thread = threading.get_ident()
+        def infer():
+            assert threading.get_ident() != loop_thread
+            return FaceEmbedding([1., 0.], 'test-v1')
+        result, _, _ = await face_profile._run_face_engine('test', infer)
+        assert result.model_version == 'test-v1'
+    asyncio.run(check())

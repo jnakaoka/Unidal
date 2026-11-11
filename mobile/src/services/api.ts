@@ -275,9 +275,9 @@ export const biometricsApi = {
     } as any);
     const res = await api.post("/biometrics/capture/check", formData, {
       headers: { "Content-Type": "multipart/form-data" },
-      timeout: 30000,
+      timeout: 60000,
     });
-    return res.data as { valid: boolean; message: string };
+    return res.data as { valid: boolean; message: string; request_id?: string; processing_ms?: number };
   },
   async enroll(userId: number, photoUri: string) {
     requireFaceTestApi();

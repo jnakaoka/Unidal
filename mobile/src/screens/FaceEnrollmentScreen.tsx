@@ -3,7 +3,7 @@ import {
   ActivityIndicator,
   Image,
   Alert,
-  SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,6 +11,8 @@ import {
   TextInput,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { faceCaptureError } from "../utils/faceCapture";
 import { biometricsApi } from "../services/api";
 
 const LIVE_FACE_ENABLED = process.env.EXPO_PUBLIC_FACE_BIOMETRICS_ENABLED === "true";
@@ -47,12 +49,14 @@ export default function FaceEnrollmentScreen() {
       if (picture?.uri) {
         if (LIVE_FACE_ENABLED) {
           setBusy(true);
+          setFeedback("A validar a fotografia. Aguarde a resposta da API...");
           try {
             await biometricsApi.checkCapture(picture.uri);
             setFeedback("Rosto validado. Captura aceite.");
           } catch (error: any) {
-            const detail = error?.response?.data?.detail;
-            Alert.alert("Captura rejeitada", typeof detail === "string" ? detail : "Não foi possível validar a fotografia.");
+            const failure = faceCaptureError(error);
+            setFeedback(failure.message);
+            Alert.alert(failure.title, failure.message);
             return;
           } finally {
             setBusy(false);
@@ -168,7 +172,8 @@ export default function FaceEnrollmentScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["bottom", "left", "right"]}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.form}>
         <Text style={styles.title}>{LIVE_FACE_ENABLED ? "Cadastro facial experimental" : "Demonstração facial local"}</Text>
         <Text style={styles.subtitle}>
@@ -191,7 +196,7 @@ export default function FaceEnrollmentScreen() {
           {!!profileStatus && <Text style={styles.feedback}>{profileStatus}</Text>}
         </View>
       )}
-      <View style={styles.cameraContainer}>
+      <View style={[styles.cameraContainer, photoUri && LIVE_FACE_ENABLED ? styles.validatedCapture : null]}>
         {photoUri ? (
           <Image source={{ uri: photoUri }} style={styles.camera} resizeMode="contain" accessibilityLabel="Fotografia facial capturada" />
         ) : (
@@ -209,7 +214,7 @@ export default function FaceEnrollmentScreen() {
       </View>
 
       <View style={styles.controls}>
-        <Text style={styles.instruction}>{photoUri ? "Fotografia capturada. Confirme ou refaça." : "Olhe diretamente para a câmera"}</Text>
+        <Text style={styles.instruction}>{photoUri ? (LIVE_FACE_ENABLED ? "Fotografia validada. Confirme ou refaça." : "Fotografia capturada. Confirme ou refaça.") : "Olhe diretamente para a câmera"}</Text>
         <Text style={styles.feedback}>{feedback}</Text>
 
         {!photoUri ? (
@@ -243,6 +248,7 @@ export default function FaceEnrollmentScreen() {
           </View>
         )}
       </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -253,6 +259,7 @@ const styles = StyleSheet.create({
   profileButtonText: { color: "#374151", fontWeight: "600" },
   feedback: { textAlign: "center", color: "#374151", fontSize: 13, marginBottom: 10 },
   container: { flex: 1, backgroundColor: "#f9fafb" },
+  content: { paddingBottom: 20 },
   center: {
     flex: 1,
     padding: 24,
@@ -274,20 +281,20 @@ const styles = StyleSheet.create({
   },
   cameraContainer: {
     marginHorizontal: 16,
-    flex: 1,
-    minHeight: 300,
+    aspectRatio: 3 / 4,
     overflow: "hidden",
     borderRadius: 18,
     backgroundColor: "#111827",
   },
+  validatedCapture: { borderWidth: 3, borderColor: "#16a34a" },
   camera: { flex: 1 },
   faceGuide: {
     position: "absolute",
-    alignSelf: "center",
-    top: "14%",
-    width: 210,
-    height: 270,
-    borderRadius: 110,
+    left: "15%",
+    top: "15%",
+    width: "70%",
+    height: "70%",
+    borderRadius: 1000,
     borderWidth: 3,
     borderColor: "#fff",
   },

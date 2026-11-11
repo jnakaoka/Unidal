@@ -23,3 +23,15 @@ Se os modelos não estiverem configurados, a API continua a devolver HTTP 503 pa
 - A chave Fernet deve ser conservada e gerida com controlo de acesso e plano de rotação. Perder a chave torna os templates ilegíveis.
 - O modelo e os vetores são dados biométricos sensíveis: é necessário avaliar base legal, proporcionalidade, retenção, transparência e requisitos RGPD antes de recolher dados reais de trabalhadores.
 - A baseline criada com `create_all` no banco de testes não valida a sequência histórica das migrations. Não aplicar o mesmo procedimento em produção.
+
+
+## Desempenho e diagnóstico das capturas
+
+- YuNet recebe uma versão com lado maior limitado a 960 píxeis, sem ampliar fotografias menores. A caixa e os cinco landmarks são reescalados para a fotografia original, que continua a alimentar o alinhamento e o embedding SFace. Os limites de formato, tamanho, resolução, rosto único e enquadramento continuam ativos. A versão do embedding e os perfis existentes não mudam.
+- A inferência executa numa thread de trabalho para não bloquear o event loop. Um lock por motor protege os objetos OpenCV partilhados entre capturas e cadastros concorrentes.
+- Os logs `face_detection` e `face_embedding` mostram resolução, número de rostos e duração. `face_request` mostra a operação, referência, resultado da inferência e duração; na operação `enroll`, isto é anterior à gravação no banco. Os logs novos não incluem imagens, embeddings, nomes ou emails.
+- `/biometrics/capture/check` devolve `processing_ms` e `request_id` em caso de sucesso. Erros do motor incluem o cabeçalho `X-Face-Request-ID`. O tempo medido começa depois da autenticação e leitura do upload e inclui a espera pela thread/lock; não mede todo o percurso de rede.
+- O aplicativo distingue tempo excedido, falha de ligação, sessão expirada, permissão e rejeição da fotografia. O limite de espera da validação passa a 60 segundos como margem, não como substituto da otimização. Uma validação que falhe por timeout não grava o cadastro.
+- A câmara tem área proporcional e a página permite deslocação com margem para a navegação Android. A pré-visualização só ganha contorno verde depois da resposta válida da API. Não existe deteção contínua antes da captura nem envio automático de fotografias.
+
+Após atualizar a API, repetir a captura no Samsung e comparar os tempos nos logs. Testes com stubs e medições locais não garantem o mesmo desempenho no portátil nem substituem a validação de qualidade com fotografias autorizadas.

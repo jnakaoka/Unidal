@@ -2,8 +2,14 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from math import isfinite, sqrt
 import os
+import logging
+from threading import Lock
+from time import perf_counter
 from pathlib import Path
 from typing import Sequence
+
+
+logger = logging.getLogger("uvicorn.error.face")
 
 
 class FaceEngineError(Exception):
@@ -91,6 +97,7 @@ class OpenCVFaceEngine(FaceEngine):
     """
 
     MODEL_VERSION = "opencv-sface-2021dec-v1"
+    MAX_DETECTION_SIDE = 960
 
     def __init__(self, detector_path: str, recognizer_path: str):
         try:
@@ -104,6 +111,7 @@ class OpenCVFaceEngine(FaceEngine):
             raise FaceEngineNotConfiguredError("Modelos YuNet/SFace não encontrados.")
         self.cv2 = cv2
         self.np = np
+        self._inference_lock = Lock()
         try:
             self.detector = cv2.FaceDetectorYN.create(
                 detector_path, "", (320, 320), score_threshold=0.7
@@ -124,23 +132,48 @@ class OpenCVFaceEngine(FaceEngine):
         height, width = image.shape[:2]
         if min(height, width) < 240 or width * height > 12_000_000:
             raise FaceEngineError("Resolução facial inadequada.")
+        # YuNet não precisa de processar todos os megapixels da fotografia.
+        # SFace continua a alinhar/recortar a imagem original, preservando detalhe.
+        detection_image = image
+        if max(width, height) > self.MAX_DETECTION_SIDE:
+            scale = self.MAX_DETECTION_SIDE / max(width, height)
+            detection_image = self.cv2.resize(
+                image, (max(1, round(width * scale)), max(1, round(height * scale))),
+                interpolation=self.cv2.INTER_AREA,
+            )
+        detection_height, detection_width = detection_image.shape[:2]
+        lock_started = perf_counter()
         try:
-            self.detector.setInputSize((width, height))
-            _, faces = self.detector.detect(image)
-            face_count = 0 if faces is None else len(faces)
-            if face_count == 0:
-                raise FaceEngineError("Nenhum rosto detetado. Verifique enquadramento, iluminação e resolução.")
-            if face_count > 1:
-                raise FaceEngineError(f"Foram detetados {face_count} rostos. Envie uma fotografia individual.")
-            face = faces[0]
-            if min(float(face[2]), float(face[3])) < 100:
-                raise FaceEngineError("Aproxime o rosto da câmara.")
-            # Evita capturas com face parcialmente fora do enquadramento.
-            x, y, face_width, face_height = map(float, face[:4])
-            if x < 0 or y < 0 or x + face_width > width or y + face_height > height:
-                raise FaceEngineError("Mantenha o rosto inteiro dentro da moldura.")
-            aligned = self.recognizer.alignCrop(image, face)
-            vector = self.recognizer.feature(aligned).flatten().astype("float64")
+            # A instância é partilhada: os objetos DNN têm estado mutável.
+            with self._inference_lock:
+                wait_ms = (perf_counter() - lock_started) * 1000
+                detection_started = perf_counter()
+                self.detector.setInputSize((detection_width, detection_height))
+                _, faces = self.detector.detect(detection_image)
+                face_count = 0 if faces is None else len(faces)
+                detection_ms = (perf_counter() - detection_started) * 1000
+                logger.info(
+                    "face_detection original=%sx%s detector=%sx%s faces=%s duration_ms=%.1f wait_ms=%.1f",
+                    width, height, detection_width, detection_height, face_count, detection_ms, wait_ms,
+                )
+                if face_count == 0:
+                    raise FaceEngineError("Nenhum rosto detetado. Verifique enquadramento, iluminação e resolução.")
+                if face_count > 1:
+                    raise FaceEngineError(f"Foram detetados {face_count} rostos. Envie uma fotografia individual.")
+                face = faces[0].copy()
+                # Caixa e cinco landmarks voltam às coordenadas originais.
+                # O índice 14 é a confiança, não uma coordenada.
+                face[:14:2] *= width / detection_width
+                face[1:14:2] *= height / detection_height
+                if min(float(face[2]), float(face[3])) < 100:
+                    raise FaceEngineError("Aproxime o rosto da câmara.")
+                x, y, face_width, face_height = map(float, face[:4])
+                if x < 0 or y < 0 or x + face_width > width or y + face_height > height:
+                    raise FaceEngineError("Mantenha o rosto inteiro dentro da moldura.")
+                embedding_started = perf_counter()
+                aligned = self.recognizer.alignCrop(image, face)
+                vector = self.recognizer.feature(aligned).flatten().astype("float64")
+                logger.info("face_embedding duration_ms=%.1f", (perf_counter() - embedding_started) * 1000)
         except self.cv2.error as exc:
             raise FaceEngineError("Não foi possível processar a imagem facial.") from exc
         norm = float(self.np.linalg.norm(vector))
@@ -161,16 +194,19 @@ def _configured_engine() -> FaceEngine:
 
 
 _face_engine: FaceEngine | None = None
+_face_engine_lock = Lock()
 
 
 def get_face_engine() -> FaceEngine:
     global _face_engine
-    if _face_engine is None:
-        _face_engine = _configured_engine()
-    return _face_engine
+    with _face_engine_lock:
+        if _face_engine is None:
+            _face_engine = _configured_engine()
+        return _face_engine
 
 
 def set_face_engine(engine: FaceEngine) -> None:
     """Permite injetar a implementação do motor sem acoplar as rotas ao modelo."""
     global _face_engine
-    _face_engine = engine
+    with _face_engine_lock:
+        _face_engine = engine
