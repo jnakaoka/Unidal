@@ -170,6 +170,17 @@ export default function HomeScreen({ navigation }: any) {
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
         )}
+        {isAdmin && process.env.EXPO_PUBLIC_FACE_BIOMETRICS_ENABLED === "true" && (
+          <TouchableOpacity activeOpacity={0.75} style={styles.moduleCard}
+            onPress={() => navigation.navigate("FaceVerification")}>
+            <View style={styles.faceIconBox}><Text style={styles.iconText}>◎</Text></View>
+            <View style={styles.moduleText}>
+              <Text style={styles.moduleTitle}>Verificar rosto</Text>
+              <Text style={styles.moduleSubtitle}>Comparar selfie com um funcionário</Text>
+            </View>
+            <Text style={styles.chevron}>›</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

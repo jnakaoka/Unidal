@@ -8,11 +8,13 @@ type CaptureError = {
   };
 };
 
-export function faceCaptureError(error: CaptureError | null | undefined) {
+export function faceCaptureError(error: CaptureError | null | undefined, operation: "capture" | "verify" = "capture") {
   if (error?.code === "ECONNABORTED" || error?.code === "ETIMEDOUT") {
     return {
-      title: "Validação demorada",
-      message: "A API não respondeu a tempo. A fotografia pode ter sido validada no servidor, mas o cadastro ainda não foi enviado. Tente novamente.",
+      title: operation === "verify" ? "Verificação demorada" : "Validação demorada",
+      message: operation === "verify"
+        ? "A API não respondeu a tempo. Não foi possível concluir a comparação. Tente novamente."
+        : "A API não respondeu a tempo. A fotografia pode ter sido validada no servidor, mas o cadastro ainda não foi enviado. Tente novamente.",
     };
   }
   if (error?.message === "Sessão expirada. Volte a iniciar sessão.") {
@@ -37,6 +39,9 @@ export function faceCaptureError(error: CaptureError | null | undefined) {
   }
   if (status && status >= 500) {
     return { title: "API indisponível", message: (detail || "O servidor não conseguiu validar o rosto. Tente novamente.") + suffix };
+  }
+  if (operation === "verify" && (status === 404 || status === 409)) {
+    return { title: "Perfil indisponível", message: (detail || "Verifique o funcionário e o cadastro facial.") + suffix };
   }
   return {
     title: "Captura rejeitada",

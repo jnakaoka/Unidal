@@ -26,3 +26,15 @@ class FaceProfileEnrollOut(BaseModel):
 class FaceProfileRevokeOut(BaseModel):
     user_id: int
     revoked: bool
+
+
+class FaceProfileVerifyOut(BaseModel):
+    user_id: int
+    user_name: str
+    matched: bool
+    similarity: float
+    threshold: float
+    model_version: str
+    verified_at: datetime
+    request_id: str
+    processing_ms: float

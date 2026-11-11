@@ -14,6 +14,7 @@ from app.schemas.face_profile import (
     FaceProfileEnrollOut,
     FaceProfileRevokeOut,
     FaceProfileStatusOut,
+    FaceProfileVerifyOut,
 )
 from app.services import face_profile as face_profile_service
 from app.services.face_engine import (
@@ -132,6 +133,31 @@ async def enroll_face_profile(
         enrolled_by=current_user.id,
         face_embedding=face_embedding,
     )
+
+
+@router.post("/users/{user_id}/verify", response_model=FaceProfileVerifyOut)
+async def verify_face_profile(
+    user_id: int,
+    image: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_role("admin")),
+    face_engine: FaceEngine = Depends(get_face_engine),
+):
+    require_face_feature_enabled()
+    image_bytes = await _read_face_image(image)
+    embedding, request_id, duration_ms = await _run_face_engine("verify", face_engine.extract_embedding, image_bytes)
+    try:
+        result = face_profile_service.verify(db, user_id, embedding)
+    except HTTPException as exc:
+        logger.warning("face_verification request_id=%s status=%s", request_id, exc.status_code)
+        exc.headers = {**(exc.headers or {}), "X-Face-Request-ID": request_id}
+        raise
+    except Exception as exc:
+        logger.exception("face_verification request_id=%s status=500", request_id)
+        raise HTTPException(status_code=500, detail="Erro interno ao comparar o rosto. Tente novamente.",
+                            headers={"X-Face-Request-ID": request_id}) from exc
+    logger.info("face_verification request_id=%s status=200 matched=%s", request_id, result["matched"])
+    return {**result, "request_id": request_id, "processing_ms": duration_ms}
 
 
 @router.delete("/users/{user_id}", response_model=FaceProfileRevokeOut)

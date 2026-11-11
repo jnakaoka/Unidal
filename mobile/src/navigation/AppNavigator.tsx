@@ -8,6 +8,7 @@ import HomeScreen from "../screens/HomeScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import RegistroHorasScreen from "../screens/RegistroHorasScreen";
 import FaceEnrollmentScreen from "../screens/FaceEnrollmentScreen";
+import FaceVerificationScreen from "../screens/FaceVerificationScreen";
 import WebModuleScreen from "../screens/WebModuleScreen";
 
 const Stack = createNativeStackNavigator();
@@ -46,6 +47,11 @@ function AppStack() {
         name="FaceEnrollment"
         component={FaceEnrollmentScreen}
         options={{ title: "Cadastro Facial" }}
+      />
+      <Stack.Screen
+        name="FaceVerification"
+        component={FaceVerificationScreen}
+        options={{ title: "Verificação Facial" }}
       />
     </Stack.Navigator>
   );

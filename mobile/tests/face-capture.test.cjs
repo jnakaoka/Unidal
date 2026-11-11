@@ -46,3 +46,19 @@ test('missing stored refresh token is identified as expired session', () => {
   const result = faceCaptureError({ message: 'Sessão expirada. Volte a iniciar sessão.' });
   assert.equal(result.title, 'Sessão expirada');
 });
+
+
+test('verification timeout describes inconclusive comparison without enrollment claim', () => {
+  const result = faceCaptureError({ code: 'ECONNABORTED' }, 'verify');
+  assert.equal(result.title, 'Verificação demorada');
+  assert.match(result.message, /comparação/);
+  assert.doesNotMatch(result.message, /cadastro/);
+});
+
+for (const status of [404, 409]) {
+  test(`verification ${status} identifies unavailable profile`, () => {
+    const result = faceCaptureError({ response: { status, data: { detail: 'Perfil revogado' } } }, 'verify');
+    assert.equal(result.title, 'Perfil indisponível');
+    assert.match(result.message, /Perfil revogado/);
+  });
+}

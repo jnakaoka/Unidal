@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const axios = require('axios');
 
-function loadApi(handler, initialTokens = {}) {
+function loadApi(handler, initialTokens = {}, env = {}) {
   const tokens = new Map(Object.entries(initialTokens));
   const calls = [];
   const storageReads = [];
@@ -32,8 +32,14 @@ function loadApi(handler, initialTokens = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, esModuleInterop: true },
   }).outputText;
   const context = {
-    exports: {}, URLSearchParams, console: { log() {} },
-    process: { env: { EXPO_PUBLIC_API_BASE_URL: 'https://test.invalid' } },
+    exports: {}, URL, URLSearchParams, console: { log() {} },
+    FormData: class {
+      fields = [];
+      append(name, value) { this.fields.push([name, value]); }
+      get [Symbol.toStringTag]() { return 'FormData'; }
+      toString() { return '[object FormData]'; }
+    },
+    process: { env: { EXPO_PUBLIC_API_BASE_URL: 'https://test.invalid', ...env } },
     require(name) {
       if (name === 'axios') return http;
       if (name === 'expo-secure-store') return secureStore;
@@ -114,4 +120,34 @@ test('network failure during login does not attempt refresh', async () => {
   await assert.rejects(app.authApi.login('test@example.com', 'test-password'), /Network Error/);
   assert.equal(app.calls.length, 1);
   assert.equal(app.tokens.size, 0);
+});
+
+
+test('verification uploads one new selfie to the selected ID and returns non-match normally', async () => {
+  const app = loadApi((config) => {
+    assert.equal(config.url, '/biometrics/users/2/verify');
+    assert.equal(config.timeout, 60000);
+    assert.equal(config.headers.Authorization, 'Bearer access');
+    assert.equal(config.data.fields.length, 1);
+    assert.equal(config.data.fields[0][0], 'image');
+    assert.equal(config.data.fields[0][1].uri, 'file:///selfie.jpg');
+    return { data: { matched: false, user_id: 2, similarity: .1, threshold: .5 } };
+  }, { unidal_access_token: 'access' }, { EXPO_PUBLIC_FACE_BIOMETRICS_ENABLED: 'true' });
+  const result = await app.biometricsApi.verify(2, 'file:///selfie.jpg');
+  assert.equal(result.matched, false);
+  assert.equal(app.calls.length, 1);
+});
+
+test('verification remains disabled outside experimental APK', async () => {
+  const app = loadApi(() => { throw new Error('Must not send'); });
+  await assert.rejects(app.biometricsApi.verify(2, 'file:///selfie.jpg'), /desativada/);
+  assert.equal(app.calls.length, 0);
+});
+
+test('verification cannot send a selfie to production API', async () => {
+  const app = loadApi(() => { throw new Error('Must not send'); }, {}, {
+    EXPO_PUBLIC_FACE_BIOMETRICS_ENABLED: 'true', EXPO_PUBLIC_API_BASE_URL: 'https://api.unidal.pt',
+  });
+  await assert.rejects(app.biometricsApi.verify(2, 'file:///selfie.jpg'), /produção/);
+  assert.equal(app.calls.length, 0);
 });

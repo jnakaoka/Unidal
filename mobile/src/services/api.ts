@@ -264,6 +264,18 @@ function requireFaceTestApi() {
   }
 }
 
+export type FaceVerificationResult = {
+  user_id: number;
+  user_name: string;
+  matched: boolean;
+  similarity: number;
+  threshold: number;
+  model_version: string;
+  verified_at: string;
+  request_id: string;
+  processing_ms: number;
+};
+
 export const biometricsApi = {
   async checkCapture(uri: string) {
     requireFaceTestApi();
@@ -301,6 +313,18 @@ export const biometricsApi = {
     );
 
     return res.data;
+  },
+
+  async verify(userId: number, photoUri: string, signal?: AbortSignal) {
+    requireFaceTestApi();
+    const formData = new FormData();
+    formData.append("image", { uri: photoUri, name: "verification.jpg", type: "image/jpeg" } as any);
+    const res = await api.post(`/biometrics/users/${userId}/verify`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: 60000,
+      signal,
+    });
+    return res.data as FaceVerificationResult;
   },
 
   async status(userId: number) {

@@ -50,3 +50,10 @@ Implementar apenas após revisão funcional e de proteção de dados: permissõe
 Na raiz do repositório, acompanhar `docker compose --env-file .env.face-mobile -f docker-compose.face-mobile.yml logs -f --tail 50 --timestamps api-mobile` enquanto se repete a captura. Comparar `face_detection`, `face_embedding` e `face_request` (cuja referência também aparece nos erros do aplicativo). O tempo de inferência não inclui toda a transferência nem autenticação. O verde na pré-visualização significa validação concluída, não orientação em tempo real.
 
 Verificação do aplicativo, dentro de `mobile`: `node --test tests/auth-api.test.cjs tests/face-capture.test.cjs` e `npx tsc --noEmit`.
+
+
+## Testar a verificação 1:1
+
+Atualizar a API facial e instalar o novo APK; não há migração de base de dados nem novo cadastro obrigatório. Entrar como administrador, abrir **Verificar rosto**, indicar o ID cadastrado (por exemplo, o ID 2 no ambiente de testes) e tocar em **Capturar e verificar**. Repetir com a mesma pessoa e depois com outra pessoa, sempre mantendo o cadastro original do mesmo ID. Não recadastrar entre essas tentativas. O resultado não regista presença.
+
+O limiar inicial é 0,5 e pode ser definido na API isolada com `FACE_VERIFICATION_THRESHOLD` em `.env.face-mobile`. Um resultado positivo experimental não é prova de vida nem garantia de identidade. Aguardar a avaliação com pessoas autorizadas antes de associar este fluxo a horas, obra ou equipa.
